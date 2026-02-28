@@ -74,9 +74,9 @@ export function LandingVariantB() {
             <Image
               src="/detailopslogo.png"
               alt="DetailOps"
-              width={120}
-              height={48}
-              className="h-12 w-auto object-contain opacity-95 md:h-10 mx-auto md:mx-0"
+              width={200}
+              height={52}
+              className="h-14 w-auto object-contain opacity-95 md:h-12 mx-auto md:mx-0"
               priority
             />
           </Link>

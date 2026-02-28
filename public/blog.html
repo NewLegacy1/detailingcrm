@@ -67,15 +67,12 @@ nav {
   border-bottom: 1px solid var(--border);
 }
 .logo {
-  display: flex; align-items: center; gap: 9px;
-  font-family: var(--font-display); font-weight: 700; font-size: 16px;
-  color: var(--white); text-decoration: none; letter-spacing: -0.2px;
+  display: flex; align-items: center; justify-content: flex-start;
+  font-family: var(--font-display); text-decoration: none;
 }
-.logo-mark {
-  display: flex; align-items: center; height: 26px;
-}
-.logo-mark img {
-  height: 26px; width: auto; object-fit: contain; display: block;
+.logo-img {
+  height: 40px; width: auto; object-fit: contain; display: block;
+  filter: drop-shadow(0 0 12px var(--accent-glow));
 }
 .logo-ops { color: var(--accent); }
 nav ul {
@@ -345,6 +342,8 @@ footer {
 @media (max-width: 768px) {
   nav { padding: 0 16px; }
   .nav-toggle { display: flex; }
+  .logo { flex: 1; justify-content: center; }
+  .logo-img { height: 48px; }
   nav ul {
     position: fixed; top: 0; left: 0; right: 0; bottom: 0;
     background: var(--bg); flex-direction: column;
@@ -383,8 +382,7 @@ footer {
 
 <nav>
   <a class="logo" href="/">
-    <span class="logo-mark"><img src="/Untitled%20design%20(29).png" alt="DetailOps" width="120" height="26"></span>
-    Detail<span class="logo-ops">Ops</span>
+    <img src="/detailopslogo.png" alt="DetailOps" class="logo-img" width="200" height="52">
   </a>
   <button type="button" class="nav-toggle" aria-label="Open menu" aria-expanded="false" aria-controls="blog-nav-menu">
     <span></span><span></span><span></span>
@@ -410,8 +408,7 @@ footer {
 
 <footer>
   <a class="logo" href="/">
-    <span class="logo-mark"><img src="/Untitled%20design%20(29).png" alt="DetailOps" width="120" height="26"></span>
-    Detail<span class="logo-ops">Ops</span>
+    <img src="/detailopslogo.png" alt="DetailOps" class="logo-img" width="200" height="52">
   </a>
   <div class="foot-copy">© 2025 DetailOps. Built for detailers, by people who get it.</div>
   <div class="foot-links">
