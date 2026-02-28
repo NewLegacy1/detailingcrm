@@ -1,0 +1,10 @@
+node_modules/
+dist/
+
+# Local env — never commit this, use GitHub Secrets instead
+.env
+
+# Keep these (Vercel needs them)
+!posts.json
+!posts/
+!sitemap.xml

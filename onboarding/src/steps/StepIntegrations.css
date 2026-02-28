@@ -1,0 +1,76 @@
+.integration-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-width: 360px;
+}
+
+.integration-card {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 18px 20px;
+  background: var(--right-bg);
+  border: 1px solid var(--right-border);
+  border-radius: var(--radius);
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 0.15s, background 0.15s, box-shadow 0.15s;
+}
+
+.integration-card:hover {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.1);
+}
+
+.integration-card--connected {
+  border-color: var(--success);
+  background: rgba(5, 150, 105, 0.06);
+}
+
+.integration-card__icon {
+  font-size: 1.5rem;
+}
+
+.integration-card__name {
+  flex: 1;
+  font-weight: 600;
+  font-size: 0.9375rem;
+}
+
+.integration-card__status {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--accent);
+}
+
+.integration-card--connected .integration-card__status {
+  color: var(--success);
+}
+
+.step-form__actions-right {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+@media (max-width: 600px) {
+  .integration-cards {
+    max-width: none;
+  }
+
+  .step-form__actions-right {
+    flex-direction: column-reverse;
+    width: 100%;
+  }
+
+  .step-form__actions-right .btn {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+.btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}

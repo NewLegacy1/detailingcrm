@@ -1,0 +1,658 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title id="page-title">DetailOps Blog — Detailing Business Tips & Strategies</title>
+<meta name="description" id="page-desc" content="Practical advice for auto detailers on pricing, marketing, client retention, and growing your detailing business.">
+<link rel="canonical" id="page-canonical" href="https://detailops.io/blog.html">
+<meta property="og:site_name" content="DetailOps">
+<meta property="og:type" id="og-type" content="website">
+<meta property="og:title" id="og-title" content="DetailOps Blog — Detailing Business Tips & Strategies">
+<meta property="og:description" id="og-desc" content="Practical advice for auto detailers on pricing, marketing, client retention, and growing your detailing business.">
+<meta property="og:url" id="og-url" content="https://detailops.io/blog.html">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" id="tw-title" content="DetailOps Blog — Detailing Business Tips & Strategies">
+<meta name="twitter:description" id="tw-desc" content="Practical advice for auto detailers on pricing, marketing, client retention, and growing your detailing business.">
+<link href="https://fonts.googleapis.com/css2?family=Figtree:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,300&family=Fraunces:ital,wght@0,300;1,300;1,400;1,500;1,700&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg: #07090c;
+  --surface: #0c1018;
+  --card: #101620;
+  --card2: #0d1319;
+  --border: rgba(255,255,255,0.07);
+  --border2: rgba(255,255,255,0.04);
+  --white: #eef0f2;
+  --muted: #64748b;
+  --muted2: #3d4f5e;
+  --accent: #00b8f5;
+  --accent-dim: rgba(0,184,245,0.07);
+  --accent-glow: rgba(0,184,245,0.18);
+  --green: #00d47e;
+  --amber: #f59e0b;
+  --font-display: 'Figtree', sans-serif;
+  --font-serif: 'Fraunces', Georgia, serif;
+  --font-body: 'Figtree', sans-serif;
+  --radius: 12px;
+}
+
+html { scroll-behavior: smooth; }
+body {
+  background: var(--bg);
+  color: var(--white);
+  font-family: var(--font-body);
+  font-weight: 300;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+body::after {
+  content: '';
+  position: fixed; inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+  pointer-events: none; z-index: 9999; opacity: 0.5;
+}
+
+/* ── NAV ── */
+nav {
+  position: fixed; top: 0; left: 0; right: 0;
+  z-index: 500; height: 60px;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 40px;
+  background: rgba(7,9,12,0.85);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border-bottom: 1px solid var(--border);
+}
+.logo {
+  display: flex; align-items: center; gap: 9px;
+  font-family: var(--font-display); font-weight: 700; font-size: 16px;
+  color: var(--white); text-decoration: none; letter-spacing: -0.2px;
+}
+.logo-mark {
+  display: flex; align-items: center; height: 26px;
+}
+.logo-mark img {
+  height: 26px; width: auto; object-fit: contain; display: block;
+}
+.logo-ops { color: var(--accent); }
+nav ul {
+  position: absolute; left: 50%; transform: translateX(-50%);
+  display: flex; gap: 28px; list-style: none;
+}
+nav ul a {
+  font-size: 13.5px; font-weight: 400;
+  color: var(--muted); text-decoration: none; transition: color 0.2s;
+}
+nav ul a:hover, nav ul a.active { color: var(--white); }
+.nav-r { display: flex; gap: 10px; align-items: center; }
+.nav-login {
+  font-size: 13.5px; font-weight: 400;
+  color: var(--muted); text-decoration: none;
+  padding: 7px 14px; transition: color 0.2s;
+}
+.nav-login:hover { color: var(--white); }
+.nav-cta {
+  background: var(--accent); color: #000;
+  font-family: var(--font-body); font-size: 13px; font-weight: 700;
+  padding: 9px 20px; border-radius: 8px; text-decoration: none;
+  transition: all 0.2s;
+}
+.nav-cta:hover { background: #33c9ff; transform: translateY(-1px); }
+.nav-toggle {
+  display: none; flex-direction: column; justify-content: center;
+  gap: 5px; width: 44px; height: 44px; padding: 10px;
+  background: transparent; border: 1px solid var(--border);
+  border-radius: 8px; cursor: pointer; z-index: 502;
+}
+.nav-toggle span {
+  display: block; height: 2px; background: var(--white);
+  border-radius: 1px; transition: transform 0.25s, opacity 0.25s;
+}
+.nav-toggle[aria-expanded="true"] span:nth-child(1) { transform: translateY(7px) rotate(45deg); }
+.nav-toggle[aria-expanded="true"] span:nth-child(2) { opacity: 0; }
+.nav-toggle[aria-expanded="true"] span:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
+
+/* ── BLOG HERO ── */
+.blog-hero {
+  padding: 120px 40px 72px;
+  text-align: center;
+  position: relative; overflow: hidden;
+}
+.blog-hero-dots {
+  position: absolute; inset: 0;
+  background-image: radial-gradient(circle, rgba(0,184,245,0.12) 1px, transparent 1px);
+  background-size: 36px 36px;
+  mask-image: radial-gradient(ellipse 70% 60% at 50% 30%, black 10%, transparent 80%);
+  pointer-events: none;
+}
+.blog-hero-glow {
+  position: absolute; top: 0; left: 50%; transform: translateX(-50%);
+  width: 700px; height: 400px;
+  background: radial-gradient(ellipse at 50% 0%, rgba(0,184,245,0.08) 0%, transparent 65%);
+  pointer-events: none;
+}
+.blog-eyebrow {
+  display: inline-flex; align-items: center; gap: 7px;
+  font-size: 11px; font-weight: 600; letter-spacing: 1.8px;
+  text-transform: uppercase; color: var(--accent);
+  background: rgba(0,184,245,0.07); border: 1px solid rgba(0,184,245,0.22);
+  padding: 6px 15px; border-radius: 100px;
+  margin-bottom: 24px; position: relative;
+}
+.blog-h1 {
+  font-family: var(--font-display);
+  font-size: clamp(32px, 5vw, 60px);
+  font-weight: 800; letter-spacing: -1.5px; line-height: 1.1;
+  margin-bottom: 16px; position: relative;
+}
+.blog-h1 em {
+  font-style: italic; font-family: var(--font-serif);
+  font-weight: 400; color: var(--accent);
+}
+.blog-sub {
+  font-size: 16px; font-weight: 300;
+  color: var(--muted); max-width: 420px;
+  margin: 0 auto; line-height: 1.7; position: relative;
+}
+
+/* ── BLOG INDEX ── */
+.blog-body {
+  max-width: 1100px; margin: 0 auto;
+  padding: 0 40px 100px;
+}
+.blog-filter {
+  display: flex; gap: 8px; flex-wrap: wrap;
+  margin-bottom: 40px;
+}
+.filter-btn {
+  font-family: var(--font-body);
+  font-size: 12.5px; font-weight: 600;
+  padding: 7px 16px; border-radius: 100px;
+  border: 1px solid var(--border); background: transparent;
+  color: var(--muted); cursor: pointer; transition: all 0.18s;
+}
+.filter-btn:hover { color: var(--white); border-color: rgba(255,255,255,0.15); }
+.filter-btn.active {
+  background: var(--accent-dim); color: var(--accent);
+  border-color: rgba(0,184,245,0.3);
+}
+.blog-grid {
+  display: grid; grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+}
+.post-card {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: 14px; padding: 28px 26px;
+  display: flex; flex-direction: column;
+  cursor: pointer; text-decoration: none; color: inherit;
+  transition: border-color 0.2s, transform 0.2s;
+}
+.post-card:hover { border-color: rgba(0,184,245,0.22); transform: translateY(-3px); }
+.cat-pill {
+  display: inline-flex; align-items: center;
+  font-size: 10px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 1px;
+  padding: 4px 10px; border-radius: 100px;
+  margin-bottom: 16px; width: fit-content;
+}
+.post-title {
+  font-family: var(--font-display);
+  font-size: 16px; font-weight: 700;
+  letter-spacing: -0.3px; line-height: 1.35;
+  margin-bottom: 10px; color: var(--white);
+}
+.post-excerpt {
+  font-size: 13px; color: var(--muted);
+  line-height: 1.65; flex: 1; margin-bottom: 22px;
+}
+.post-footer {
+  display: flex; align-items: center;
+  justify-content: space-between;
+  padding-top: 18px; border-top: 1px solid var(--border2);
+}
+.post-meta {
+  display: flex; align-items: center; gap: 10px;
+  font-size: 11.5px; color: var(--muted2);
+}
+.post-meta-dot { width: 3px; height: 3px; border-radius: 50%; background: var(--muted2); }
+.post-read-more {
+  font-size: 12px; font-weight: 600; color: var(--accent);
+  display: flex; align-items: center; gap: 4px;
+}
+.post-read-more svg { transition: transform 0.15s; }
+.post-card:hover .post-read-more svg { transform: translateX(3px); }
+
+.empty-state {
+  text-align: center; padding: 80px 40px;
+  color: var(--muted);
+}
+.empty-state h3 {
+  font-size: 20px; font-weight: 700; margin-bottom: 10px;
+  color: var(--white);
+}
+.empty-state p { font-size: 14px; line-height: 1.7; max-width: 380px; margin: 0 auto 28px; }
+.empty-cta {
+  display: inline-flex; align-items: center; gap: 8px;
+  background: rgba(0,184,245,0.08); border: 1px solid rgba(0,184,245,0.22);
+  color: var(--accent); font-size: 13px; font-weight: 600;
+  padding: 10px 20px; border-radius: 8px; text-decoration: none;
+  transition: background 0.2s;
+}
+.empty-cta:hover { background: rgba(0,184,245,0.14); }
+
+/* ── SINGLE POST ── */
+.post-view {
+  max-width: 760px; margin: 0 auto;
+  padding: 90px 40px 100px;
+}
+.post-back {
+  display: inline-flex; align-items: center; gap: 7px;
+  font-size: 13px; font-weight: 500; color: var(--muted);
+  text-decoration: none; margin-bottom: 36px;
+  transition: color 0.2s;
+  background: none; border: none; cursor: pointer;
+  font-family: var(--font-body);
+}
+.post-back:hover { color: var(--white); }
+.post-back svg { transition: transform 0.15s; }
+.post-back:hover svg { transform: translateX(-3px); }
+.post-header { margin-bottom: 40px; }
+.post-header .cat-pill { margin-bottom: 18px; }
+.post-header h1 {
+  font-family: var(--font-display);
+  font-size: clamp(26px, 4vw, 42px);
+  font-weight: 800; letter-spacing: -1px; line-height: 1.15;
+  margin-bottom: 18px; color: var(--white);
+}
+.post-header-meta {
+  display: flex; align-items: center; gap: 10px;
+  font-size: 12.5px; color: var(--muted2);
+}
+.post-header-meta-dot { width: 3px; height: 3px; border-radius: 50%; background: var(--muted2); }
+
+.post-content {
+  font-size: 15.5px; font-weight: 300;
+  line-height: 1.8; color: #bcc8d4;
+  border-top: 1px solid var(--border2);
+  padding-top: 40px; margin-bottom: 56px;
+}
+.post-content h2 {
+  font-family: var(--font-display);
+  font-size: clamp(20px, 3vw, 26px);
+  font-weight: 700; letter-spacing: -0.5px;
+  color: var(--white); line-height: 1.25;
+  margin: 42px 0 16px;
+}
+.post-content h2:first-child { margin-top: 0; }
+.post-content h3 {
+  font-family: var(--font-display);
+  font-size: 17px; font-weight: 700;
+  color: var(--white); line-height: 1.3;
+  margin: 32px 0 12px;
+}
+.post-content p { margin-bottom: 20px; }
+.post-content p:last-child { margin-bottom: 0; }
+.post-content ul, .post-content ol {
+  padding-left: 22px; margin-bottom: 20px;
+}
+.post-content li { margin-bottom: 8px; }
+.post-content strong { color: var(--white); font-weight: 600; }
+.post-content em { font-style: italic; }
+
+.post-cta {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-top: 2px solid var(--accent);
+  border-radius: 14px; padding: 32px 36px;
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 24px; flex-wrap: wrap;
+}
+.post-cta-text h3 {
+  font-size: 17px; font-weight: 700;
+  margin-bottom: 6px; color: var(--white);
+}
+.post-cta-text p {
+  font-size: 13.5px; color: var(--muted);
+  line-height: 1.6; max-width: 380px;
+}
+.post-cta-btn {
+  background: var(--accent); color: #000;
+  font-family: var(--font-body); font-size: 13.5px; font-weight: 700;
+  padding: 12px 26px; border-radius: 9px;
+  text-decoration: none; white-space: nowrap;
+  transition: all 0.2s; flex-shrink: 0;
+}
+.post-cta-btn:hover { background: #33c9ff; transform: translateY(-1px); }
+
+/* ── FOOTER ── */
+footer {
+  background: var(--surface); border-top: 1px solid var(--border);
+  padding: 32px 40px;
+  display: flex; align-items: center; justify-content: space-between;
+}
+.foot-copy { font-size: 12.5px; color: var(--muted2); }
+.foot-links { display: flex; gap: 24px; }
+.foot-links a {
+  font-size: 12.5px; color: var(--muted2);
+  text-decoration: none; transition: color 0.2s;
+}
+.foot-links a:hover { color: var(--muted); }
+
+/* ── MOBILE ── */
+@media (max-width: 768px) {
+  nav { padding: 0 16px; }
+  .nav-toggle { display: flex; }
+  nav ul {
+    position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+    background: var(--bg); flex-direction: column;
+    align-items: center; justify-content: center;
+    gap: 8px; transform: none; left: 0;
+    opacity: 0; visibility: hidden; pointer-events: none;
+    transition: opacity 0.25s, visibility 0.25s; z-index: 501;
+  }
+  nav ul.is-open { opacity: 1; visibility: visible; pointer-events: auto; }
+  nav ul a { font-size: 18px; padding: 12px 20px; }
+  .nav-r .nav-login { display: none; }
+
+  .blog-hero { padding: 90px 20px 48px; }
+  .blog-body { padding: 0 20px 60px; }
+  .blog-grid { grid-template-columns: 1fr; gap: 14px; }
+  .post-card { padding: 22px 20px; }
+
+  .post-view { padding: 80px 20px 60px; }
+  .post-content { font-size: 15px; }
+  .post-cta { padding: 24px 22px; flex-direction: column; }
+  .post-cta-btn { width: 100%; text-align: center; }
+
+  footer {
+    flex-direction: column; gap: 20px;
+    padding: 28px 20px; text-align: center;
+  }
+  .foot-links { flex-wrap: wrap; justify-content: center; gap: 16px; }
+}
+
+@media (min-width: 769px) and (max-width: 1060px) {
+  .blog-grid { grid-template-columns: repeat(2, 1fr); }
+}
+</style>
+</head>
+<body>
+
+<nav>
+  <a class="logo" href="/">
+    <span class="logo-mark"><img src="/Untitled%20design%20(29).png" alt="DetailOps" width="120" height="26"></span>
+    Detail<span class="logo-ops">Ops</span>
+  </a>
+  <button type="button" class="nav-toggle" aria-label="Open menu" aria-expanded="false" aria-controls="blog-nav-menu">
+    <span></span><span></span><span></span>
+  </button>
+  <ul id="blog-nav-menu">
+    <li><a href="index.html#features">Features</a></li>
+    <li><a href="index.html#pricing">Pricing</a></li>
+    <li><a href="index.html#how">How It Works</a></li>
+    <li><a href="blog.html" class="active">Blog</a></li>
+  </ul>
+  <div class="nav-r">
+    <a class="nav-login" href="/login">Sign in</a>
+    <a class="nav-cta" href="onboarding.html">Get Started Free</a>
+  </div>
+</nav>
+
+<div id="app">
+  <!-- Rendered by script below -->
+  <div style="display:flex;align-items:center;justify-content:center;min-height:100vh;color:var(--muted);font-size:14px;">
+    Loading...
+  </div>
+</div>
+
+<footer>
+  <a class="logo" href="/">
+    <span class="logo-mark"><img src="/Untitled%20design%20(29).png" alt="DetailOps" width="120" height="26"></span>
+    Detail<span class="logo-ops">Ops</span>
+  </a>
+  <div class="foot-copy">© 2025 DetailOps. Built for detailers, by people who get it.</div>
+  <div class="foot-links">
+    <a href="/privacy.html">Privacy</a>
+    <a href="/terms.html">Terms</a>
+    <a href="#">Support</a>
+    <a href="blog.html">Blog</a>
+  </div>
+</footer>
+
+<script>
+// ── Hamburger nav ──────────────────────────────────────────
+const navMenu = document.getElementById('blog-nav-menu');
+const navToggle = document.querySelector('.nav-toggle');
+if (navToggle && navMenu) {
+  navToggle.addEventListener('click', () => {
+    const open = navMenu.classList.toggle('is-open');
+    navToggle.setAttribute('aria-expanded', open);
+    navToggle.setAttribute('aria-label', open ? 'Close menu' : 'Open menu');
+    document.body.style.overflow = open ? 'hidden' : '';
+  });
+  navMenu.querySelectorAll('a').forEach(link => {
+    link.addEventListener('click', () => {
+      navMenu.classList.remove('is-open');
+      navToggle.setAttribute('aria-expanded', 'false');
+      document.body.style.overflow = '';
+    });
+  });
+}
+
+// ── Category colours ───────────────────────────────────────
+const CAT_COLOR = {
+  'Business Tips':    { bg: 'rgba(0,184,245,0.1)',   text: '#00b8f5', border: 'rgba(0,184,245,0.25)' },
+  'Marketing':        { bg: 'rgba(0,212,126,0.1)',   text: '#00d47e', border: 'rgba(0,212,126,0.25)' },
+  'Operations':       { bg: 'rgba(245,158,11,0.1)',  text: '#f59e0b', border: 'rgba(245,158,11,0.25)' },
+  'Pricing':          { bg: 'rgba(167,139,250,0.1)', text: '#a78bfa', border: 'rgba(167,139,250,0.25)' },
+  'Client Relations': { bg: 'rgba(251,146,60,0.1)',  text: '#fb923c', border: 'rgba(251,146,60,0.25)' },
+};
+function catStyle(cat) {
+  const c = CAT_COLOR[cat] || CAT_COLOR['Business Tips'];
+  return `background:${c.bg};color:${c.text};border:1px solid ${c.border};`;
+}
+
+const CATEGORIES = ['All', 'Business Tips', 'Marketing', 'Operations', 'Pricing', 'Client Relations'];
+
+// ── Helpers ────────────────────────────────────────────────
+function fmtDate(iso) {
+  try {
+    return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  } catch { return iso; }
+}
+
+function arrowRight() {
+  return `<svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M2 6h8M7 3l3 3-3 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+  </svg>`;
+}
+function arrowLeft() {
+  return `<svg width="13" height="13" viewBox="0 0 13 13" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M10 6.5H3M6 3.5L3 6.5l3 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+  </svg>`;
+}
+
+// ── Card HTML ──────────────────────────────────────────────
+function cardHTML(post) {
+  return `
+    <a class="post-card" href="posts/${encodeURIComponent(post.slug)}.html" data-category="${post.category || ''}">
+      <span class="cat-pill" style="${catStyle(post.category)}">${post.category || 'General'}</span>
+      <div class="post-title">${post.title}</div>
+      <div class="post-excerpt">${post.excerpt}</div>
+      <div class="post-footer">
+        <div class="post-meta">
+          <span>${fmtDate(post.date)}</span>
+          <span class="post-meta-dot"></span>
+          <span>${post.readTime}</span>
+        </div>
+        <span class="post-read-more">Read ${arrowRight()}</span>
+      </div>
+    </a>`;
+}
+
+// ── Index page ─────────────────────────────────────────────
+function renderIndex(posts) {
+  document.getElementById('page-title').textContent = 'DetailOps Blog — Detailing Business Tips & Strategies';
+  document.getElementById('page-desc').setAttribute('content',
+    'Practical advice for auto detailers on pricing, marketing, client retention, and growing your detailing business.');
+
+  let activeFilter = 'All';
+
+  function filteredCards() {
+    const filtered = activeFilter === 'All' ? posts : posts.filter(p => p.category === activeFilter);
+    if (filtered.length === 0) {
+      return `<div style="grid-column:1/-1">
+        <div class="empty-state" style="padding:40px 0;">
+          <p style="font-size:13px;color:var(--muted2);">No posts in this category yet.</p>
+        </div>
+      </div>`;
+    }
+    return filtered.map(cardHTML).join('');
+  }
+
+  function filterBtns() {
+    return CATEGORIES.map(c => `
+      <button class="filter-btn ${c === activeFilter ? 'active' : ''}" data-cat="${c}">${c}</button>
+    `).join('');
+  }
+
+  const heroHTML = `
+    <div class="blog-hero">
+      <div class="blog-hero-dots"></div>
+      <div class="blog-hero-glow"></div>
+      <div class="blog-eyebrow">The DetailOps Blog</div>
+      <h1 class="blog-h1">Grow your detailing business <em>smarter.</em></h1>
+      <p class="blog-sub">Practical strategies on pricing, marketing, client retention, and running a detailing business that scales.</p>
+    </div>`;
+
+  let emptySection = '';
+  if (posts.length === 0) {
+    emptySection = `
+      <div class="empty-state">
+        <h3>No posts yet</h3>
+        <p>Run the generator script to create your first post. It takes about 15 seconds and costs pennies.</p>
+        <code style="display:block;background:var(--card);border:1px solid var(--border);border-radius:8px;padding:12px 18px;font-size:13px;color:var(--accent);margin-bottom:28px;text-align:left;max-width:380px;margin-left:auto;margin-right:auto;">
+          node scripts/generate-post.mjs
+        </code>
+        <a class="empty-cta" href="onboarding.html">Try DetailOps Free ${arrowRight()}</a>
+      </div>`;
+  }
+
+  const indexHTML = posts.length === 0 ? emptySection : `
+    <div class="blog-filter" id="filter-bar">${filterBtns()}</div>
+    <div class="blog-grid" id="blog-grid">${filteredCards()}</div>`;
+
+  document.getElementById('app').innerHTML = heroHTML + `<div class="blog-body">${indexHTML}</div>`;
+
+  // Filter interaction
+  document.querySelectorAll('.filter-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      activeFilter = btn.dataset.cat;
+      document.querySelectorAll('.filter-btn').forEach(b => b.classList.toggle('active', b.dataset.cat === activeFilter));
+      document.getElementById('blog-grid').innerHTML = filteredCards();
+    });
+  });
+}
+
+// ── Single post page ───────────────────────────────────────
+function renderPost(post) {
+  const SITE = 'https://detailops.io';
+  const postUrl = `${SITE}/posts/${post.slug}.html`;
+
+  document.getElementById('page-title').textContent = `${post.title} — DetailOps Blog`;
+  document.getElementById('page-desc').setAttribute('content', post.excerpt);
+  document.getElementById('page-canonical').setAttribute('href', postUrl);
+  document.getElementById('og-type').setAttribute('content', 'article');
+  document.getElementById('og-title').setAttribute('content', post.title);
+  document.getElementById('og-desc').setAttribute('content', post.excerpt);
+  document.getElementById('og-url').setAttribute('content', postUrl);
+  document.getElementById('tw-title').setAttribute('content', post.title);
+  document.getElementById('tw-desc').setAttribute('content', post.excerpt);
+
+  // Inject JSON-LD Article schema
+  const existing = document.getElementById('post-jsonld');
+  if (existing) existing.remove();
+  const ld = document.createElement('script');
+  ld.id = 'post-jsonld';
+  ld.type = 'application/ld+json';
+  ld.textContent = JSON.stringify({
+    '@context': 'https://schema.org',
+    '@type': 'Article',
+    'headline': post.title,
+    'description': post.excerpt,
+    'datePublished': post.date,
+    'dateModified': post.date,
+    'author': { '@type': 'Organization', 'name': 'DetailOps', 'url': SITE },
+    'publisher': { '@type': 'Organization', 'name': 'DetailOps', 'url': SITE },
+    'url': postUrl,
+    'mainEntityOfPage': { '@type': 'WebPage', '@id': postUrl },
+  });
+  document.head.appendChild(ld);
+
+  const html = `
+    <div class="post-view">
+      <button class="post-back" onclick="history.back()">
+        ${arrowLeft()} Back to Blog
+      </button>
+      <div class="post-header">
+        <span class="cat-pill" style="${catStyle(post.category)}">${post.category || 'General'}</span>
+        <h1>${post.title}</h1>
+        <div class="post-header-meta">
+          <span>${fmtDate(post.date)}</span>
+          <span class="post-header-meta-dot"></span>
+          <span>${post.readTime}</span>
+        </div>
+      </div>
+      <div class="post-content">${post.content}</div>
+      <div class="post-cta">
+        <div class="post-cta-text">
+          <h3>Stop chasing bookings. Start scaling.</h3>
+          <p>DetailOps gives auto detailers a professional booking page, deposit collection, automated reminders, and client management — all in one place.</p>
+        </div>
+        <a class="post-cta-btn" href="onboarding.html">Start Free — 14 Days</a>
+      </div>
+    </div>`;
+
+  document.getElementById('app').innerHTML = html;
+  window.scrollTo(0, 0);
+}
+
+// ── 404 ────────────────────────────────────────────────────
+function render404() {
+  document.getElementById('app').innerHTML = `
+    <div class="post-view" style="text-align:center;padding-top:120px;">
+      <div style="font-size:48px;margin-bottom:20px;">🔍</div>
+      <h2 style="font-size:24px;font-weight:700;margin-bottom:12px;">Post not found</h2>
+      <p style="color:var(--muted);margin-bottom:28px;">This post doesn't exist or may have been removed.</p>
+      <a href="blog.html" style="color:var(--accent);font-weight:600;text-decoration:none;">← Back to all posts</a>
+    </div>`;
+}
+
+// ── Bootstrap ──────────────────────────────────────────────
+(async () => {
+  try {
+    const res = await fetch('./posts.json');
+    if (!res.ok) throw new Error('posts.json not found');
+    const posts = await res.json();
+
+    const slug = new URLSearchParams(location.search).get('post');
+    if (slug) {
+      const post = posts.find(p => p.slug === slug);
+      post ? renderPost(post) : render404();
+    } else {
+      renderIndex(posts);
+    }
+  } catch (e) {
+    console.error(e);
+    document.getElementById('app').innerHTML = `
+      <div class="post-view" style="text-align:center;padding-top:120px;">
+        <p style="color:var(--muted);">Could not load posts. Make sure <code>posts.json</code> exists in the project root.</p>
+      </div>`;
+  }
+})();
+</script>
+</body>
+</html>

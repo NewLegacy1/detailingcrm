@@ -1,0 +1,28 @@
+.benefits-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.benefits-list__item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 14px;
+  font-size: 0.9375rem;
+  color: var(--panel-text-muted);
+}
+
+.benefits-list__icon {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  background: linear-gradient(135deg, var(--accent-from), var(--accent-to));
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 700;
+  color: white;
+}

@@ -1,0 +1,32 @@
+.split-layout {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.split-layout--with-panel {
+  flex-direction: row;
+}
+
+.split-layout__right {
+  flex: 1;
+  min-width: 0;
+  background: var(--right-bg);
+  color: var(--right-text);
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+@media (max-width: 900px) {
+  .split-layout--with-panel {
+    flex-direction: column;
+  }
+
+  /* Right panel no longer needs its own 100vh — the 52px top bar + right panel
+     together fill the viewport without creating a double-scroll. */
+  .split-layout--with-panel .split-layout__right {
+    min-height: calc(100vh - 52px);
+    min-height: calc(100dvh - 52px); /* dynamic viewport on iOS Safari */
+  }
+}

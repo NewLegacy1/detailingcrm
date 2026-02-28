@@ -1,0 +1,243 @@
+@import "tailwindcss";
+
+:root {
+  /* Design system tokens (dashboard + sidebar) */
+  --bg: #07090f;
+  --surface-1: #0c0f18;
+  --surface-2: #111620;
+  --surface-3: #181e2c;
+  --surface-4: #1e2638;
+  --border: rgba(255, 255, 255, 0.055);
+  --border-hi: rgba(255, 255, 255, 0.1);
+  --text-1: #eef2ff;
+  --text-2: #7e8da8;
+  --text-3: #3d4d65;
+  --blue: #00b8f5;
+  --blue-dim: rgba(0, 184, 245, 0.12);
+  --green: #22c55e;
+  --amber: #f59e0b;
+  --red: #ef4444;
+  /* Legacy (other pages) */
+  --bg-elevated: #1a1a1a;
+  --bg-card: var(--surface-2);
+  --accent: var(--blue);
+  --accent-dim: var(--blue-dim);
+  --success: var(--green);
+  --warning: var(--amber);
+  --danger: var(--red);
+  --text: var(--text-1);
+  --text-secondary: var(--text-2);
+  --text-muted: var(--text-3);
+  --radius: 10px;
+  --radius-lg: 14px;
+  --shadow-card: 0 4px 24px -4px rgba(0, 0, 0, 0.5);
+}
+
+@theme inline {
+  --color-background: var(--bg);
+  --color-foreground: var(--text);
+  --font-sans: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+}
+
+* {
+  border-color: var(--border);
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  min-height: 100vh;
+}
+
+/* Design system utility classes (for dashboard/sidebar when using classes) */
+.font-ui {
+  font-family: var(--font-instrument), ui-sans-serif, sans-serif;
+}
+.font-mono {
+  font-family: ui-monospace, 'Geist Mono', monospace;
+}
+
+/* Hide scrollbar in sidebar while keeping scroll */
+.sidebar-nav-scroll {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.sidebar-nav-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+/* Typography */
+.page-title {
+  font-size: 1.75rem;
+  font-weight: 700;
+  letter-spacing: -0.04em;
+  line-height: 1.2;
+  color: var(--text);
+}
+
+.section-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.section-title {
+  font-size: 1.125rem;
+  font-weight: 600;
+  letter-spacing: -0.04em;
+  color: var(--text);
+}
+
+.body {
+  font-size: 0.875rem;
+  color: rgb(209 213 219);
+}
+
+.caption {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+/* Page content area: single background (no gradient) */
+.page-content-wrap {
+  background: var(--bg);
+}
+
+/* Cards — Jobs/Dashboard style (surface-1 + border) */
+.card {
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--surface-1);
+  transition: border-color 0.2s ease;
+}
+
+.card:hover {
+  border-color: var(--border-hi);
+}
+
+.card-hover:hover {
+  border-color: var(--border-hi);
+  transform: translateY(-2px);
+  transition: border-color 0.2s ease, transform 0.2s ease;
+}
+
+/* Modal backdrop */
+.modal-backdrop {
+  backdrop-filter: blur(12px);
+}
+
+/* Mosaic tile: fade+scale in on entry */
+@keyframes tile-in {
+  from { opacity: 0; transform: scale(0.75); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+/* Persistent shimmer (glow pulse) and flutter (scale breathe) after entry */
+@keyframes mosaic-shimmer {
+  0%, 100% { box-shadow: 0 0 0 rgba(0, 184, 245, 0); }
+  50%       { box-shadow: 0 0 12px rgba(0, 184, 245, 0.28); }
+}
+@keyframes mosaic-flutter {
+  0%, 100% { transform: scale(var(--tile-scale, 1)); }
+  50%       { transform: scale(calc(var(--tile-scale, 1) * 1.07)); }
+}
+.mosaic-tile {
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+.mosaic-tile:hover {
+  transform: scale(1.18) !important;
+  box-shadow: 0 0 28px rgba(0, 184, 245, 0.7) !important;
+  animation-play-state: paused !important;
+  position: relative;
+  z-index: 2;
+}
+
+/* Auth card (signup/login): no hover — mosaic only animated */
+.auth-card {
+  /* static card; no scale or glow on hover */
+}
+
+/* Hide scrollbar on auth right panel while keeping scroll */
+.auth-panel-scroll {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.auth-panel-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+/* Onboarding plan cards: subtle shimmer + hover glow/expand */
+@keyframes auth-card-shimmer {
+  0%, 100% {
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(0, 184, 245, 0.12);
+  }
+  50% {
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 24px 0 rgba(0, 184, 245, 0.18);
+  }
+}
+@keyframes auth-card-flutter {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.003); }
+}
+.auth-plan-card {
+  animation: auth-card-shimmer 5s ease-in-out infinite, auth-card-flutter 6s ease-in-out infinite;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+.auth-plan-card:hover {
+  animation: none;
+  transform: scale(1.02);
+  box-shadow: 0 20px 40px -12px rgba(0, 0, 0, 0.4), 0 0 0 1px var(--border-hi), 0 0 32px 0 rgba(0, 184, 245, 0.2);
+}
+
+/* Google Places Autocomplete dropdown: show above cards/modals */
+.pac-container {
+  z-index: 9999 !important;
+}
+
+/* Auth/onboarding hero-style background (matches landing section.hero) */
+.auth-hero-bg {
+  position: relative;
+  min-height: 100vh;
+  background: #07090c;
+  overflow: hidden;
+}
+.auth-hero-bg::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.5;
+}
+.auth-hero-bg::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(circle, rgba(0,184,245,0.18) 1px, transparent 1px);
+  background-size: 36px 36px;
+  mask-image: radial-gradient(ellipse 70% 55% at 50% 25%, black 20%, transparent 80%);
+  -webkit-mask-image: radial-gradient(ellipse 70% 55% at 50% 25%, black 20%, transparent 80%);
+  pointer-events: none;
+  z-index: 0;
+}
+.auth-hero-glow {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 900px;
+  height: 500px;
+  background: radial-gradient(ellipse at 50% 0%, rgba(0,184,245,0.09) 0%, transparent 65%);
+  pointer-events: none;
+  z-index: 0;
+}
+/* Only non-glOW children get position relative (glow must stay absolute so it doesn't push content down) */
+.auth-hero-bg > *:not(.auth-hero-glow) {
+  position: relative;
+  z-index: 1;
+}

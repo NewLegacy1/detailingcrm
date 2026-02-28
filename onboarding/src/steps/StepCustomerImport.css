@@ -1,0 +1,83 @@
+.import-choice-cards {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 24px;
+}
+
+@media (max-width: 600px) {
+  .import-choice-card {
+    flex: 1;
+    text-align: center;
+  }
+}
+
+.import-choice-card {
+  padding: 16px 24px;
+  background: var(--right-bg);
+  border: 1px solid var(--right-border);
+  border-radius: var(--radius);
+  font-size: 0.9375rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s, box-shadow 0.15s;
+}
+
+.import-choice-card:hover {
+  border-color: var(--accent);
+  background: var(--right-surface);
+}
+
+.import-drop-zone {
+  margin-bottom: 8px;
+}
+
+.import-drop-zone__input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.import-drop-zone__area {
+  border: 2px dashed var(--right-border);
+  border-radius: var(--radius);
+  padding: 32px;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.import-drop-zone__area:hover,
+.import-drop-zone__area--active {
+  border-color: var(--accent);
+  background: rgba(37, 99, 235, 0.04);
+}
+
+.import-drop-zone__area--has-file {
+  border-style: solid;
+  border-color: var(--success);
+  background: rgba(5, 150, 105, 0.06);
+}
+
+.import-drop-zone__text {
+  display: block;
+  font-size: 0.9375rem;
+  color: var(--right-text-muted);
+  margin-bottom: 8px;
+}
+
+.import-drop-zone__link {
+  font-size: 0.875rem;
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.import-drop-zone__link:hover {
+  text-decoration: underline;
+}
+
+.import-drop-zone__filename {
+  font-size: 0.9375rem;
+  font-weight: 500;
+  color: var(--right-text);
+}

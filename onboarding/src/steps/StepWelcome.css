@@ -1,0 +1,58 @@
+.step-welcome {
+  padding: 24px 32px 40px;
+}
+
+@media (max-width: 600px) {
+  .step-welcome {
+    padding: 20px 20px 32px;
+  }
+
+  .step-welcome__title {
+    font-size: 1.625rem;
+  }
+
+  .step-welcome__lead {
+    font-size: 1rem;
+  }
+
+  .step-welcome .btn {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+.step-welcome__title {
+  margin: 0 0 8px;
+  font-size: 2rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--right-text);
+}
+
+.step-welcome__lead {
+  margin: 0 0 8px;
+  font-size: 1.125rem;
+  color: var(--right-text);
+}
+
+.step-welcome__text {
+  margin: 0 0 28px;
+  font-size: 0.9375rem;
+  color: var(--right-text-muted);
+  max-width: 400px;
+}
+
+.step-fade {
+  animation: stepFade 0.35s ease;
+}
+
+@keyframes stepFade {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

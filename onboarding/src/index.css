@@ -1,0 +1,112 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+:root {
+  /* Dark left panel */
+  --panel-dark: #000000;
+  --panel-dark-soft: #0a0a0a;
+  --panel-dark-border: #1f1f1f;
+  --panel-text: #fafafa;
+  --panel-text-muted: #a1a1a1;
+  /* Right side (light) */
+  --right-bg: #ffffff;
+  --right-surface: #fafafa;
+  --right-border: #e5e5e5;
+  --right-text: #171717;
+  --right-text-muted: #737373;
+  /* Accent – blue to teal gradient */
+  --accent-from: #2563eb;
+  --accent-to: #0d9488;
+  --accent: #2563eb;
+  --accent-hover-glow: rgba(37, 99, 235, 0.35);
+  --success: #059669;
+  --radius: 10px;
+  --radius-pill: 9999px;
+  --shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
+  --font: 'Inter', system-ui, -apple-system, sans-serif;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font);
+  background: var(--right-bg);
+  color: var(--right-text);
+  min-height: 100vh;
+  line-height: 1.5;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+input,
+select,
+button {
+  font: inherit;
+  color: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+/* Primary: rounded, gradient, hover glow */
+.btn {
+  padding: 12px 24px;
+  border: none;
+  border-radius: var(--radius);
+  font-size: 0.9375rem;
+  font-weight: 600;
+  transition: transform 0.15s ease, box-shadow 0.2s ease;
+}
+
+.btn:active {
+  transform: scale(0.98);
+}
+
+.btn--primary {
+  background: linear-gradient(135deg, var(--accent-from) 0%, var(--accent-to) 100%);
+  color: white;
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.25);
+}
+
+.btn--primary:hover {
+  box-shadow: 0 4px 20px var(--accent-hover-glow);
+}
+
+.btn--primary .btn__arrow {
+  margin-left: 6px;
+  opacity: 0.9;
+}
+
+.btn--secondary {
+  background: transparent;
+  color: var(--right-text-muted);
+  border: 1px solid var(--right-border);
+}
+
+.btn--secondary:hover {
+  background: var(--right-surface);
+  color: var(--right-text);
+}
+
+.btn--ghost {
+  background: transparent;
+  color: var(--right-text-muted);
+}
+
+.btn--ghost:hover {
+  color: var(--right-text);
+}
+
+/* Card selected state */
+.card--selected {
+  border-color: var(--accent) !important;
+  background: rgba(37, 99, 235, 0.06) !important;
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.2);
+}

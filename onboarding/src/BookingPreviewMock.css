@@ -1,0 +1,60 @@
+.booking-preview {
+  background: var(--right-surface);
+  border: 1px solid var(--right-border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  max-width: 280px;
+  box-shadow: var(--shadow);
+}
+
+.booking-preview__bar {
+  height: 4px;
+  background: var(--brand, var(--accent-from));
+}
+
+.booking-preview__content {
+  padding: 20px;
+  text-align: center;
+}
+
+.booking-preview__logo-img {
+  width: 48px;
+  height: 48px;
+  object-fit: contain;
+  margin-bottom: 8px;
+}
+
+.booking-preview__logo-text {
+  width: 48px;
+  height: 48px;
+  margin: 0 auto 8px;
+  border-radius: 8px;
+  background: var(--brand, var(--accent-from));
+  color: white;
+  font-size: 1rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.booking-preview__name {
+  margin: 0 0 2px;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.booking-preview__tag {
+  margin: 0 0 14px;
+  font-size: 0.8125rem;
+  color: var(--right-text-muted);
+}
+
+.booking-preview__btn {
+  padding: 10px 16px;
+  border-radius: 8px;
+  background: var(--brand, var(--accent-from));
+  color: white;
+  font-size: 0.875rem;
+  font-weight: 500;
+}

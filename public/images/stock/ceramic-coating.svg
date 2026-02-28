@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 200" fill="none">
+  <rect width="320" height="200" fill="#1a1a2e"/>
+  <ellipse cx="160" cy="95" rx="70" ry="35" stroke="#4a5568" stroke-width="2" fill="none"/>
+  <path d="M90 95 Q160 55 230 95 Q160 135 90 95" stroke="#63b3ed" stroke-width="1.5" fill="none" opacity="0.8"/>
+  <path d="M100 95 Q160 65 220 95 Q160 125 100 95" stroke="#4299e1" stroke-width="1" fill="none" opacity="0.5"/>
+  <circle cx="160" cy="95" r="15" stroke="#4a5568" stroke-width="2" fill="#2d3748"/>
+  <text x="160" y="170" fill="#718096" font-size="14" font-family="system-ui" text-anchor="middle">Ceramic Coating</text>
+</svg>
