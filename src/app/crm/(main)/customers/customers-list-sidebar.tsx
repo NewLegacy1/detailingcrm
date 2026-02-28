@@ -255,8 +255,8 @@ export function CustomersListSidebar({
                   <Button
                     type="button"
                     variant="ghost"
-                    size="icon"
-                    className="h-6 w-6 shrink-0"
+                    size="sm"
+                    className="h-6 w-6 shrink-0 p-0"
                     onClick={(e) => { e.preventDefault(); openRename(g); }}
                     aria-label="Rename group"
                   >
@@ -265,8 +265,8 @@ export function CustomersListSidebar({
                   <Button
                     type="button"
                     variant="ghost"
-                    size="icon"
-                    className="h-6 w-6 shrink-0 text-red-400 hover:text-red-300 hover:bg-red-500/15"
+                    size="sm"
+                    className="h-6 w-6 shrink-0 p-0 text-red-400 hover:text-red-300 hover:bg-red-500/15"
                     onClick={(e) => { e.preventDefault(); setDeleteGroup(g); setDeleteError(null); }}
                     aria-label="Delete group"
                   >
