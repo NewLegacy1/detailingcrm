@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { crmPath } from '@/lib/crm-path'
 import { JobDetailPopup } from '@/components/job-detail-popup'
@@ -8,9 +8,11 @@ import { ScheduleJobDetailModal, type JobFull } from '../schedule/schedule-job-d
 import { JobsDayView } from './jobs-day-view'
 import { JobsDayPanel } from './jobs-day-panel'
 import { JobsTable } from './jobs-table'
+import { JobsNewJobButton } from './jobs-new-job-button'
 import { MobileJobsList } from './mobile-jobs-list'
 import { useIsMobile } from '@/hooks/use-media-query'
-import { Calendar } from 'lucide-react'
+import { Calendar, Search } from 'lucide-react'
+import { Input } from '@/components/ui/input'
 
 interface JobRow {
   id: string
@@ -32,10 +34,11 @@ interface JobsViewsClientProps {
   showTable: boolean
   dayJobs: JobRow[]
   date: string
-  dayStats: { total: number; completed: number; revenue: number; avgValue: number }
+  dayStats: { total: number; completed: number; revenue: number; avgValue: number; expectedTotal?: number }
   listJobs: JobRow[]
   datesWithJobs: string[]
   crew: { id: string; display_name: string | null; jobCount: number }[]
+  activityItems: { id: string; title: string; subtitle: string; dotColor: string }[]
   /** When set (e.g. from ?job=id), open the job detail popup on load */
   initialJobId?: string
   timeZone?: string
@@ -51,6 +54,7 @@ export function JobsViewsClient({
   listJobs,
   datesWithJobs,
   crew,
+  activityItems = [],
   initialJobId,
   timeZone = 'America/Toronto',
   todayStr = new Date().toISOString().slice(0, 10),
@@ -63,6 +67,60 @@ export function JobsViewsClient({
   const [editJobData, setEditJobData] = useState<JobFull | null>(null)
   const [editModalOpen, setEditModalOpen] = useState(false)
   const [dayPanelOpen, setDayPanelOpen] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
+
+  function matchJob(job: JobRow, q: string): boolean {
+    if (!q.trim()) return true
+    const term = q.trim().toLowerCase()
+    const client = Array.isArray(job.clients) ? job.clients[0] : job.clients
+    const vehicle = Array.isArray(job.vehicles) ? job.vehicles[0] : job.vehicles
+    const service = Array.isArray(job.services) ? job.services[0] : job.services
+    const name = (client?.name ?? '').toLowerCase()
+    const vehicleStr = vehicle
+      ? `${vehicle.year ?? ''} ${vehicle.make} ${vehicle.model}`.toLowerCase()
+      : ''
+    const serviceName = (service?.name ?? '').toLowerCase()
+    const address = (job.address ?? '').toLowerCase()
+    const notes = (job.notes ?? '').toLowerCase()
+    const status = (job.status ?? '').replace(/_/g, ' ')
+    const statusLabel = job.status === 'done' && job.paid_at ? 'completed and paid' : status.toLowerCase()
+    return (
+      name.includes(term) ||
+      vehicleStr.includes(term) ||
+      serviceName.includes(term) ||
+      address.includes(term) ||
+      notes.includes(term) ||
+      statusLabel.includes(term)
+    )
+  }
+
+  const filteredDayJobs = useMemo(
+    () => (searchQuery.trim() ? dayJobs.filter((j) => matchJob(j, searchQuery)) : dayJobs),
+    [dayJobs, searchQuery]
+  )
+  const filteredListJobs = useMemo(
+    () => (searchQuery.trim() ? listJobs.filter((j) => matchJob(j, searchQuery)) : listJobs),
+    [listJobs, searchQuery]
+  )
+
+  const filteredDayStats = useMemo(() => {
+    if (!searchQuery.trim() || filteredDayJobs.length === dayJobs.length) return dayStats
+    const completed = filteredDayJobs.filter((j) => j.status === 'done').length
+    let revenue = 0
+    for (const j of filteredDayJobs) {
+      const base = (j as JobRow & { base_price?: number; size_price_offset?: number; job_upsells?: { price: number }[] }).base_price ?? 0
+      const size = (j as JobRow & { size_price_offset?: number }).size_price_offset ?? 0
+      const upsells = (j as JobRow & { job_upsells?: { price: number }[] }).job_upsells ?? []
+      revenue += base + size + (upsells.reduce((s, u) => s + u.price, 0) || 0)
+    }
+    const total = filteredDayJobs.length
+    return {
+      total,
+      completed,
+      revenue,
+      avgValue: total > 0 ? Math.round(revenue / total) : 0,
+    }
+  }, [dayStats, filteredDayJobs, dayJobs.length, searchQuery])
 
   useEffect(() => {
     if (initialJobId?.trim()) setSelectedJobId(initialJobId.trim())
@@ -89,13 +147,30 @@ export function JobsViewsClient({
 
   return (
     <>
+      <div className="shrink-0 px-4 sm:px-6 py-3 border-b flex items-center gap-3" style={{ borderColor: 'var(--border)', background: 'var(--bg)' }}>
+        <div className="relative flex-1 max-w-md">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 pointer-events-none" style={{ color: 'var(--text-3)' }} />
+          <Input
+            type="search"
+            placeholder="Search jobs (customer, vehicle, service, address…)"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-9 h-9 rounded-lg w-full"
+            style={{ borderColor: 'var(--border)', background: 'var(--surface-1)', color: 'var(--text-1)' }}
+          />
+        </div>
+        <JobsNewJobButton />
+      </div>
+      <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
       {isMobile ? (
-        <MobileJobsList
-          listJobs={listJobs}
-          timeZone={timeZone}
-          todayStr={todayStr}
-          onSelectJob={(job) => setSelectedJobId(job.id)}
-        />
+        <div className="flex-1 min-h-0 overflow-y-auto">
+          <MobileJobsList
+            listJobs={filteredListJobs}
+            timeZone={timeZone}
+            todayStr={todayStr}
+            onSelectJob={(job) => setSelectedJobId(job.id)}
+          />
+        </div>
       ) : showDayView ? (
         <div className="flex flex-1 min-h-0">
           <div className="flex-1 flex flex-col min-w-0">
@@ -115,15 +190,15 @@ export function JobsViewsClient({
             </div>
             <div className="flex-1 overflow-y-auto min-w-0">
               <JobsDayView
-                jobs={dayJobs}
+                jobs={filteredDayJobs}
                 date={date}
-                stats={dayStats}
+                stats={searchQuery.trim() ? filteredDayStats : dayStats}
                 onSelectJob={(job) => setSelectedJobId(job.id)}
               />
             </div>
           </div>
           <aside className="hidden lg:block w-[300px] shrink-0 border-l overflow-y-auto relative" style={{ borderColor: 'var(--border)' }}>
-            <JobsDayPanel date={date} datesWithJobs={datesWithJobs} crew={crew} />
+            <JobsDayPanel date={date} datesWithJobs={datesWithJobs} crew={crew} activityItems={activityItems} />
           </aside>
           {dayPanelOpen && (
             <>
@@ -136,7 +211,7 @@ export function JobsViewsClient({
               <div
                 className="fixed right-0 top-0 bottom-0 z-50 w-[300px] max-w-[100vw] overflow-y-auto lg:hidden"
                 style={{
-                  background: 'linear-gradient(to top, rgba(0,184,245,0.07) 0%, rgba(0,184,245,0.04) 45%, transparent 100%), var(--surface-1)',
+                  background: 'var(--surface-1)',
                   borderLeft: '1px solid var(--border)',
                 }}
               >
@@ -152,7 +227,7 @@ export function JobsViewsClient({
                     ×
                   </button>
                 </div>
-                <JobsDayPanel date={date} datesWithJobs={datesWithJobs} crew={crew} />
+                <JobsDayPanel date={date} datesWithJobs={datesWithJobs} crew={crew} activityItems={activityItems} />
               </div>
             </>
           )}
@@ -160,9 +235,10 @@ export function JobsViewsClient({
       ) : null}
       {!isMobile && showTable && (
         <div className="flex-1 overflow-y-auto p-4 sm:p-6">
-          <JobsTable initialJobs={listJobs} onSelectJob={(job) => setSelectedJobId(job.id)} />
+          <JobsTable initialJobs={filteredListJobs} onSelectJob={(job) => setSelectedJobId(job.id)} />
         </div>
       )}
+      </div>
 
       <JobDetailPopup
         open={!!selectedJobId}

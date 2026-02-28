@@ -8,8 +8,9 @@ import { Card } from '@/components/ui/card'
 import { StatusPill } from '@/components/ui/status-pill'
 import { EmptyState } from '@/components/ui/empty-state'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogClose } from '@/components/ui/dialog'
+import { crmPath } from '@/lib/crm-path'
 import { VehicleForm } from '@/app/crm/(main)/customers/[id]/vehicle-form'
-import { Plus, MapPin, Mail, ClipboardList, Folder, MessageSquare } from 'lucide-react'
+import { Plus, MapPin, Mail, ClipboardList, Folder, MessageSquare, Trash2 } from 'lucide-react'
 import type { JobStatusType } from '@/components/ui/status-pill'
 
 interface CustomerDetailPaneProps {
@@ -69,6 +70,9 @@ export function CustomerDetailPane({
   const [jobTab, setJobTab] = useState<JobTab>('upcoming')
   const [addVehicleOpen, setAddVehicleOpen] = useState(false)
   const [editVehicle, setEditVehicle] = useState<typeof vehicles[0] | null>(null)
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
   const upcomingJobs = useMemo(
     () =>
       jobs.filter((j) =>
@@ -115,13 +119,67 @@ export function CustomerDetailPane({
         )}
         <div className="mt-4 flex flex-wrap gap-2">
           <Button size="sm" asChild>
-            <Link href={`/jobs/new?customer=${customer.id}`}>New Job</Link>
+            <Link href={crmPath(`/jobs/new?customer=${customer.id}`)}>New Job</Link>
           </Button>
           <Button variant="outline" size="sm" asChild>
-            <Link href={`/invoices?customer=${customer.id}`}>Send Invoice</Link>
+            <Link href={crmPath(`/invoices?customer=${customer.id}`)}>Send Invoice</Link>
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="text-red-400 hover:text-red-300 hover:bg-red-500/15"
+            onClick={() => { setDeleteConfirmOpen(true); setDeleteError(null); }}
+          >
+            <Trash2 className="mr-1 h-3.5 w-3.5" />
+            Delete customer
           </Button>
         </div>
       </Card>
+
+      <Dialog open={deleteConfirmOpen} onOpenChange={(open) => { if (!open) { setDeleteConfirmOpen(false); setDeleteError(null); } }}>
+        <DialogContent className="max-w-sm">
+          <DialogClose onClick={() => { setDeleteConfirmOpen(false); setDeleteError(null); }} />
+          <DialogHeader>
+            <DialogTitle className="text-[var(--text)]">Delete customer</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm" style={{ color: 'var(--text-2)' }}>
+            Delete &quot;{customer.name}&quot;? This cannot be undone. Jobs, vehicles, and invoices linked to this customer will remain but will no longer show a customer name.
+          </p>
+          {deleteError && (
+            <div className="rounded-lg bg-red-500/15 border border-red-500/30 px-3 py-2 text-sm text-red-400">
+              {deleteError}
+            </div>
+          )}
+          <div className="flex justify-end gap-2">
+            <Button type="button" variant="outline" onClick={() => { setDeleteConfirmOpen(false); setDeleteError(null); }}>Cancel</Button>
+            <Button
+              type="button"
+              variant="destructive"
+              disabled={deleting}
+              onClick={async () => {
+                setDeleteError(null)
+                setDeleting(true)
+                try {
+                  const res = await fetch(`/api/customers/${customer.id}`, { method: 'DELETE' })
+                  const data = await res.json().catch(() => ({}))
+                  if (res.ok) {
+                    router.push(crmPath('/customers'))
+                    router.refresh()
+                  } else {
+                    setDeleteError(data?.error ?? `Failed to delete (${res.status})`)
+                  }
+                } catch (err) {
+                  setDeleteError(err instanceof Error ? err.message : 'Failed to delete')
+                } finally {
+                  setDeleting(false)
+                }
+              }}
+            >
+              {deleting ? 'Deleting…' : 'Delete'}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <section>
         <h2 className="section-label mb-3 flex items-center gap-2">

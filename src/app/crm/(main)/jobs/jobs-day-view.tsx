@@ -324,7 +324,7 @@ function JobCard({ job, onSelectJob }: { job: JobRow; onSelectJob?: (job: JobRow
       </div>
       <span
         className="font-semibold whitespace-nowrap rounded"
-        style={{ fontSize: '0.65rem', padding: '2px 7px', borderRadius: 4, background: 'var(--surface-3)', color: 'var(--text-2)', border: '1px solid var(--border)' }}
+        style={{ fontSize: '0.65rem', padding: '2px 7px', borderRadius: 4, background: 'rgba(0,184,245,0.12)', color: '#00b8f5', border: '1px solid rgba(0,184,245,0.25)' }}
       >
         {service?.name ?? 'Service'}
       </span>
@@ -371,7 +371,7 @@ function JobCard({ job, onSelectJob }: { job: JobRow; onSelectJob?: (job: JobRow
       <div className="flex flex-wrap items-center gap-2 mt-1 pt-2" style={{ borderTop: '1px solid var(--border)' }}>
         <span
           className="font-semibold whitespace-nowrap rounded"
-          style={{ fontSize: '0.65rem', padding: '2px 7px', borderRadius: 4, background: 'var(--surface-3)', color: 'var(--text-2)', border: '1px solid var(--border)' }}
+          style={{ fontSize: '0.65rem', padding: '2px 7px', borderRadius: 4, background: 'rgba(0,184,245,0.12)', color: '#00b8f5', border: '1px solid rgba(0,184,245,0.25)' }}
         >
           {service?.name ?? 'Service'}
         </span>

@@ -3,11 +3,13 @@
 import { useRouter, useSearchParams } from 'next/navigation'
 import { crmPath } from '@/lib/crm-path'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { RecentActivity } from '../dashboard/recent-activity'
 
 interface JobsDayPanelProps {
   date: string
   datesWithJobs: string[]
   crew: { id: string; display_name: string | null; jobCount: number }[]
+  activityItems?: { id: string; title: string; subtitle: string; dotColor: string }[]
 }
 
 const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
@@ -36,7 +38,7 @@ function getMonthDays(year: number, month: number): (number | null)[][] {
   return rows
 }
 
-export function JobsDayPanel({ date, datesWithJobs, crew }: JobsDayPanelProps) {
+export function JobsDayPanel({ date, datesWithJobs, crew, activityItems = [] }: JobsDayPanelProps) {
   const router = useRouter()
   const searchParams = useSearchParams()
   const d = new Date(date + 'T12:00:00')
@@ -75,7 +77,7 @@ export function JobsDayPanel({ date, datesWithJobs, crew }: JobsDayPanelProps) {
       className="w-[300px] shrink-0 border-l overflow-y-auto p-5 relative"
       style={{
         borderColor: 'var(--border)',
-        background: 'linear-gradient(to top, rgba(0,184,245,0.07) 0%, rgba(0,184,245,0.04) 45%, transparent 100%), var(--surface-1)',
+        background: 'var(--surface-1)',
       }}
     >
       <div className="mb-4 uppercase tracking-wider" style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-3)' }}>
@@ -176,6 +178,9 @@ export function JobsDayPanel({ date, datesWithJobs, crew }: JobsDayPanelProps) {
             ))
           )}
         </div>
+      </div>
+      <div className="mt-5">
+        <RecentActivity items={activityItems} />
       </div>
     </aside>
   )

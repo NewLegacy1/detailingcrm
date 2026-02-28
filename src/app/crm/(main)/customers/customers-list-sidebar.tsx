@@ -4,7 +4,7 @@ import { useState, useMemo, useEffect } from 'react'
 import Link from 'next/link'
 import { crmPath } from '@/lib/crm-path'
 import { useRouter } from 'next/navigation'
-import { Search, Plus, Folder, UserPlus, Pencil, Trash2 } from 'lucide-react'
+import { Search, Plus, Folder, UserPlus, Pencil, Trash2, X } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/empty-state'
@@ -68,6 +68,14 @@ export function CustomersListSidebar({
   const [deleteGroup, setDeleteGroup] = useState<{ id: string; name: string } | null>(null)
   const [deleting, setDeleting] = useState(false)
   const [deleteError, setDeleteError] = useState<string | null>(null)
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [bulkAddToGroupOpen, setBulkAddToGroupOpen] = useState(false)
+  const [bulkAddGroupId, setBulkAddGroupId] = useState<string | null>(null)
+  const [bulkAdding, setBulkAdding] = useState(false)
+  const [bulkAddError, setBulkAddError] = useState<string | null>(null)
+  const [bulkDeleteConfirmOpen, setBulkDeleteConfirmOpen] = useState(false)
+  const [bulkDeleting, setBulkDeleting] = useState(false)
+  const [bulkDeleteError, setBulkDeleteError] = useState<string | null>(null)
 
   const groupQuery = selectedGroupId ? `&group=${selectedGroupId}` : ''
 
@@ -185,6 +193,68 @@ export function CustomersListSidebar({
       setDeleteError(err instanceof Error ? err.message : 'Failed to delete')
     } finally {
       setDeleting(false)
+    }
+  }
+
+  function toggleSelect(id: string, e: React.MouseEvent) {
+    e.preventDefault()
+    e.stopPropagation()
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  async function handleBulkAddToGroup() {
+    const groupId = bulkAddGroupId ?? selectedGroupId
+    if (!groupId || selectedIds.size === 0) return
+    setBulkAddError(null)
+    setBulkAdding(true)
+    try {
+      for (const clientId of selectedIds) {
+        const res = await fetch(`/api/customers/groups/${groupId}/members`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ clientId, add: true }),
+        })
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}))
+          throw new Error(data?.error ?? `Failed to add (${res.status})`)
+        }
+      }
+      setBulkAddToGroupOpen(false)
+      setBulkAddGroupId(null)
+      setSelectedIds(new Set())
+      router.refresh()
+    } catch (err) {
+      setBulkAddError(err instanceof Error ? err.message : 'Failed to add to group')
+    } finally {
+      setBulkAdding(false)
+    }
+  }
+
+  async function handleBulkDelete() {
+    if (selectedIds.size === 0) return
+    setBulkDeleteError(null)
+    setBulkDeleting(true)
+    try {
+      for (const id of selectedIds) {
+        const res = await fetch(`/api/customers/${id}`, { method: 'DELETE' })
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}))
+          throw new Error(data?.error ?? `Failed to delete (${res.status})`)
+        }
+      }
+      setBulkDeleteConfirmOpen(false)
+      setSelectedIds(new Set())
+      if (selectedId && selectedIds.has(selectedId)) router.push(crmPath('/customers'))
+      router.refresh()
+    } catch (err) {
+      setBulkDeleteError(err instanceof Error ? err.message : 'Failed to delete')
+    } finally {
+      setBulkDeleting(false)
     }
   }
 
@@ -413,7 +483,109 @@ export function CustomersListSidebar({
           </div>
         </DialogContent>
       </Dialog>
-      <nav className="flex-1 overflow-y-auto p-2">
+      <Dialog open={bulkAddToGroupOpen} onOpenChange={(open) => { setBulkAddToGroupOpen(open); if (!open) { setBulkAddGroupId(null); setBulkAddError(null); } }}>
+        <DialogContent className="max-w-sm">
+          <DialogClose onClick={() => { setBulkAddToGroupOpen(false); setBulkAddError(null); }} />
+          <DialogHeader>
+            <DialogTitle className="text-[var(--text)]">Add to group</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm" style={{ color: 'var(--text-3)' }}>
+            Add {selectedIds.size} customer{selectedIds.size !== 1 ? 's' : ''} to a group.
+          </p>
+          {groups.length === 0 ? (
+            <p className="text-sm" style={{ color: 'var(--text-3)' }}>Create a group first (click + under Groups).</p>
+          ) : (
+            <div className="space-y-1 max-h-48 overflow-y-auto">
+              {groups.map((g) => (
+                <button
+                  key={g.id}
+                  type="button"
+                  onClick={() => setBulkAddGroupId(g.id)}
+                  className={`w-full text-left rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+                    bulkAddGroupId === g.id ? 'bg-[var(--accent)]/15 text-[var(--accent)]' : 'hover:bg-white/5'
+                  }`}
+                  style={bulkAddGroupId !== g.id ? { color: 'var(--text-2)' } : undefined}
+                >
+                  {g.name}
+                </button>
+              ))}
+            </div>
+          )}
+          {bulkAddError && (
+            <div className="rounded-lg bg-red-500/15 border border-red-500/30 px-3 py-2 text-sm text-red-400">
+              {bulkAddError}
+            </div>
+          )}
+          <div className="flex justify-end gap-2">
+            <Button type="button" variant="outline" onClick={() => setBulkAddToGroupOpen(false)}>Cancel</Button>
+            <Button
+              type="button"
+              disabled={bulkAdding || !bulkAddGroupId || groups.length === 0}
+              onClick={handleBulkAddToGroup}
+            >
+              {bulkAdding ? 'Adding…' : 'Add to group'}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+      <Dialog open={bulkDeleteConfirmOpen} onOpenChange={(open) => { if (!open) { setBulkDeleteConfirmOpen(false); setBulkDeleteError(null); } }}>
+        <DialogContent className="max-w-sm">
+          <DialogClose onClick={() => { setBulkDeleteConfirmOpen(false); setBulkDeleteError(null); }} />
+          <DialogHeader>
+            <DialogTitle className="text-[var(--text)]">Delete customers</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm" style={{ color: 'var(--text-2)' }}>
+            Delete {selectedIds.size} customer{selectedIds.size !== 1 ? 's' : ''}? This cannot be undone.
+          </p>
+          {bulkDeleteError && (
+            <div className="rounded-lg bg-red-500/15 border border-red-500/30 px-3 py-2 text-sm text-red-400">
+              {bulkDeleteError}
+            </div>
+          )}
+          <div className="flex justify-end gap-2">
+            <Button type="button" variant="outline" onClick={() => { setBulkDeleteConfirmOpen(false); setBulkDeleteError(null); }}>Cancel</Button>
+            <Button type="button" variant="destructive" disabled={bulkDeleting} onClick={handleBulkDelete}>
+              {bulkDeleting ? 'Deleting…' : 'Delete'}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+      <nav className="flex-1 overflow-y-auto p-2 flex flex-col min-h-0">
+        {selectedIds.size > 0 && (
+          <div className="shrink-0 mb-2 p-2 rounded-lg border flex flex-wrap items-center gap-2" style={{ borderColor: 'var(--border)', background: 'var(--surface-1)' }}>
+            <span className="text-xs font-medium" style={{ color: 'var(--text-3)' }}>{selectedIds.size} selected</span>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="h-7 px-2 text-xs"
+              onClick={() => setBulkAddToGroupOpen(true)}
+            >
+              <Folder className="mr-1 h-3 w-3" />
+              Add to group
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="h-7 px-2 text-xs text-red-400 hover:text-red-300 hover:bg-red-500/15"
+              onClick={() => { setBulkDeleteConfirmOpen(true); setBulkDeleteError(null); }}
+            >
+              <Trash2 className="mr-1 h-3 w-3" />
+              Delete
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="h-7 px-2 text-xs ml-auto"
+              onClick={() => setSelectedIds(new Set())}
+              aria-label="Clear selection"
+            >
+              <X className="h-3 w-3" />
+            </Button>
+          </div>
+        )}
         {customers.length === 0 ? (
           <div className="p-4">
             {selectedGroupId ? (
@@ -437,12 +609,25 @@ export function CustomersListSidebar({
             No customers match &quot;{search}&quot;
           </p>
         ) : (
-          <ul className="space-y-0.5">
+          <ul className="space-y-0.5 flex-1 min-h-0">
             {filtered.map((c) => (
-              <li key={c.id}>
+              <li key={c.id} className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={(e) => toggleSelect(c.id, e)}
+                  className="shrink-0 mt-0.5 rounded border p-0.5 flex items-center justify-center"
+                  style={{ borderColor: 'var(--border)' }}
+                  aria-label={selectedIds.has(c.id) ? 'Deselect' : 'Select'}
+                >
+                  {selectedIds.has(c.id) ? (
+                    <span className="h-3 w-3 rounded-sm bg-[var(--accent)]" />
+                  ) : (
+                    <span className="h-3 w-3 rounded-sm border" style={{ borderColor: 'var(--border)' }} />
+                  )}
+                </button>
                 <Link
                   href={crmPath(`/customers?customer=${c.id}${groupQuery}`)}
-                  className={`block rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200 ${
+                  className={`flex-1 min-w-0 block rounded-lg px-2 py-2.5 text-sm font-medium transition-all duration-200 ${
                     selectedId === c.id
                       ? 'border-l-2 border-[var(--accent)] bg-[var(--accent)]/10'
                       : 'border-l-2 border-transparent hover:bg-white/5'

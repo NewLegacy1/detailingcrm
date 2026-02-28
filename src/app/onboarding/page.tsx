@@ -103,20 +103,6 @@ export default function OnboardingPaywallPage() {
     setLoading(null)
   }
 
-  async function handleSkipForTesting() {
-    setError(null)
-    setLoading('skip')
-    try {
-      const res  = await fetch('/api/onboarding/skip-for-testing', { method: 'POST' })
-      const data = await res.json()
-      if (!res.ok) { setError(data.error ?? 'Skip failed'); setLoading(null); return }
-      window.location.href = data.redirect ?? '/crm/dashboard'
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Something went wrong')
-    }
-    setLoading(null)
-  }
-
   return (
     <div
       className="auth-hero-bg auth-hero-bg--no-glow min-h-screen w-full flex flex-col items-center justify-start px-4 pt-3 pb-14"
@@ -282,17 +268,6 @@ export default function OnboardingPaywallPage() {
           </span>
         ))}
       </div>
-
-      {/* Skip for testing (e.g. on Vercel) */}
-      <button
-        type="button"
-        onClick={handleSkipForTesting}
-        disabled={!!loading}
-        className="mt-8 text-xs underline disabled:opacity-50"
-        style={{ color: '#3d4f5e' }}
-      >
-        {loading === 'skip' ? 'Skipping…' : 'Skip for testing'}
-      </button>
 
       <p className="mt-6 text-xs text-center" style={{ color: '#3d4f5e' }}>
         By continuing you agree to our{' '}

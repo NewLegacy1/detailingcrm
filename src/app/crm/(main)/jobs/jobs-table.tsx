@@ -4,7 +4,6 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { crmPath } from '@/lib/crm-path'
 import { Button } from '@/components/ui/button'
-import { Plus } from 'lucide-react'
 
 interface JobRow {
   id: string
@@ -27,31 +26,18 @@ interface JobsTableProps {
 export function JobsTable({ initialJobs, onSelectJob }: JobsTableProps) {
   const [jobs] = useState<JobRow[]>(initialJobs)
 
+  /** Match jobs-day-view getStatusStyles: blue scheduled/en_route, amber in_progress, green done, red cancelled/no_show */
   function statusColor(status: string) {
-    switch (status) {
-      case 'done':
-        return 'bg-green-100 text-green-700'
-      case 'in_progress':
-        return 'bg-[var(--accent-dim)] text-[var(--accent)]'
-      case 'cancelled':
-      case 'no_show':
-        return 'bg-red-100 text-red-700'
-      default:
-        return 'bg-white/10 text-[var(--text-muted)]'
-    }
+    const s = (status ?? '').toLowerCase()
+    if (s === 'done') return 'bg-green-500/10 text-green-400 border border-green-500/20'
+    if (s === 'in_progress') return 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
+    if (s === 'cancelled' || s === 'no_show') return 'bg-red-500/10 text-red-400 border border-red-500/20'
+    if (s === 'scheduled' || s === 'en_route') return 'bg-[#00b8f5]/10 text-[#00b8f5] border border-[#00b8f5]/20'
+    return 'bg-[#00b8f5]/10 text-[#00b8f5] border border-[#00b8f5]/20'
   }
 
   return (
     <>
-      <div className="flex justify-end mb-4">
-        <Button asChild>
-          <Link href={crmPath('/jobs/new')}>
-            <Plus className="mr-2 h-4 w-4" />
-            New Job
-          </Link>
-        </Button>
-      </div>
-
       {/* Desktop table */}
       <div className="card overflow-hidden hidden md:block">
         <table className="w-full">

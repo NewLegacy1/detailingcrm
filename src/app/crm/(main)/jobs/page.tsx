@@ -5,7 +5,6 @@ import { Suspense } from 'react'
 import { fromZonedTime } from 'date-fns-tz'
 import { JobsViewsClient } from './jobs-views-client'
 import { JobsCreatedBanner } from './jobs-created-banner'
-import { JobsNewJobButton } from './jobs-new-job-button'
 import { StickyJobsCTA } from './sticky-jobs-cta'
 import { JobsDateSync } from './jobs-date-sync'
 import { Calendar, List } from 'lucide-react'
@@ -244,6 +243,31 @@ export default async function JobsPage({
     services: j.service_id ? listServices.find((s) => s.id === j.service_id) ?? null : null,
   }))
 
+  let recentJobs: { id: string; status: string; updated_at: string; clients: { name?: string } | { name?: string }[] | null; services: { name?: string } | { name?: string }[] | null }[] = []
+  if (orgId) {
+    const res = await supabase
+      .from('jobs')
+      .select('id, status, updated_at, clients(name), services(name)')
+      .eq('org_id', orgId)
+      .order('updated_at', { ascending: false })
+      .limit(10)
+    recentJobs = res.data ?? []
+  }
+  const activityItems = recentJobs.map((j) => {
+    const clientsRaw = j.clients as { name?: string } | { name?: string }[] | null
+    const servicesRaw = j.services as { name?: string } | { name?: string }[] | null
+    const client = Array.isArray(clientsRaw) ? clientsRaw[0] : clientsRaw
+    const service = Array.isArray(servicesRaw) ? servicesRaw[0] : servicesRaw
+    const name = client?.name ?? 'Job'
+    const svc = service?.name ?? '—'
+    return {
+      id: j.id,
+      title: `${name} · ${svc}`,
+      subtitle: new Date(j.updated_at).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }),
+      dotColor: j.status === 'done' ? 'var(--green)' : j.status === 'in_progress' ? 'var(--amber)' : 'var(--blue)',
+    }
+  })
+
   return (
     <div className="flex flex-1 flex-col min-h-0 overflow-hidden" style={{ background: 'var(--bg)' }}>
       <div className="hidden md:flex shrink-0 items-center gap-4 border-b px-4 sm:px-6 h-[52px]" style={{ borderColor: 'var(--border)' }}>
@@ -287,7 +311,6 @@ export default async function JobsPage({
             </Link>
           )}
         </div>
-        <JobsNewJobButton />
       </div>
 
       <div className="shrink-0 px-4 sm:px-6 py-2 hidden md:block">
@@ -325,6 +348,7 @@ export default async function JobsPage({
           listJobs={list}
           datesWithJobs={Array.from(datesWithJobs)}
           crew={crew}
+          activityItems={activityItems}
           initialJobId={jobIdParam ?? undefined}
           timeZone={timeZone}
           todayStr={todayFallback}

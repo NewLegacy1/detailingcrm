@@ -84,8 +84,8 @@ export function JobCard({
           </div>
         </div>
         <span
-          className="text-xs rounded-md px-2 py-1"
-          style={{ background: 'var(--surface-3)', color: 'var(--text-2)' }}
+          className="text-xs rounded-md px-2 py-1 font-medium"
+          style={{ background: 'rgba(0,184,245,0.12)', border: '1px solid rgba(0,184,245,0.25)', color: '#00b8f5' }}
         >
           {serviceName}
         </span>
