@@ -123,13 +123,17 @@ export function CustomerDetailPane({
         </div>
       </Card>
 
-      {groups.length > 0 && (
-        <section>
-          <h2 className="section-label mb-3 flex items-center gap-2">
-            <Folder className="h-4 w-4 text-[var(--accent)]" />
-            Groups
-          </h2>
-          <Card className="p-4">
+      <section>
+        <h2 className="section-label mb-3 flex items-center gap-2">
+          <Folder className="h-4 w-4 text-[var(--accent)]" />
+          Groups
+        </h2>
+        <Card className="p-4">
+          {groups.length === 0 ? (
+            <p className="text-sm" style={{ color: 'var(--text-3)' }}>
+              Create groups in the sidebar (under &quot;Groups&quot; click the +), then assign this customer to groups here.
+            </p>
+          ) : (
             <div className="flex flex-wrap gap-3">
               {groups.map((g) => {
                 const isInGroup = customerGroupIds.includes(g.id)
@@ -157,9 +161,9 @@ export function CustomerDetailPane({
                 )
               })}
             </div>
-          </Card>
-        </section>
-      )}
+          )}
+        </Card>
+      </section>
 
       {/* Garage */}
       <section>

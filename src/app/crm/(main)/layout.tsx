@@ -57,13 +57,15 @@ export default async function MainLayout({
     surface4: string
   } | null = null
   let subscriptionPlan: 'starter' | 'pro' | null = null
+  let orgLogoUrl: string | null = null
   if (profile?.org_id) {
     const { data: org } = await supabase
       .from('organizations')
-      .select('subscription_plan, crm_accent_color, crm_bg_color, crm_surface_color')
+      .select('subscription_plan, crm_accent_color, crm_bg_color, crm_surface_color, logo_url')
       .eq('id', profile.org_id)
       .single()
     subscriptionPlan = org?.subscription_plan === 'starter' || org?.subscription_plan === 'pro' ? org.subscription_plan : null
+    if (org?.logo_url?.trim()) orgLogoUrl = org.logo_url.trim()
     if (org?.crm_accent_color || org?.crm_bg_color) {
       const bg = (org.crm_bg_color ?? '').trim()
       const scale = bg ? surfaceScaleFromBg(bg) : null
@@ -93,7 +95,7 @@ export default async function MainLayout({
       userEmail={user.email}
       displayName={profile?.display_name}
       businessName={profile?.business_name}
-      logoUrl={profile?.avatar_url}
+      logoUrl={orgLogoUrl ?? profile?.avatar_url}
       jobCount={jobCount ?? 0}
       invoiceCount={invoiceCount ?? 0}
       crmColors={crmColors}

@@ -232,14 +232,35 @@ export default async function DashboardPage() {
 
   let todayJobs: Record<string, unknown>[] = todayJobsData ?? []
   if (todayJobs.length === 0 && (jobsTodayCount ?? 0) > 0) {
-    const { data: fallbackJobs } = await supabase
+    // Fallback: full select same as main query (retry)
+    let fallbackJobs: Record<string, unknown>[] | null = null
+    const { data: fallback1 } = await supabase
       .from('jobs')
       .select('id, scheduled_at, status, address, base_price, size_price_offset, clients(name), vehicles(year, make, model, color), services(name, base_price), job_upsells(price)')
       .eq('org_id', orgId)
       .gte('scheduled_at', todayStartStr)
       .lt('scheduled_at', todayEndStr)
       .order('scheduled_at', { ascending: true })
-    todayJobs = fallbackJobs ?? []
+    fallbackJobs = fallback1 ?? null
+    if (!fallbackJobs || fallbackJobs.length === 0) {
+      // Simpler fallback without vehicles/job_upsells in case RLS or join fails on those
+      const { data: fallback2 } = await supabase
+        .from('jobs')
+        .select('id, scheduled_at, status, address, base_price, size_price_offset, clients(name), services(name, base_price)')
+        .eq('org_id', orgId)
+        .gte('scheduled_at', todayStartStr)
+        .lt('scheduled_at', todayEndStr)
+        .order('scheduled_at', { ascending: true })
+      if (fallback2?.length) {
+        todayJobs = fallback2.map((j) => ({
+          ...j,
+          vehicles: null,
+          job_upsells: [],
+        }))
+      }
+    } else {
+      todayJobs = fallbackJobs
+    }
   }
 
   const jobDates = [...new Set((monthJobsForCalendar ?? []).map((j) => (j.scheduled_at as string).slice(0, 10)))]
@@ -324,7 +345,7 @@ export default async function DashboardPage() {
                 label="Today's Revenue"
                 value={currency(todayRevenue)}
               />
-              <StatCard label="Jobs Today" value={jobsTodayCount ?? 0} />
+              <StatCard label="Jobs Today" value={todayJobs.length} />
               <StatCard
                 label="Monthly Revenue"
                 value={currency(monthRevenue)}

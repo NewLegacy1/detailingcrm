@@ -50,12 +50,23 @@ interface ScheduleViewProps {
   initialJobs: JobRow[]
   /** Initial selected date (YYYY-MM-DD) from URL e.g. ?date=2026-02-20 */
   initialDate?: string | null
+  /** Org timezone (e.g. America/Toronto) so "today" and date grouping match dashboard */
+  timeZone?: string | null
   /** Start hour for week grid (0-23), e.g. 9 for 9 AM */
   serviceHoursStart?: number
   /** End hour for week grid (1-24, exclusive), e.g. 18 for 6 PM */
   serviceHoursEnd?: number
   /** CRM accent colour (hex) for calendar gradient; default blue when null */
   calendarAccentColor?: string | null
+}
+
+/** Date (YYYY-MM-DD) of a UTC timestamp in the given timezone. Used so schedule "today" matches dashboard. */
+function getDateInTimezone(utcDate: Date, timeZone: string): string {
+  const parts = new Intl.DateTimeFormat('en-CA', { timeZone, year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(utcDate)
+  const get = (k: string) => parts.find((p) => p.type === k)?.value ?? ''
+  const s = `${get('year')}-${get('month')}-${get('day')}`.replace(/\//g, '-')
+  const [y, m, d] = s.split(/[-/]/).map((x) => x.padStart(2, '0'))
+  return `${y}-${m}-${d}`
 }
 
 const CALENDAR_GRADIENT_DEFAULT = 'linear-gradient(to bottom right, rgba(0, 184, 245, 0.12), rgba(0, 92, 123, 0.35))'
@@ -168,7 +179,7 @@ function getMonthDays(year: number, month: number): (Date | null)[][] {
   return rows
 }
 
-export function ScheduleView({ initialJobs, initialDate, serviceHoursStart = 9, serviceHoursEnd = 18, calendarAccentColor }: ScheduleViewProps) {
+export function ScheduleView({ initialJobs, initialDate, timeZone, serviceHoursStart = 9, serviceHoursEnd = 18, calendarAccentColor }: ScheduleViewProps) {
   const calendarGradient = getCalendarGradientBackground(calendarAccentColor)
   const [view, setView] = useState<ViewMode>('week')
   const todayStr = new Date().toISOString().slice(0, 10)
@@ -340,23 +351,25 @@ export function ScheduleView({ initialJobs, initialDate, serviceHoursStart = 9, 
 
   const jobsByDay = useMemo(() => {
     const map = new Map<string, JobRow[]>()
+    const tz = timeZone ?? undefined
     filteredJobs.forEach((job) => {
       const { start } = getJobDisplayStartEnd(job)
-      const key = start.toISOString().slice(0, 10)
+      const key = tz ? getDateInTimezone(start, tz) : start.toISOString().slice(0, 10)
       if (!map.has(key)) map.set(key, [])
       map.get(key)!.push(job)
     })
     return map
-  }, [filteredJobs])
+  }, [filteredJobs, timeZone])
 
   const jobsForWeekGrid = useMemo(() => {
     const map = new Map<string, JobRow[]>()
+    const tz = timeZone ?? undefined
     weekDays.forEach((day) => {
-      const key = day.toISOString().slice(0, 10)
+      const key = tz ? getDateInTimezone(day, tz) : day.toISOString().slice(0, 10)
       map.set(key, jobsByDay.get(key) ?? [])
     })
     return map
-  }, [weekDays, jobsByDay])
+  }, [weekDays, jobsByDay, timeZone])
 
   const syncedGoogleEventIds = useMemo(
     () => new Set(filteredJobs.map((j) => j.google_company_event_id).filter(Boolean) as string[]),
@@ -368,18 +381,23 @@ export function ScheduleView({ initialJobs, initialDate, serviceHoursStart = 9, 
   )
   const googleEventsForWeekGrid = useMemo(() => {
     const map = new Map<string, GoogleEventRow[]>()
+    const tz = timeZone ?? undefined
     weekDays.forEach((day) => {
-      const key = day.toISOString().slice(0, 10)
-      const onDay = externalGoogleEvents.filter((e) => new Date(e.start).toISOString().slice(0, 10) === key)
+      const key = tz ? getDateInTimezone(day, tz) : day.toISOString().slice(0, 10)
+      const onDay = tz
+        ? externalGoogleEvents.filter((e) => getDateInTimezone(new Date(e.start), tz) === key)
+        : externalGoogleEvents.filter((e) => new Date(e.start).toISOString().slice(0, 10) === key)
       map.set(key, onDay)
     })
     return map
-  }, [weekDays, externalGoogleEvents])
+  }, [weekDays, externalGoogleEvents, timeZone])
 
-  const googleEventsForDay = useMemo(
-    () => externalGoogleEvents.filter((e) => new Date(e.start).toISOString().slice(0, 10) === date),
-    [externalGoogleEvents, date]
-  )
+  const googleEventsForDay = useMemo(() => {
+    const tz = timeZone ?? undefined
+    return tz
+      ? externalGoogleEvents.filter((e) => getDateInTimezone(new Date(e.start), tz) === date)
+      : externalGoogleEvents.filter((e) => new Date(e.start).toISOString().slice(0, 10) === date)
+  }, [externalGoogleEvents, date, timeZone])
 
   function timeToSlotIndex(date: Date): number {
     const h = date.getHours() - hourStart
@@ -414,7 +432,9 @@ export function ScheduleView({ initialJobs, initialDate, serviceHoursStart = 9, 
     const target = e.currentTarget
     const rect = target.getBoundingClientRect()
     const relY = e.clientY - rect.top
-    const slotIndex = Math.max(0, Math.min(totalSlots - 1, Math.floor(relY / SLOT_HEIGHT_PX)))
+    const slotIndex = rect.height > 0
+      ? Math.max(0, Math.min(totalSlots - 1, Math.floor((relY / rect.height) * totalSlots)))
+      : 0
     handleDrop(e, dayKey, slotIndex)
   }
 
@@ -524,13 +544,15 @@ export function ScheduleView({ initialJobs, initialDate, serviceHoursStart = 9, 
 
   const jobsByDaySimple = useMemo(() => {
     const map = new Map<string, JobRow[]>()
+    const tz = timeZone ?? undefined
     filteredJobs.forEach((job) => {
-      const key = getJobDisplayStartEnd(job).start.toISOString().slice(0, 10)
+      const start = getJobDisplayStartEnd(job).start
+      const key = tz ? getDateInTimezone(start, tz) : start.toISOString().slice(0, 10)
       if (!map.has(key)) map.set(key, [])
       map.get(key)!.push(job)
     })
     return map
-  }, [filteredJobs])
+  }, [filteredJobs, timeZone])
 
   const jobsByMonth = useMemo(() => {
     const map = new Map<string, JobRow[]>()
@@ -573,7 +595,7 @@ export function ScheduleView({ initialJobs, initialDate, serviceHoursStart = 9, 
     return map
   }, [monthGrid, externalGoogleEvents])
 
-  const todayKey = new Date().toISOString().slice(0, 10)
+  const todayKey = timeZone ? getDateInTimezone(new Date(), timeZone) : new Date().toISOString().slice(0, 10)
   const isMobile = useIsMobile()
 
   /** For mobile: week containing selected date, for day strip and week header */
@@ -639,7 +661,7 @@ export function ScheduleView({ initialJobs, initialDate, serviceHoursStart = 9, 
           {/* Day strip: S 8, M 9, ... */}
           <div className="flex items-center justify-between gap-1 px-1 pb-3">
             {mobileWeekDays.map((day) => {
-              const dayKey = day.toISOString().slice(0, 10)
+              const dayKey = timeZone ? getDateInTimezone(day, timeZone) : day.toISOString().slice(0, 10)
               const selected = dayKey === date
               const letter = day.toLocaleDateString('en-US', { weekday: 'narrow' }).slice(0, 1)
               return (
@@ -655,7 +677,7 @@ export function ScheduleView({ initialJobs, initialDate, serviceHoursStart = 9, 
               )
             })}
           </div>
-          {/* Time column + appointments for selected day */}
+          {/* Time column + appointments for selected day — original layout, exact time positioning, + grip + drag/drop */}
           <div className="flex-1 min-h-0 flex rounded-xl border border-[var(--border)] overflow-hidden bg-[var(--surface-1)]">
             <div className="w-14 shrink-0 flex flex-col border-r border-[var(--border)] py-2 pr-1 text-right text-xs text-[var(--text-3)]">
               {Array.from({ length: hourEnd - hourStart }, (_, i) => (
@@ -664,7 +686,13 @@ export function ScheduleView({ initialJobs, initialDate, serviceHoursStart = 9, 
                 </div>
               ))}
             </div>
-            <div className="flex-1 relative min-w-0" style={{ minHeight: (hourEnd - hourStart) * 48 }}>
+            <div
+              className="flex-1 relative min-w-0"
+              style={{ minHeight: (hourEnd - hourStart) * 48 }}
+              data-schedule-column
+              onDragOver={handleColumnDragOver}
+              onDrop={(e) => handleColumnDrop(e, date)}
+            >
               {(jobsByDay.get(date) ?? []).map((job) => {
                 const { start, end } = getJobDisplayStartEnd(job)
                 const service = Array.isArray(job.services) ? job.services[0] : job.services
@@ -675,25 +703,65 @@ export function ScheduleView({ initialJobs, initialDate, serviceHoursStart = 9, 
                 const topPx = startHour * 48
                 const heightPx = Math.max(56, (endHour - startHour) * 48 - 4)
                 return (
-                  <button
+                  <div
                     key={job.id}
-                    type="button"
-                    onClick={() => setSelectedJobId(job.id)}
-                    className={`absolute left-1 right-2 rounded-lg flex flex-col items-start justify-center p-2.5 text-left shadow-sm border overflow-hidden ${getStatusColor(job.status)}`}
+                    draggable
+                    onDragStart={(e) => handleDragStartJob(e, job)}
+                    onDragOver={handleColumnDragOver}
+                    onDrop={(e) => handleColumnDrop(e, date)}
+                    className={`absolute left-1 right-2 rounded-lg flex overflow-hidden shadow-sm border cursor-grab active:cursor-grabbing ${getStatusColor(job.status)}`}
                     style={{ top: topPx, height: heightPx, minHeight: 56 }}
+                    title="Drag to reschedule · Tap to open"
                   >
-                    <div className={`w-full min-w-0 flex flex-col items-start ${isDone ? 'pr-20' : ''}`}>
+                    <div className="shrink-0 flex items-center pl-1.5 border-r border-white/20 self-stretch" aria-hidden>
+                      <GripVertical className="h-3.5 w-3.5 opacity-60" />
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedJobId(job.id)}
+                      className={`flex-1 min-w-0 flex flex-col items-start justify-center p-2.5 text-left ${isDone ? 'pr-20' : ''}`}
+                    >
                       <span className="font-semibold text-sm leading-tight truncate w-full">{service?.name ?? 'Job'}</span>
                       <span className="text-xs mt-1 leading-tight text-white/90">
                         {start.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })} to {end.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
                       </span>
-                    </div>
+                    </button>
                     {isDone && (
-                      <span className="absolute top-2 right-2 rounded-full bg-white/20 text-white text-[10px] font-medium px-2 py-0.5 whitespace-nowrap">
+                      <span className="absolute top-1/2 right-2 -translate-y-1/2 rounded-full bg-white/20 text-white text-[10px] font-medium px-2 py-0.5 whitespace-nowrap">
                         Completed
                       </span>
                     )}
-                  </button>
+                  </div>
+                )
+              })}
+              {(googleEventsForDay ?? []).map((ev) => {
+                const start = new Date(ev.start)
+                const end = new Date(ev.end)
+                const startHour = start.getHours() + start.getMinutes() / 60 - hourStart
+                const endHour = end.getHours() + end.getMinutes() / 60 - hourStart
+                const topPx = startHour * 48
+                const heightPx = Math.max(48, (endHour - startHour) * 48 - 4)
+                return (
+                  <div
+                    key={`g-${ev.id}`}
+                    draggable
+                    onDragStart={(e) => handleDragStartGoogleEvent(e, ev)}
+                    onDragOver={handleColumnDragOver}
+                    onDrop={(e) => handleColumnDrop(e, date)}
+                    className="absolute left-1 right-2 rounded-lg border border-violet-400/60 bg-violet-500/35 text-white overflow-hidden shadow-sm flex cursor-grab active:cursor-grabbing"
+                    style={{ top: topPx, height: heightPx, minHeight: 48 }}
+                    title="Drag to reschedule"
+                  >
+                    <div className="shrink-0 flex items-center pl-1.5 border-r border-white/20 self-stretch" aria-hidden>
+                      <GripVertical className="h-3.5 w-3.5 opacity-60" />
+                    </div>
+                    <div className="p-2 flex-1 min-w-0 flex flex-col justify-center overflow-hidden">
+                      <p className="font-medium truncate text-sm">{ev.summary}</p>
+                      <p className="text-xs opacity-90">
+                        {start.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })} – {end.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
+                      </p>
+                    </div>
+                  </div>
                 )
               })}
             </div>
@@ -882,7 +950,8 @@ export function ScheduleView({ initialJobs, initialDate, serviceHoursStart = 9, 
                     const { start, end } = getJobDisplayStartEnd(job)
                     const startSlot = timeToSlotIndex(start)
                     const durationSlots = Math.max(1, Math.ceil((end.getTime() - start.getTime()) / (SLOT_MINS * 60 * 1000)))
-                    if (start.toISOString().slice(0, 10) !== dayKey) return null
+                    const jobDayKey = timeZone ? getDateInTimezone(start, timeZone) : start.toISOString().slice(0, 10)
+                    if (jobDayKey !== dayKey) return null
                     const top = startSlot * SLOT_HEIGHT_PX
                     const height = durationSlots * SLOT_HEIGHT_PX - 2
                     const client = Array.isArray(job.clients) ? job.clients[0] : job.clients
@@ -980,7 +1049,7 @@ export function ScheduleView({ initialJobs, initialDate, serviceHoursStart = 9, 
             </div>
             <div className="flex-1 flex">
               {weekDays.map((day) => {
-                const dayKey = day.toISOString().slice(0, 10)
+                const dayKey = timeZone ? getDateInTimezone(day, timeZone) : day.toISOString().slice(0, 10)
                 const dayJobs = jobsForWeekGrid.get(dayKey) ?? []
                 const isToday = dayKey === todayKey
                 return (
@@ -1014,7 +1083,8 @@ export function ScheduleView({ initialJobs, initialDate, serviceHoursStart = 9, 
                         const startSlot = timeToSlotIndex(start)
                         const durationSlots = Math.max(1, Math.ceil((end.getTime() - start.getTime()) / (SLOT_MINS * 60 * 1000)))
                         const dayStart = new Date(dayKey + 'T00:00:00')
-                        if (start.toISOString().slice(0, 10) !== dayKey) return null
+                        const jobDayKey = timeZone ? getDateInTimezone(start, timeZone) : start.toISOString().slice(0, 10)
+                        if (jobDayKey !== dayKey) return null
                         const top = startSlot * SLOT_HEIGHT_PX
                         const height = durationSlots * SLOT_HEIGHT_PX - 2
                         const client = Array.isArray(job.clients) ? job.clients[0] : job.clients

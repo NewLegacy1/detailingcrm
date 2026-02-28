@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { crmPath } from '@/lib/crm-path'
 
 interface ActivityItem {
   id: string
@@ -40,7 +41,7 @@ export function RecentActivity({ items }: RecentActivityProps) {
           items.map((item) => (
             <Link
               key={item.id}
-              href={`/jobs/${item.id}`}
+              href={crmPath(`/jobs/${item.id}`)}
               style={{
                 display: 'flex',
                 alignItems: 'flex-start',

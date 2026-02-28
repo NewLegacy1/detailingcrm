@@ -43,8 +43,9 @@ export function MobileHeader({ displayName, logoUrl }: MobileHeaderProps) {
   const [menuOpen, setMenuOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
   const title = getTitle(pathname)
-  const segments = pathname.split('/').filter(Boolean)
-  const showBack = segments.length > 1
+  const relativePath = pathname.startsWith(CRM_BASE) ? pathname.slice(CRM_BASE.length) : pathname
+  const relativeSegments = relativePath.split('/').filter(Boolean)
+  const showBack = relativeSegments.length > 1
 
   useEffect(() => {
     if (!menuOpen) return
@@ -81,8 +82,12 @@ export function MobileHeader({ displayName, logoUrl }: MobileHeaderProps) {
           </button>
         )}
         {!showBack && (
-          <Link href={crmPath('/dashboard')} className="flex items-center shrink-0 -ml-1" aria-label="DetailOps home">
-            <Image src="/detailopslogo.png" alt="" width={36} height={36} className="h-9 w-auto object-contain" />
+          <Link href={crmPath('/dashboard')} className="flex items-center shrink-0 -ml-1" aria-label="Home">
+            {logoUrl?.trim() ? (
+              <img src={logoUrl.trim()} alt="" className="h-9 w-auto max-w-[140px] object-contain object-left" />
+            ) : (
+              <Image src="/detailopslogo.png" alt="" width={36} height={36} className="h-9 w-auto object-contain" />
+            )}
           </Link>
         )}
         <h1 className="text-lg font-semibold truncate ml-1" style={{ color: 'var(--text-1)' }}>

@@ -19,9 +19,19 @@ function formatPhoneNumber(phone: string): string {
   return phone
 }
 
-export function CustomersAddButton() {
+interface CustomersAddButtonProps {
+  /** Controlled: open state (e.g. when opening from URL) */
+  open?: boolean
+  /** Controlled: called when dialog open state changes */
+  onOpenChange?: (open: boolean) => void
+}
+
+export function CustomersAddButton({ open: controlledOpen, onOpenChange }: CustomersAddButtonProps = {}) {
   const router = useRouter()
-  const [open, setOpen] = useState(false)
+  const [internalOpen, setInternalOpen] = useState(false)
+  const isControlled = controlledOpen !== undefined
+  const open = isControlled ? controlledOpen : internalOpen
+  const setOpen = isControlled ? (onOpenChange ?? (() => {})) : setInternalOpen
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [formData, setFormData] = useState({
@@ -94,7 +104,7 @@ export function CustomersAddButton() {
 
   return (
     <>
-      <Button size="sm" className="w-full justify-center" onClick={() => { setOpen(true); setError(null) }}>
+      <Button size="sm" className="w-full justify-center" onClick={() => { setOpen(true); setError(null) }} type="button">
         <Plus className="h-4 w-4 mr-1" />
         Add customer
       </Button>
@@ -176,7 +186,19 @@ export function CustomersAddButton() {
             </div>
             <div className="flex justify-end gap-2 pt-4">
               <Button type="button" variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
-              <Button type="submit" disabled={loading}>{loading ? 'Saving...' : 'Create'}</Button>
+              <Button
+                type="button"
+                disabled={loading}
+                onClick={() => {
+                  if (!formData.name?.trim()) {
+                    setError('Name is required.')
+                    return
+                  }
+                  handleSubmit({ preventDefault: () => {} } as React.FormEvent<HTMLFormElement>)
+                }}
+              >
+                {loading ? 'Saving...' : 'Create'}
+              </Button>
             </div>
           </form>
         </DialogContent>

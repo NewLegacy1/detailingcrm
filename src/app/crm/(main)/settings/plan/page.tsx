@@ -96,9 +96,12 @@ export default async function SettingsPlanPage() {
                 </li>
               </ul>
             )}
-            {isPro && canManageBilling && (
+            {(isStarter || isPro) && (
               <div className="pt-4">
                 <ManageSubscriptionButton />
+                {!canManageBilling && (
+                  <p className="text-xs text-[var(--text-muted)] mt-2">Complete a subscription to manage billing, update payment, or cancel.</p>
+                )}
               </div>
             )}
           </CardContent>

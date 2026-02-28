@@ -4,6 +4,7 @@ import { Suspense, useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
+import Image from 'next/image'
 import { Plus_Jakarta_Sans } from 'next/font/google'
 import { MosaicPanel } from '@/components/MosaicPanel'
 
@@ -90,7 +91,10 @@ function AuthForm() {
         {/* Right panel */}
         <div className="flex flex-col flex-1 min-h-0 bg-[#101620] md:border-l border-[rgba(255,255,255,0.07)]">
           <div className="flex-1 min-h-0 overflow-y-auto auth-panel-scroll flex flex-col justify-center items-center py-10 md:py-12 px-6 sm:px-12 md:px-16">
-          <h1 className="text-[1.6rem] font-bold text-[#dce6f5] mb-1.5 tracking-tight">
+          <div className="flex justify-center mb-4 md:mb-5">
+            <Image src="/detailopslogo.png" alt="DetailOps" width={160} height={160} className="h-40 w-40 min-h-[160px] min-w-[160px] object-contain" />
+          </div>
+          <h1 className="text-[1.6rem] font-bold text-[#dce6f5] mb-1.5 tracking-tight text-center">
             Welcome Back
           </h1>
           <p className="text-[0.82rem] text-[#4a5568] mb-8">

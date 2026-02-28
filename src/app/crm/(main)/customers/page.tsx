@@ -7,9 +7,9 @@ import { EmptyState } from '@/components/ui/empty-state'
 export default async function CustomersPage({
   searchParams,
 }: {
-  searchParams: Promise<{ customer?: string; group?: string }>
+  searchParams: Promise<{ customer?: string; group?: string; add?: string }>
 }) {
-  const { customer: selectedId, group: groupId } = await searchParams
+  const { customer: selectedId, group: groupId, add: openAddParam } = await searchParams
   const supabase = await createAuthClient()
 
   let orgId: string | null = null
@@ -20,6 +20,7 @@ export default async function CustomersPage({
   }
 
   let list: { id: string; name: string; email: string | null; phone: string | null; address?: string | null; notes: string | null }[] = []
+  let allCustomersForGroup: typeof list | undefined
   if (orgId) {
     const { data: orgCustomers, error: orgError } = await supabase
       .from('clients')
@@ -27,7 +28,18 @@ export default async function CustomersPage({
       .eq('org_id', orgId)
       .order('name', { ascending: true })
     if (orgError) console.error('Error fetching customers:', orgError)
-    list = orgCustomers ?? []
+    const allList = orgCustomers ?? []
+    if (groupId) {
+      const { data: members } = await supabase
+        .from('customer_group_members')
+        .select('client_id')
+        .eq('group_id', groupId)
+      const ids = new Set((members ?? []).map((m) => m.client_id))
+      list = allList.filter((c) => ids.has(c.id))
+      allCustomersForGroup = allList
+    } else {
+      list = allList
+    }
   }
   const groups: { id: string; name: string }[] = []
   if (orgId) {
@@ -37,15 +49,6 @@ export default async function CustomersPage({
       .eq('org_id', orgId)
       .order('name')
     if (groupsData) groups.push(...groupsData)
-
-    if (groupId) {
-      const { data: members } = await supabase
-        .from('customer_group_members')
-        .select('client_id')
-        .eq('group_id', groupId)
-      const ids = new Set((members ?? []).map((m) => m.client_id))
-      list = list.filter((c) => ids.has(c.id))
-    }
   }
 
   const selected = selectedId ? list.find((c) => c.id === selectedId) : null
@@ -127,6 +130,8 @@ export default async function CustomersPage({
           selectedId={selectedId ?? null}
           groups={groups}
           selectedGroupId={groupId ?? null}
+          allCustomersForGroup={allCustomersForGroup}
+          openAddFromUrl={openAddParam === '1'}
         />
       }
       detailContent={

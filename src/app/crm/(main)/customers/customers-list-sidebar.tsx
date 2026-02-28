@@ -1,10 +1,10 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import Link from 'next/link'
 import { crmPath } from '@/lib/crm-path'
 import { useRouter } from 'next/navigation'
-import { Search, Plus, Folder } from 'lucide-react'
+import { Search, Plus, Folder, UserPlus, Pencil, Trash2 } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/empty-state'
@@ -31,6 +31,10 @@ interface CustomersListSidebarProps {
   selectedId: string | null
   groups?: CustomerGroup[]
   selectedGroupId?: string | null
+  /** All org customers when viewing a group (for "Add existing" picker) */
+  allCustomersForGroup?: Customer[]
+  /** When true, open the Add customer dialog and clear the URL param */
+  openAddFromUrl?: boolean
 }
 
 export function CustomersListSidebar({
@@ -38,18 +42,39 @@ export function CustomersListSidebar({
   selectedId,
   groups = [],
   selectedGroupId = null,
+  allCustomersForGroup,
+  openAddFromUrl = false,
 }: CustomersListSidebarProps) {
   const router = useRouter()
   const [search, setSearch] = useState('')
+  const [addDialogOpen, setAddDialogOpen] = useState(false)
   const [newGroupOpen, setNewGroupOpen] = useState(false)
+  const [addExistingOpen, setAddExistingOpen] = useState(false)
+  const [addingIds, setAddingIds] = useState<Set<string>>(new Set())
+  const [addExistingError, setAddExistingError] = useState<string | null>(null)
+  useEffect(() => {
+    if (openAddFromUrl) {
+      setAddDialogOpen(true)
+      router.replace(crmPath('/customers'))
+    }
+  }, [openAddFromUrl, router])
   const [newGroupName, setNewGroupName] = useState('')
   const [creatingGroup, setCreatingGroup] = useState(false)
+  const [groupError, setGroupError] = useState<string | null>(null)
+  const [renameGroup, setRenameGroup] = useState<{ id: string; name: string } | null>(null)
+  const [renameValue, setRenameValue] = useState('')
+  const [renaming, setRenaming] = useState(false)
+  const [renameError, setRenameError] = useState<string | null>(null)
+  const [deleteGroup, setDeleteGroup] = useState<{ id: string; name: string } | null>(null)
+  const [deleting, setDeleting] = useState(false)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
 
   const groupQuery = selectedGroupId ? `&group=${selectedGroupId}` : ''
 
   async function handleCreateGroup(e: React.FormEvent) {
     e.preventDefault()
     if (!newGroupName.trim()) return
+    setGroupError(null)
     setCreatingGroup(true)
     try {
       const res = await fetch('/api/customers/groups', {
@@ -57,11 +82,16 @@ export function CustomersListSidebar({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: newGroupName.trim() }),
       })
+      const data = await res.json().catch(() => ({}))
       if (res.ok) {
         setNewGroupOpen(false)
         setNewGroupName('')
         router.refresh()
+      } else {
+        setGroupError(data?.error ?? `Failed to create group (${res.status})`)
       }
+    } catch (err) {
+      setGroupError(err instanceof Error ? err.message : 'Failed to create group')
     } finally {
       setCreatingGroup(false)
     }
@@ -77,6 +107,86 @@ export function CustomersListSidebar({
         (c.phone?.includes(q) ?? false)
     )
   }, [customers, search])
+
+  const availableToAdd = useMemo(() => {
+    if (!selectedGroupId || !allCustomersForGroup?.length) return []
+    const inGroup = new Set(customers.map((c) => c.id))
+    return allCustomersForGroup.filter((c) => !inGroup.has(c.id))
+  }, [selectedGroupId, allCustomersForGroup, customers])
+
+  async function handleAddExistingToGroup() {
+    if (!selectedGroupId || addingIds.size === 0) return
+    setAddExistingError(null)
+    try {
+      for (const clientId of addingIds) {
+        const res = await fetch(`/api/customers/groups/${selectedGroupId}/members`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ clientId, add: true }),
+        })
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}))
+          throw new Error(data?.error ?? `Failed to add (${res.status})`)
+        }
+      }
+      setAddExistingOpen(false)
+      setAddingIds(new Set())
+      router.refresh()
+    } catch (err) {
+      setAddExistingError(err instanceof Error ? err.message : 'Failed to add to group')
+    }
+  }
+
+  function openRename(g: CustomerGroup) {
+    setRenameGroup(g)
+    setRenameValue(g.name)
+    setRenameError(null)
+  }
+
+  async function handleRename() {
+    if (!renameGroup || !renameValue.trim()) return
+    setRenameError(null)
+    setRenaming(true)
+    try {
+      const res = await fetch(`/api/customers/groups/${renameGroup.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: renameValue.trim() }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (res.ok) {
+        setRenameGroup(null)
+        router.refresh()
+      } else {
+        setRenameError(data?.error ?? `Failed to rename (${res.status})`)
+      }
+    } catch (err) {
+      setRenameError(err instanceof Error ? err.message : 'Failed to rename')
+    } finally {
+      setRenaming(false)
+    }
+  }
+
+  async function handleDelete() {
+    if (!deleteGroup) return
+    setDeleteError(null)
+    setDeleting(true)
+    try {
+      const res = await fetch(`/api/customers/groups/${deleteGroup.id}`, { method: 'DELETE' })
+      const data = await res.json().catch(() => ({}))
+      if (res.ok) {
+        setDeleteGroup(null)
+        if (selectedGroupId === deleteGroup.id) router.push(crmPath('/customers'))
+        else router.refresh()
+      } else {
+        setDeleteError(data?.error ?? `Failed to delete (${res.status})`)
+      }
+    } catch (err) {
+      setDeleteError(err instanceof Error ? err.message : 'Failed to delete')
+    } finally {
+      setDeleting(false)
+    }
+  }
 
   return (
     <aside
@@ -99,8 +209,19 @@ export function CustomersListSidebar({
             }}
           />
         </div>
-        <CustomersAddButton />
+        <CustomersAddButton open={addDialogOpen} onOpenChange={setAddDialogOpen} />
         <CustomersUploadCsv />
+        {selectedGroupId && allCustomersForGroup && (
+          <Button
+            variant="outline"
+            size="sm"
+            className="w-full justify-center gap-2"
+            onClick={() => { setAddExistingOpen(true); setAddExistingError(null); setAddingIds(new Set()); }}
+          >
+            <UserPlus className="h-4 w-4" />
+            Add existing customers
+          </Button>
+        )}
       </div>
       <div className="border-b p-2" style={{ borderColor: 'var(--border)' }}>
         <div className="flex items-center justify-between gap-1 mb-1">
@@ -118,25 +239,56 @@ export function CustomersListSidebar({
             All
           </Link>
           {groups.map((g) => (
-              <Link
+              <div
                 key={g.id}
-                href={crmPath(`/customers?group=${g.id}`)}
-                className={`block rounded-lg px-2 py-1.5 text-sm flex items-center gap-1.5 ${selectedGroupId === g.id ? 'bg-[var(--accent)]/15 text-[var(--accent)]' : ''}`}
-                style={selectedGroupId !== g.id ? { color: 'var(--text-2)' } : undefined}
+                className={`group/row flex items-center gap-0.5 rounded-lg px-2 py-1.5 text-sm ${selectedGroupId === g.id ? 'bg-[var(--accent)]/15' : ''}`}
               >
-                <Folder className="h-3.5 w-3 shrink-0" />
-                {g.name}
-              </Link>
+                <Link
+                  href={crmPath(`/customers?group=${g.id}`)}
+                  className={`flex flex-1 min-w-0 items-center gap-1.5 py-0.5 ${selectedGroupId === g.id ? 'text-[var(--accent)]' : ''}`}
+                  style={selectedGroupId !== g.id ? { color: 'var(--text-2)' } : undefined}
+                >
+                  <Folder className="h-3.5 w-3 shrink-0" />
+                  <span className="truncate">{g.name}</span>
+                </Link>
+                <div className="flex items-center opacity-0 group-hover/row:opacity-100 focus-within:opacity-100 transition-opacity">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="h-6 w-6 shrink-0"
+                    onClick={(e) => { e.preventDefault(); openRename(g); }}
+                    aria-label="Rename group"
+                  >
+                    <Pencil className="h-3 w-3" />
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="h-6 w-6 shrink-0 text-red-400 hover:text-red-300 hover:bg-red-500/15"
+                    onClick={(e) => { e.preventDefault(); setDeleteGroup(g); setDeleteError(null); }}
+                    aria-label="Delete group"
+                  >
+                    <Trash2 className="h-3 w-3" />
+                  </Button>
+                </div>
+              </div>
             ))}
         </div>
       </div>
-      <Dialog open={newGroupOpen} onOpenChange={setNewGroupOpen}>
+      <Dialog open={newGroupOpen} onOpenChange={(open) => { setNewGroupOpen(open); if (!open) setGroupError(null); }}>
         <DialogContent className="max-w-sm">
           <DialogClose onClick={() => setNewGroupOpen(false)} />
           <DialogHeader>
             <DialogTitle className="text-[var(--text)]">New group</DialogTitle>
           </DialogHeader>
-          <form onSubmit={handleCreateGroup} className="space-y-3">
+          <form onSubmit={(e) => { e.preventDefault(); handleCreateGroup(e); }} className="space-y-3">
+            {groupError && (
+              <div className="rounded-lg bg-red-500/15 border border-red-500/30 px-3 py-2 text-sm text-red-400">
+                {groupError}
+              </div>
+            )}
             <input
               type="text"
               value={newGroupName}
@@ -146,21 +298,139 @@ export function CustomersListSidebar({
             />
             <div className="flex justify-end gap-2">
               <Button type="button" variant="outline" onClick={() => setNewGroupOpen(false)}>Cancel</Button>
-              <Button type="submit" disabled={creatingGroup || !newGroupName.trim()}>
+              <Button
+                type="button"
+                disabled={creatingGroup || !newGroupName.trim()}
+                onClick={() => handleCreateGroup({ preventDefault: () => {} } as React.FormEvent)}
+              >
                 {creatingGroup ? 'Creating…' : 'Create'}
               </Button>
             </div>
           </form>
         </DialogContent>
       </Dialog>
+      <Dialog open={!!renameGroup} onOpenChange={(open) => { if (!open) { setRenameGroup(null); setRenameError(null); } }}>
+        <DialogContent className="max-w-sm">
+          <DialogClose onClick={() => { setRenameGroup(null); setRenameError(null); }} />
+          <DialogHeader>
+            <DialogTitle className="text-[var(--text)]">Rename group</DialogTitle>
+          </DialogHeader>
+          {renameError && (
+            <div className="rounded-lg bg-red-500/15 border border-red-500/30 px-3 py-2 text-sm text-red-400">
+              {renameError}
+            </div>
+          )}
+          <input
+            type="text"
+            value={renameValue}
+            onChange={(e) => setRenameValue(e.target.value)}
+            placeholder="Group name"
+            className="flex h-10 w-full rounded-lg border border-[var(--border)] bg-[var(--surface-1)] px-3 py-2 text-sm text-[var(--text-1)]"
+          />
+          <div className="flex justify-end gap-2">
+            <Button type="button" variant="outline" onClick={() => { setRenameGroup(null); setRenameError(null); }}>Cancel</Button>
+            <Button type="button" disabled={renaming || !renameValue.trim()} onClick={handleRename}>
+              {renaming ? 'Saving…' : 'Save'}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+      <Dialog open={!!deleteGroup} onOpenChange={(open) => { if (!open) { setDeleteGroup(null); setDeleteError(null); } }}>
+        <DialogContent className="max-w-sm">
+          <DialogClose onClick={() => { setDeleteGroup(null); setDeleteError(null); }} />
+          <DialogHeader>
+            <DialogTitle className="text-[var(--text)]">Delete group</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm" style={{ color: 'var(--text-2)' }}>
+            Delete &quot;{deleteGroup?.name}&quot;? Customers in this group will not be removed; only the group is deleted.
+          </p>
+          {deleteError && (
+            <div className="rounded-lg bg-red-500/15 border border-red-500/30 px-3 py-2 text-sm text-red-400">
+              {deleteError}
+            </div>
+          )}
+          <div className="flex justify-end gap-2">
+            <Button type="button" variant="outline" onClick={() => { setDeleteGroup(null); setDeleteError(null); }}>Cancel</Button>
+            <Button type="button" variant="destructive" disabled={deleting} onClick={handleDelete}>
+              {deleting ? 'Deleting…' : 'Delete'}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+      <Dialog open={addExistingOpen} onOpenChange={(open) => { setAddExistingOpen(open); if (!open) { setAddExistingError(null); setAddingIds(new Set()); } }}>
+        <DialogContent className="max-w-md max-h-[85vh] flex flex-col">
+          <DialogClose onClick={() => setAddExistingOpen(false)} />
+          <DialogHeader>
+            <DialogTitle className="text-[var(--text)]">Add existing customers to group</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm" style={{ color: 'var(--text-3)' }}>
+            Select customers to add to this group.
+          </p>
+          {addExistingError && (
+            <div className="rounded-lg bg-red-500/15 border border-red-500/30 px-3 py-2 text-sm text-red-400">
+              {addExistingError}
+            </div>
+          )}
+          <div className="flex-1 overflow-y-auto min-h-0 rounded-lg border space-y-1 p-2" style={{ borderColor: 'var(--border)', background: 'var(--surface-1)' }}>
+            {availableToAdd.length === 0 ? (
+              <p className="text-sm py-4 text-center" style={{ color: 'var(--text-3)' }}>
+                All customers are already in this group.
+              </p>
+            ) : (
+              availableToAdd.map((c) => (
+                <label
+                  key={c.id}
+                  className="flex items-center gap-3 rounded-lg px-3 py-2 cursor-pointer hover:bg-white/5"
+                >
+                  <input
+                    type="checkbox"
+                    checked={addingIds.has(c.id)}
+                    onChange={(e) => {
+                      setAddingIds((prev) => {
+                        const next = new Set(prev)
+                        if (e.target.checked) next.add(c.id)
+                        else next.delete(c.id)
+                        return next
+                      })
+                    }}
+                    className="rounded border-[var(--border)]"
+                  />
+                  <span className="text-sm font-medium" style={{ color: 'var(--text-1)' }}>{c.name}</span>
+                  {c.email && <span className="text-xs truncate" style={{ color: 'var(--text-3)' }}>{c.email}</span>}
+                </label>
+              ))
+            )}
+          </div>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button type="button" variant="outline" onClick={() => setAddExistingOpen(false)}>Cancel</Button>
+            <Button
+              type="button"
+              disabled={addingIds.size === 0}
+              onClick={handleAddExistingToGroup}
+            >
+              Add to group ({addingIds.size})
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
       <nav className="flex-1 overflow-y-auto p-2">
         {customers.length === 0 ? (
           <div className="p-4">
-            <EmptyState
-              iconName="Users"
-              headline="No customers yet"
-              subtext="Add a customer with the button above or import from CSV."
-            />
+            {selectedGroupId ? (
+              <EmptyState
+                iconName="Users"
+                headline="No customers in this group"
+                subtext={availableToAdd.length > 0 ? 'Add existing customers from your CRM or add a new customer above.' : 'Add a new customer with the button above, then assign them to this group.'}
+                ctaLabel={availableToAdd.length > 0 ? 'Add existing customers' : undefined}
+                ctaOnClick={availableToAdd.length > 0 ? () => { setAddExistingOpen(true); setAddExistingError(null); setAddingIds(new Set()); } : undefined}
+              />
+            ) : (
+              <EmptyState
+                iconName="Users"
+                headline="No customers yet"
+                subtext="Add a customer with the button above or import from CSV."
+              />
+            )}
           </div>
         ) : filtered.length === 0 ? (
           <p className="p-4 text-sm" style={{ color: 'var(--text-3)' }}>

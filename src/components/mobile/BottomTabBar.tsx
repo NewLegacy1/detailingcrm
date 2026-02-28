@@ -118,7 +118,7 @@ export function BottomTabBar({ role, jobCount = 0, invoiceCount = 0, subscriptio
               New Job
             </Link>
             <Link
-              href={crmPath('/customers')}
+              href={crmPath('/customers?add=1')}
               onClick={() => setCreateOpen(false)}
               className="flex items-center gap-3 px-4 py-3 text-sm font-medium transition-colors hover:bg-[var(--surface-2)]"
               style={{ color: 'var(--text-1)' }}

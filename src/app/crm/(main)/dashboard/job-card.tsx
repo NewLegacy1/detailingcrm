@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { crmPath } from '@/lib/crm-path'
 
 type JobStatus = 'scheduled' | 'en_route' | 'in_progress' | 'done' | 'cancelled' | 'no_show'
 
@@ -51,7 +52,7 @@ export function JobCard({
   })
   const [time, period] = timeStr.split(' ')
   const isInProgress = status === 'in_progress'
-  const href = date ? `/jobs?date=${encodeURIComponent(date)}&job=${encodeURIComponent(id)}` : `/jobs/${id}`
+  const href = date ? crmPath(`/jobs?date=${encodeURIComponent(date)}&job=${encodeURIComponent(id)}`) : crmPath(`/jobs/${id}`)
 
   return (
     <Link
