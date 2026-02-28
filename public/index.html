@@ -796,9 +796,28 @@ footer {
   border-top: 1px solid var(--border);
   padding: 32px 40px;
   display: flex; align-items: center; justify-content: space-between;
+  position: relative;
+  overflow: visible;
 }
-.foot-copy { font-size: 12.5px; color: var(--muted2); }
-.foot-links { display: flex; gap: 24px; }
+.foot-center { display: contents; }
+.foot-copy { font-size: 12.5px; color: var(--muted2); flex: 1; order: 1; }
+.foot-logo {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: auto;
+}
+.foot-logo .logo-img {
+  height: 88px;
+  width: auto;
+  object-fit: contain;
+  filter: drop-shadow(0 0 12px var(--accent-glow));
+}
+.foot-links { display: flex; gap: 24px; flex: 1; order: 3; justify-content: flex-end; }
 .foot-links a {
   font-size: 12.5px; color: var(--muted2);
   text-decoration: none; transition: color 0.2s;
@@ -816,8 +835,6 @@ footer {
 
 /* ── MOBILE ── */
 @media (max-width: 768px) {
-  #features { display: none !important; }
-  .features-header { display: none; }
   nav {
     padding: 0 16px;
     flex-wrap: nowrap;
@@ -925,6 +942,9 @@ footer {
     border-bottom: none;
   }
   nav ul li:last-child {
+    display: none; /* Changelog: hidden on mobile */
+  }
+  nav ul li:last-of-type {
     border-bottom: none;
   }
   nav ul a {
@@ -1185,10 +1205,22 @@ footer {
   .cta-btns .btn-g { width: 100%; justify-content: center; }
 
   footer {
-    flex-direction: column;
-    gap: 20px;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: 24px;
     padding: 28px 20px;
+    justify-content: center;
+  }
+  .foot-logo { display: none; }
+  .foot-center {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
     text-align: center;
+    flex: 1;
+    min-width: 0;
+    gap: 12px;
   }
   .foot-links {
     flex-wrap: wrap;
@@ -1555,16 +1587,18 @@ footer {
 </section>
 
 <footer>
-  <a class="logo" href="/">
+  <div class="foot-center">
+    <div class="foot-copy">© 2025 DetailOps. Built for detailers, by people who get it.</div>
+    <div class="foot-links">
+      <a href="/privacy.html">Privacy</a>
+      <a href="/terms.html">Terms</a>
+      <a href="#">Support</a>
+      <a href="#">Contact</a>
+    </div>
+  </div>
+  <a class="logo foot-logo" href="/">
     <img src="/detailopslogo.png" alt="DetailOps" class="logo-img" width="200" height="52">
   </a>
-  <div class="foot-copy">© 2025 DetailOps. Built for detailers, by people who get it.</div>
-  <div class="foot-links">
-    <a href="/privacy.html">Privacy</a>
-    <a href="/terms.html">Terms</a>
-    <a href="#">Support</a>
-    <a href="#">Contact</a>
-  </div>
 </footer>
 
 <script>

@@ -61,17 +61,19 @@ nav {
   z-index: 500; height: 60px;
   display: flex; align-items: center; justify-content: space-between;
   padding: 0 40px;
-  background: rgba(7,9,12,0.85);
+  background: rgba(7,9,12,0.75);
   backdrop-filter: blur(24px);
   -webkit-backdrop-filter: blur(24px);
   border-bottom: 1px solid var(--border);
+  overflow: visible;
 }
 .logo {
   display: flex; align-items: center; justify-content: flex-start;
   font-family: var(--font-display); text-decoration: none;
+  position: relative;
 }
 .logo-img {
-  height: 40px; width: auto; object-fit: contain; display: block;
+  height: 88px; width: auto; object-fit: contain; display: block;
   filter: drop-shadow(0 0 12px var(--accent-glow));
 }
 .logo-ops { color: var(--accent); }
@@ -111,6 +113,7 @@ nav ul a:hover, nav ul a.active { color: var(--white); }
 .nav-toggle[aria-expanded="true"] span:nth-child(1) { transform: translateY(7px) rotate(45deg); }
 .nav-toggle[aria-expanded="true"] span:nth-child(2) { opacity: 0; }
 .nav-toggle[aria-expanded="true"] span:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
+.nav-backdrop { display: none; }
 
 /* ── BLOG HERO ── */
 .blog-hero {
@@ -329,9 +332,26 @@ footer {
   background: var(--surface); border-top: 1px solid var(--border);
   padding: 32px 40px;
   display: flex; align-items: center; justify-content: space-between;
+  position: relative;
+  overflow: visible;
 }
-.foot-copy { font-size: 12.5px; color: var(--muted2); }
-.foot-links { display: flex; gap: 24px; }
+.foot-center { display: contents; }
+.foot-copy { font-size: 12.5px; color: var(--muted2); flex: 1; order: 1; }
+.foot-logo {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: auto;
+}
+.foot-logo .logo-img {
+  height: 88px; width: auto; object-fit: contain;
+  filter: drop-shadow(0 0 12px var(--accent-glow));
+}
+.foot-links { display: flex; gap: 24px; flex: 1; order: 3; justify-content: flex-end; }
 .foot-links a {
   font-size: 12.5px; color: var(--muted2);
   text-decoration: none; transition: color 0.2s;
@@ -340,21 +360,72 @@ footer {
 
 /* ── MOBILE ── */
 @media (max-width: 768px) {
-  nav { padding: 0 16px; }
-  .nav-toggle { display: flex; }
-  .logo { flex: 1; justify-content: center; }
-  .logo-img { height: 48px; }
-  nav ul {
-    position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-    background: var(--bg); flex-direction: column;
-    align-items: center; justify-content: center;
-    gap: 8px; transform: none; left: 0;
-    opacity: 0; visibility: hidden; pointer-events: none;
-    transition: opacity 0.25s, visibility 0.25s; z-index: 501;
+  nav { padding: 0 16px; flex-wrap: nowrap; align-items: center; z-index: 10002; }
+  .nav-toggle { display: flex; order: 1; flex: 0 0 auto; z-index: 10002; position: relative; }
+  .logo {
+    order: 2; flex: 1; min-width: 0; justify-content: center; align-items: center;
+    display: flex; height: 60px; position: absolute; left: 50%;
+    transform: translateX(-50%); pointer-events: none; z-index: 0;
   }
-  nav ul.is-open { opacity: 1; visibility: visible; pointer-events: auto; }
-  nav ul a { font-size: 18px; padding: 12px 20px; }
+  .logo img.logo-img { pointer-events: auto; }
+  .logo-img {
+    height: 48px; width: auto; margin: 0;
+    transform: scale(2); transform-origin: center center;
+  }
+  .nav-r {
+    order: 3; flex: 0 0 auto; justify-content: flex-end; min-width: 0;
+    position: relative; z-index: 1;
+  }
+  nav ul {
+    position: fixed; top: 0; right: 0; bottom: 0; left: auto;
+    width: min(280px, 88vw); max-width: 100%; margin: 0;
+    background: rgba(12,16,24,0.97);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    border-left: 1px solid var(--border);
+    box-shadow: -4px 0 24px rgba(0,0,0,0.2);
+    flex-direction: column; align-items: stretch; justify-content: flex-start;
+    padding: max(72px, calc(env(safe-area-inset-top) + 12px)) 20px 24px;
+    padding-bottom: max(24px, env(safe-area-inset-bottom));
+    gap: 2px;
+    transform: translateX(100%);
+    opacity: 1; visibility: hidden; pointer-events: none;
+    transition: transform 0.28s ease, visibility 0.28s, pointer-events 0s 0.28s;
+    z-index: 10001; overflow-y: visible; min-height: 100vh;
+    isolation: isolate; list-style: none;
+  }
+  nav ul.is-open {
+    transform: translateX(0);
+    visibility: visible; pointer-events: auto;
+    transition: transform 0.28s ease, visibility 0.28s;
+  }
+  .nav-backdrop {
+    display: block;
+    position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(7,9,12,0.5);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    z-index: 10000;
+    opacity: 0; visibility: hidden; pointer-events: none;
+    transition: opacity 0.25s ease, visibility 0.25s;
+  }
+  nav ul.is-open ~ .nav-backdrop {
+    opacity: 1; visibility: visible; pointer-events: auto;
+  }
+  nav ul li { border-bottom: none; }
+  nav ul a {
+    font-size: 15px; font-weight: 500;
+    padding: 12px 16px; display: block; width: 100%;
+    text-align: left; border-radius: 8px;
+    color: var(--muted); text-decoration: none;
+    transition: color 0.2s, background 0.2s;
+  }
+  nav ul a:hover {
+    background: var(--accent-dim);
+    color: var(--white);
+  }
   .nav-r .nav-login { display: none; }
+  .nav-r .nav-cta { padding: 10px 18px; font-size: 13px; }
 
   .blog-hero { padding: 90px 20px 48px; }
   .blog-body { padding: 0 20px 60px; }
@@ -367,8 +438,22 @@ footer {
   .post-cta-btn { width: 100%; text-align: center; }
 
   footer {
-    flex-direction: column; gap: 20px;
-    padding: 28px 20px; text-align: center;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: 24px;
+    padding: 28px 20px;
+    justify-content: center;
+  }
+  .foot-logo { display: none; }
+  .foot-center {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    flex: 1;
+    min-width: 0;
+    gap: 12px;
   }
   .foot-links { flex-wrap: wrap; justify-content: center; gap: 16px; }
 }
@@ -390,9 +475,10 @@ footer {
   <ul id="blog-nav-menu">
     <li><a href="index.html#features">Features</a></li>
     <li><a href="index.html#pricing">Pricing</a></li>
-    <li><a href="index.html#how">How It Works</a></li>
+    <li><a href="index.html#how-it-works">How It Works</a></li>
     <li><a href="blog.html" class="active">Blog</a></li>
   </ul>
+  <div class="nav-backdrop" id="blog-nav-backdrop" aria-hidden="true"></div>
   <div class="nav-r">
     <a class="nav-login" href="/login">Sign in</a>
     <a class="nav-cta" href="onboarding.html">Get Started Free</a>
@@ -407,22 +493,35 @@ footer {
 </div>
 
 <footer>
-  <a class="logo" href="/">
+  <div class="foot-center">
+    <div class="foot-copy">© 2025 DetailOps. Built for detailers, by people who get it.</div>
+    <div class="foot-links">
+      <a href="/privacy.html">Privacy</a>
+      <a href="/terms.html">Terms</a>
+      <a href="#">Support</a>
+      <a href="blog.html">Blog</a>
+    </div>
+  </div>
+  <a class="logo foot-logo" href="/">
     <img src="/detailopslogo.png" alt="DetailOps" class="logo-img" width="200" height="52">
   </a>
-  <div class="foot-copy">© 2025 DetailOps. Built for detailers, by people who get it.</div>
-  <div class="foot-links">
-    <a href="/privacy.html">Privacy</a>
-    <a href="/terms.html">Terms</a>
-    <a href="#">Support</a>
-    <a href="blog.html">Blog</a>
-  </div>
 </footer>
 
 <script>
-// ── Hamburger nav ──────────────────────────────────────────
+// ── Hamburger nav (matches index.html: backdrop close, link close) ───
 const navMenu = document.getElementById('blog-nav-menu');
 const navToggle = document.querySelector('.nav-toggle');
+const navBackdrop = document.getElementById('blog-nav-backdrop');
+
+function closeNav() {
+  if (navMenu) navMenu.classList.remove('is-open');
+  if (navToggle) {
+    navToggle.setAttribute('aria-expanded', 'false');
+    navToggle.setAttribute('aria-label', 'Open menu');
+  }
+  document.body.style.overflow = '';
+}
+
 if (navToggle && navMenu) {
   navToggle.addEventListener('click', () => {
     const open = navMenu.classList.toggle('is-open');
@@ -431,13 +530,10 @@ if (navToggle && navMenu) {
     document.body.style.overflow = open ? 'hidden' : '';
   });
   navMenu.querySelectorAll('a').forEach(link => {
-    link.addEventListener('click', () => {
-      navMenu.classList.remove('is-open');
-      navToggle.setAttribute('aria-expanded', 'false');
-      document.body.style.overflow = '';
-    });
+    link.addEventListener('click', () => { closeNav(); });
   });
 }
+if (navBackdrop) navBackdrop.addEventListener('click', closeNav);
 
 // ── Category colours ───────────────────────────────────────
 const CAT_COLOR = {
