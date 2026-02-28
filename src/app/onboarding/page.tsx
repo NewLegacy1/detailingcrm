@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import Image from 'next/image'
 
 type Feature = string | { text: string; note: string }
 
@@ -120,24 +119,11 @@ export default function OnboardingPaywallPage() {
 
   return (
     <div
-      className="auth-hero-bg min-h-screen w-full flex flex-col items-center justify-start px-4 pt-3 pb-14"
+      className="auth-hero-bg auth-hero-bg--no-glow min-h-screen w-full flex flex-col items-center justify-start px-4 pt-3 pb-14"
       style={{ fontFamily: "'Figtree', system-ui, sans-serif" }}
     >
-      <div className="auth-hero-glow" aria-hidden />
-      {/* Logo - prominent at top */}
-      <Link href="/" className="mb-4 relative z-[1] shrink-0">
-        <Image
-          src="/detailopslogo.png"
-          alt="DetailOps"
-          width={400}
-          height={105}
-          className="h-32 w-auto object-contain opacity-95"
-          priority
-        />
-      </Link>
-
       {/* Header */}
-      <div className="text-center mb-2 max-w-xl relative z-[1] -mt-0.5">
+      <div className="text-center mb-2 max-w-xl relative z-[1] pt-2">
         <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight mb-2" style={{ color: '#eef0f2', letterSpacing: '-0.5px' }}>
           Simple, transparent pricing.
         </h1>

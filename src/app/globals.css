@@ -220,19 +220,23 @@ body {
   inset: 0;
   background-image: radial-gradient(circle, rgba(0,184,245,0.18) 1px, transparent 1px);
   background-size: 36px 36px;
-  mask-image: radial-gradient(ellipse 70% 55% at 50% 25%, black 20%, transparent 80%);
-  -webkit-mask-image: radial-gradient(ellipse 70% 55% at 50% 25%, black 20%, transparent 80%);
+  /* Softer mask: larger ellipse, gradual fade so no hard cutoff */
+  mask-image: radial-gradient(ellipse 120% 90% at 50% 20%, black 0%, black 10%, transparent 75%);
+  -webkit-mask-image: radial-gradient(ellipse 120% 90% at 50% 20%, black 0%, black 10%, transparent 75%);
   pointer-events: none;
   z-index: 0;
 }
 .auth-hero-glow {
   position: absolute;
-  top: 0;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 900px;
-  height: 500px;
-  background: radial-gradient(ellipse at 50% 0%, rgba(0,184,245,0.09) 0%, transparent 65%);
+  /* Extend above the card so glow bleeds up and doesn’t cut off at top of box */
+  inset: 0;
+  background: radial-gradient(
+    ellipse 80% 70% at 50% 25%,
+    rgba(0,184,245,0.07) 0%,
+    rgba(0,184,245,0.035) 40%,
+    rgba(0,184,245,0.01) 70%,
+    transparent 100%
+  );
   pointer-events: none;
   z-index: 0;
 }
@@ -240,4 +244,10 @@ body {
 .auth-hero-bg > *:not(.auth-hero-glow) {
   position: relative;
   z-index: 1;
+}
+/* Full-width pages (e.g. onboarding): no ellipse mask so no glow cutoff, even dot pattern */
+.auth-hero-bg--no-glow::after {
+  mask-image: none;
+  -webkit-mask-image: none;
+  opacity: 0.6;
 }
