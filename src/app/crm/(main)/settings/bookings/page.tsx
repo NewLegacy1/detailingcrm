@@ -4,10 +4,12 @@ import { crmPath } from '@/lib/crm-path'
 import { GoogleCalendarCard } from '@/components/settings/google-calendar-card'
 import { ScheduleHoursForm } from '@/components/settings/schedule-hours-form'
 import { TimezoneForm } from '@/components/settings/timezone-form'
+import { IntegrationsAlerts } from '../integrations/integrations-alerts'
 
 export default function SettingsBookingsPage() {
   return (
     <div className="space-y-8">
+      <IntegrationsAlerts />
       <div>
         <h1 className="page-title text-[var(--text)]">Schedule</h1>
         <p className="text-sm text-[var(--text-muted)] mt-1">

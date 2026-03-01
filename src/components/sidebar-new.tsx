@@ -123,7 +123,7 @@ export function SidebarNew({
           text-transform: uppercase;
           color: var(--text-3);
           margin-bottom: 8px;
-          padding-left: 12px;
+          padding-left: 0;
         }
         .sidebar-section-label::after {
           content: '';
@@ -135,7 +135,7 @@ export function SidebarNew({
           display: flex;
           align-items: center;
           gap: 10px;
-          padding: 10px 12px;
+          padding: 10px 12px 10px 0;
           margin-bottom: 2px;
           border-radius: 7px;
           border: 1px solid transparent;
@@ -238,13 +238,22 @@ export function SidebarNew({
             pointerEvents: 'none',
           }}
         />
-        <div className="sidebar-nav-scroll" style={{ padding: '16px 12px 0', flex: '1 1 auto', overflowY: 'auto', minHeight: 0, position: 'relative', zIndex: 2 }}>
-          {/* Logo – use company logo from settings when set */}
-          <Link href={crmPath('/dashboard')} style={{ display: 'block', marginBottom: 12 }}>
+        <div className="sidebar-nav-scroll" style={{ padding: '0 12px 0', flex: '1 1 auto', overflowY: 'auto', minHeight: 0, position: 'relative', zIndex: 2 }}>
+          {/* Logo – dedicated header zone with breathing room and bottom border */}
+          <Link
+            href={crmPath('/dashboard')}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              padding: '18px 0 14px',
+              marginBottom: 14,
+              borderBottom: '1px solid var(--border)',
+            }}
+          >
             {avatarUrl?.trim() ? (
-              <img src={avatarUrl} alt="Logo" style={{ height: 40, width: 'auto', maxWidth: '100%', objectFit: 'contain', display: 'block' }} />
+              <img src={avatarUrl} alt="Logo" style={{ height: 36, width: 'auto', maxWidth: '100%', objectFit: 'contain', display: 'block' }} />
             ) : (
-              <img src="/detailopslogo.png" alt="DetailOps" style={{ height: 40, width: 'auto', maxWidth: '100%', objectFit: 'contain', display: 'block' }} />
+              <img src="/detailopslogo.png" alt="DetailOps" style={{ height: 36, width: 'auto', maxWidth: '100%', objectFit: 'contain', display: 'block' }} />
             )}
           </Link>
           {/* Create new dropdown */}
@@ -456,6 +465,15 @@ export function SidebarNew({
               SIGN_OUT
             </span>
           </button>
+          <a
+            href="https://newlegacyai.ca"
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{ display: 'block', marginTop: 10, fontSize: 10, color: 'var(--text-3)', textDecoration: 'none', opacity: 0.8 }}
+            className="hover:underline"
+          >
+            Developed by New Legacy
+          </a>
         </div>
       </aside>
       {/* Mobile menu button */}

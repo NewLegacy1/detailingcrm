@@ -34,6 +34,9 @@
 html { scroll-behavior: smooth; }
 body {
   background: var(--bg);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='400' viewBox='0 0 400 400'%3E%3Cg fill='none' stroke='%2300b8f5' stroke-width='0.4' opacity='0.07'%3E%3Cpath d='M0,50 C80,30 120,70 200,50 S320,30 400,50'/%3E%3Cpath d='M0,100 C100,80 300,120 400,100'/%3E%3Cpath d='M0,150 C50,130 350,170 400,150'/%3E%3Cpath d='M0,200 C150,170 250,230 400,200'/%3E%3Cpath d='M0,250 C80,220 320,280 400,250'/%3E%3Cpath d='M0,300 C200,270 200,330 400,300'/%3E%3Cpath d='M0,350 C100,320 300,380 400,350'/%3E%3Cpath d='M50,0 C70,80 30,320 50,400'/%3E%3Cpath d='M150,0 C170,100 130,300 150,400'/%3E%3Cpath d='M250,0 C230,80 270,320 250,400'/%3E%3Cpath d='M350,0 C330,100 370,300 350,400'/%3E%3C/g%3E%3C/svg%3E");
+  background-size: 400px 400px;
+  background-position: 0 0;
   color: var(--white);
   font-family: var(--font-body);
   font-weight: 300;
@@ -41,12 +44,12 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-/* Grain overlay */
+/* Subtle grain overlay */
 body::after {
   content: '';
   position: fixed;
   inset: 0;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)' opacity='0.02'/%3E%3C/svg%3E");
   pointer-events: none;
   z-index: 9999;
   opacity: 0.5;
@@ -75,7 +78,7 @@ nav {
   position: relative;
 }
 .logo-img {
-  height: 88px;
+  height: 32px;
   width: auto;
   object-fit: contain;
   display: block;
@@ -154,7 +157,6 @@ nav ul a:hover { color: var(--white); }
   overflow: hidden;
   text-align: center;
 }
-
 .hero-dots {
   position: absolute;
   inset: 0;
@@ -226,6 +228,8 @@ nav ul a:hover { color: var(--white); }
   animation: a-up 0.65s 0.28s both;
 }
 .hero-sub strong { color: var(--white); font-weight: 500; }
+
+.br-mobile { display: none; }
 
 .hero-proof {
   display: flex; flex-direction: column; align-items: center;
@@ -521,34 +525,38 @@ td.dm { color: var(--muted); }
 .sec-h em { font-style: italic; font-family: var(--font-serif); font-weight: 400; color: var(--accent); }
 .sec-p { font-size: 15.5px; color: var(--muted); line-height: 1.7; max-width: 460px; margin-bottom: 52px; }
 
-.prob-grid {
-  display: grid; grid-template-columns: repeat(3,1fr);
-  gap: 1px; background: var(--border);
-  border: 1px solid var(--border); border-radius: 14px; overflow: hidden;
+.prob-rows { max-width: 1080px; margin: 0 auto; }
+.prob-row {
+  display: grid;
+  grid-template-columns: 120px 1fr 1fr;
+  gap: 24px 32px;
+  align-items: start;
+  padding: 36px 0;
+  border-bottom: 1px solid var(--border);
 }
-.prob-card {
-  background: var(--card); padding: 36px 32px;
-  position: relative; overflow: hidden;
-  transition: background 0.2s;
-}
-.prob-card:hover { background: #131c26; }
-.prob-card::after {
-  content:''; position: absolute;
-  bottom:0; left:0; right:0; height:2px;
-  background: linear-gradient(90deg, transparent, var(--accent), transparent);
-  opacity:0; transition: opacity 0.3s;
-}
-.prob-card:hover::after { opacity:0.5; }
-.prob-ghost {
+.prob-row:last-child { border-bottom: none; }
+.prob-num {
   font-family: var(--font-serif);
-  font-size: 80px; font-style: italic; font-weight: 300;
-  color: rgba(255,255,255,0.03);
-  position: absolute; top: 10px; right: 20px;
-  line-height: 1; pointer-events: none;
+  font-size: clamp(48px, 8vw, 96px);
+  font-style: italic;
+  font-weight: 300;
+  line-height: 1;
+  color: rgba(0,184,245,0.25);
+  margin-top: -0.1em;
 }
-.prob-ico { font-size: 24px; margin-bottom: 18px; display: block; }
-.prob-card h3 { font-size: 15.5px; font-weight: 700; margin-bottom: 10px; letter-spacing: -0.2px; }
-.prob-card p { font-size: 13.5px; color: var(--muted); line-height: 1.65; }
+.prob-heading {
+  font-size: clamp(18px, 2.5vw, 22px);
+  font-weight: 700;
+  letter-spacing: -0.3px;
+  margin: 0;
+  color: var(--white);
+}
+.prob-body {
+  font-size: 15px;
+  color: var(--muted);
+  line-height: 1.65;
+  margin: 0;
+}
 
 .feat-layout {
   display: grid; grid-template-columns: 360px 1fr;
@@ -586,6 +594,13 @@ td.dm { color: var(--muted); }
 }
 .fp-dot { width: 9px; height: 9px; border-radius: 50%; }
 .bp-body { padding: 24px; }
+.fp-crm-wrap {
+  height: 440px; min-height: 360px;
+  background: var(--card2);
+}
+.fp-crm-iframe {
+  width: 100%; height: 100%; border: 0; display: block;
+}
 .bp-hd {
   display: flex; align-items: center; gap: 12px;
   padding-bottom: 18px; margin-bottom: 18px;
@@ -633,56 +648,156 @@ td.dm { color: var(--muted); }
 .book-btn:hover { background: #33c9ff; }
 .bp-powered { text-align: center; font-size: 11px; color: var(--muted2); margin-top: 10px; }
 
-.how-grid {
-  display: grid; grid-template-columns: repeat(3,1fr);
-  gap: 1px; background: var(--border);
-  border: 1px solid var(--border); border-radius: 14px; overflow: hidden;
-  max-width: 1080px; margin: 0 auto;
-}
-.how-card {
-  background: var(--card); padding: 36px 32px;
+.how-stepper {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+  max-width: 1080px;
+  margin: 0 auto;
   position: relative;
 }
-.how-ico {
-  width: 40px; height: 40px; border-radius: 9px;
-  background: var(--accent-dim); border: 1px solid rgba(0,184,245,0.15);
-  display: flex; align-items: center; justify-content: center;
-  font-size: 17px; margin-bottom: 20px;
-  position: absolute; top: 32px; right: 32px;
+.how-stepper::before {
+  content: '';
+  position: absolute;
+  top: 28px;
+  left: 80px;
+  right: 80px;
+  height: 0;
+  border-top: 2px dashed rgba(0,184,245,0.4);
+  z-index: 0;
 }
-.how-n {
-  font-family: var(--font-serif);
-  font-size: 12px; font-style: italic; color: var(--accent);
-  letter-spacing: 0.5px; margin-bottom: 16px; display: block;
+.how-step {
+  flex: 1;
+  min-width: 0;
+  text-align: center;
+  position: relative;
+  z-index: 1;
 }
-.how-card h3 { font-size: 16px; font-weight: 700; margin-bottom: 10px; letter-spacing: -0.2px; }
-.how-card p { font-size: 13.5px; color: var(--muted); line-height: 1.65; }
+.how-step-num {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  border: 2px solid var(--accent);
+  background: var(--bg);
+  color: var(--accent);
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 20px;
+}
+.how-step h3 {
+  font-size: 16px;
+  font-weight: 700;
+  margin-bottom: 10px;
+  letter-spacing: -0.2px;
+  color: var(--white);
+}
+.how-step p {
+  font-size: 13.5px;
+  color: var(--muted);
+  line-height: 1.65;
+  margin: 0;
+  max-width: 280px;
+  margin-left: auto;
+  margin-right: auto;
+}
 
-.trust-grid {
-  display: grid; grid-template-columns: repeat(4,1fr);
-  gap: 14px; max-width: 1080px; margin: 0 auto;
+.trust-list {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 28px 48px;
+  max-width: 720px;
+  margin: 0 auto;
+  list-style: none;
 }
-.trust-card {
-  background: var(--card); border: 1px solid var(--border);
-  border-radius: 12px; padding: 26px 22px;
-  transition: border-color 0.2s, transform 0.2s;
+.trust-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
 }
-.trust-card:hover { border-color: rgba(0,184,245,0.2); transform: translateY(-2px); }
-.trust-ico { font-size: 20px; margin-bottom: 14px; display: block; }
-.trust-card h4 { font-size: 13.5px; font-weight: 700; margin-bottom: 7px; }
-.trust-card p { font-size: 12.5px; color: var(--muted); line-height: 1.6; }
+.trust-check {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: rgba(0,184,245,0.2);
+  color: var(--accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 700;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+.trust-item-content { min-width: 0; }
+.trust-item-content strong {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--white);
+  display: block;
+  margin-bottom: 4px;
+}
+.trust-item-content span {
+  font-size: 13px;
+  color: var(--muted);
+  line-height: 1.55;
+}
 
 .testi-grid {
-  display: grid; grid-template-columns: repeat(3,1fr);
-  gap: 14px; max-width: 1080px; margin: 0 auto;
+  display: grid;
+  grid-template-columns: 1fr 1.15fr 1fr;
+  gap: 16px;
+  align-items: stretch;
+  max-width: 1080px;
+  margin: 0 auto;
 }
 .testi-card {
-  background: var(--card); border: 1px solid var(--border);
-  border-radius: 14px; padding: 28px 26px;
-  display: flex; flex-direction: column; gap: 18px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 22px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
   transition: border-color 0.2s, transform 0.2s;
 }
-.testi-card:hover { border-color: rgba(0,184,245,0.15); transform: translateY(-3px); }
+.testi-card.testi-side {
+  opacity: 0.82;
+  padding: 20px 18px;
+}
+.testi-card.testi-side .testi-q { font-size: 13px; }
+.testi-card.testi-featured {
+  padding: 32px 28px;
+  border-color: rgba(0,184,245,0.35);
+  box-shadow: 0 0 40px rgba(0,184,245,0.12);
+  position: relative;
+  min-height: 260px;
+}
+.testi-card.testi-featured .testi-q {
+  font-size: 15px;
+  line-height: 1.75;
+  position: relative;
+  z-index: 1;
+}
+.testi-card.testi-featured .testi-q::before {
+  content: '"';
+  position: absolute;
+  left: -4px;
+  top: -20px;
+  font-family: var(--font-serif);
+  font-size: 120px;
+  font-style: italic;
+  line-height: 1;
+  color: rgba(0,184,245,0.15);
+  pointer-events: none;
+  z-index: 0;
+}
+.testi-card:hover { border-color: rgba(0,184,245,0.15); transform: translateY(-2px); }
+.testi-card.testi-featured:hover { border-color: rgba(0,184,245,0.45); }
 .testi-stars { color: var(--amber); font-size: 13px; letter-spacing: 2px; }
 .testi-q { font-size: 14px; color: #bcc8d4; line-height: 1.72; font-style: italic; flex: 1; }
 .testi-meta {
@@ -835,6 +950,7 @@ footer {
 
 /* ── MOBILE ── */
 @media (max-width: 768px) {
+  .br-mobile { display: block; }
   nav {
     padding: 0 16px;
     flex-wrap: nowrap;
@@ -859,11 +975,9 @@ footer {
     pointer-events: auto;
   }
   .logo-img {
-    height: 48px;
+    height: 40px;
     width: auto;
     margin: 0;
-    transform: scale(2);
-    transform-origin: center center;
   }
   .nav-toggle {
     order: 1;
@@ -942,7 +1056,7 @@ footer {
     border-bottom: none;
   }
   nav ul li:last-child {
-    display: none; /* Changelog: hidden on mobile */
+    display: none; /* hide on mobile */
   }
   nav ul li:last-of-type {
     border-bottom: none;
@@ -974,8 +1088,9 @@ footer {
     min-height: auto;
   }
   .hero-h1 { margin-bottom: 8px; }
-  .h1-top { font-size: clamp(18px, 5vw, 40px); }
+  .h1-top { font-size: clamp(32px, 8vw, 48px); }
   .h1-bottom { font-size: clamp(36px, 10vw, 52px); }
+  #features { display: none !important; }
   .hero-sub {
     font-size: 15px;
     margin: 20px auto 28px;
@@ -1130,12 +1245,14 @@ footer {
   .sec-h { font-size: clamp(26px, 6vw, 36px); margin-bottom: 12px; }
   .sec-p { font-size: 14px; margin-bottom: 32px; }
 
-  .prob-grid {
+  .prob-rows { padding: 0 20px; }
+  .prob-row {
     grid-template-columns: 1fr;
-    gap: 0;
-    border-radius: 12px;
+    gap: 8px 0;
+    padding: 28px 0;
   }
-  .prob-card { padding: 28px 24px; }
+  .prob-num { font-size: 56px; }
+  .prob-heading { font-size: 18px; }
 
   .feat-layout {
     grid-template-columns: 1fr;
@@ -1157,24 +1274,41 @@ footer {
   .svc-n { font-size: 12px; }
   .svc-d, .svc-p { font-size: 11px; }
 
-  .how-grid {
-    grid-template-columns: 1fr;
-    border-radius: 12px;
+  .how-stepper {
+    flex-direction: column;
+    gap: 32px;
+    padding-left: 20px;
+    margin-left: 20px;
+    border-left: 2px dashed rgba(0,184,245,0.4);
   }
-  .how-card { padding: 28px 24px; }
-  .how-ico { position: static; margin-bottom: 12px; }
+  .how-stepper::before { display: none; }
+  .how-step { text-align: left; }
+  .how-step-num {
+    margin: 0 0 12px 0;
+    width: 44px;
+    height: 44px;
+    font-size: 16px;
+  }
+  .how-step p { margin-left: 0; margin-right: 0; max-width: none; }
 
-  .trust-grid {
+  .trust-list {
     grid-template-columns: 1fr;
-    gap: 12px;
+    gap: 24px;
+    padding: 0 20px;
   }
-  .trust-card { padding: 22px 20px; }
 
   .testi-grid {
     grid-template-columns: 1fr;
-    gap: 12px;
+    gap: 16px;
+    padding: 0 20px;
   }
-  .testi-card { padding: 22px 20px; }
+  .testi-card.testi-side,
+  .testi-card.testi-featured {
+    padding: 22px 20px;
+    min-height: 0;
+  }
+  .testi-card.testi-featured .testi-q::before { font-size: 80px; top: -10px; }
+  .testi-card.testi-featured .testi-q { font-size: 14px; }
 
   .pricing-wrap {
     grid-template-columns: 1fr;
@@ -1246,7 +1380,6 @@ footer {
     <li><a href="#pricing">Pricing</a></li>
     <li><a href="#how-it-works">How It Works</a></li>
     <li><a href="/blog.html">Blog</a></li>
-    <li><a href="#">Changelog</a></li>
   </ul>
   <div class="nav-backdrop" id="nav-backdrop" aria-hidden="true"></div>
   <div class="nav-r">
@@ -1265,7 +1398,7 @@ footer {
   </div>
 
   <div class="hero-h1">
-    <span class="h1-top">The smarter way to run your</span>
+    <span class="h1-top">The smarter way <br class="br-mobile">to run your</span>
     <span class="h1-bottom">detailing business</span>
   </div>
 
@@ -1279,7 +1412,7 @@ footer {
   </div>
 
   <div class="hero-btns">
-    <a class="btn-p" href="/signup">Get Started</a>
+    <a class="btn-p" href="/signup">Preview My Booking Page</a>
   </div>
 
   <div class="mockup-outer">
@@ -1323,24 +1456,21 @@ footer {
     <div class="tag rv">The Problem</div>
     <h2 class="sec-h rv">Running your business <em>shouldn't feel like this.</em></h2>
     <p class="sec-p rv">Most detailers are losing thousands every month to problems that are completely fixable.</p>
-    <div class="prob-grid">
-      <div class="prob-card rv">
-        <div class="prob-ghost">01</div>
-        <span class="prob-ico">📱</span>
-        <h3>Booking chaos over text</h3>
-        <p>Juggling DMs, missed calls, and double-bookings eats up hours. Time you should spend detailing, not doing admin.</p>
+    <div class="prob-rows">
+      <div class="prob-row rv">
+        <span class="prob-num">01</span>
+        <h3 class="prob-heading">Booking chaos over text</h3>
+        <p class="prob-body">Juggling DMs, missed calls, and double-bookings eats up hours. Time you should spend detailing, not doing admin.</p>
       </div>
-      <div class="prob-card rv d1">
-        <div class="prob-ghost">02</div>
-        <span class="prob-ico">👻</span>
-        <h3>No-shows draining you</h3>
-        <p>Every no-show without a deposit costs you $200+ and a wasted slot. It happens every week and it's completely preventable.</p>
+      <div class="prob-row rv d1">
+        <span class="prob-num">02</span>
+        <h3 class="prob-heading">No-shows draining you</h3>
+        <p class="prob-body">Every no-show without a deposit costs you $200+ and a wasted slot. It happens every week and it's completely preventable.</p>
       </div>
-      <div class="prob-card rv d2">
-        <div class="prob-ghost">03</div>
-        <span class="prob-ico">🔄</span>
-        <h3>Clients never returning</h3>
-        <p>Hundreds of past clients. Zero follow-up. That's a pipeline of recurring revenue walking out the door every single month.</p>
+      <div class="prob-row rv d2">
+        <span class="prob-num">03</span>
+        <h3 class="prob-heading">Clients never returning</h3>
+        <p class="prob-body">Hundreds of past clients. Zero follow-up. That's a pipeline of recurring revenue walking out the door every single month.</p>
       </div>
     </div>
   </div>
@@ -1354,70 +1484,61 @@ footer {
   </div>
   <div class="feat-layout">
     <div class="feat-tabs">
-      <div class="ftab on rv">
-        <div class="ftab-row"><div class="ftab-ico">🔗</div><h4>Your Own Booking Page</h4></div>
-        <p>A professional link for your Instagram bio, Google Business, anywhere. Clients pick, pay, and you're booked — no back-and-forth.</p>
+      <div class="ftab on rv" data-tab="dashboard">
+        <div class="ftab-row"><div class="ftab-ico">📊</div><h4>Dashboard</h4></div>
+        <p>Your command center. Today's jobs, revenue, and activity at a glance.</p>
       </div>
-      <div class="ftab rv d1">
-        <div class="ftab-row"><div class="ftab-ico">💳</div><h4>Deposits via Stripe</h4></div>
-        <p>Collect deposits upfront automatically. Money hits your Stripe directly — we never hold or see your funds.</p>
+      <div class="ftab rv d1" data-tab="invoicing">
+        <div class="ftab-row"><div class="ftab-ico">📄</div><h4>Invoicing</h4></div>
+        <p>Create and send invoices in seconds. Get paid via Stripe or record payments manually.</p>
       </div>
-      <div class="ftab rv d2">
+      <div class="ftab rv d2" data-tab="reminders">
         <div class="ftab-row"><div class="ftab-ico">🔔</div><h4>Automated Reminders</h4></div>
         <p>SMS and email reminders sent automatically before every job. Set it once, forget it forever.</p>
       </div>
-      <div class="ftab rv d3">
+      <div class="ftab rv d3" data-tab="clients">
         <div class="ftab-row"><div class="ftab-ico">📋</div><h4>Client History & Notes</h4></div>
         <p>Every car, every service, every note per client. Know exactly what they need before they even pull up.</p>
       </div>
     </div>
-    <div class="feat-panel rv d1">
+    <div class="feat-panel rv d1" data-panel="dashboard" id="feat-panel-dashboard">
       <div class="fp-bar">
         <div class="fp-dot" style="background:#ff5f57"></div>
         <div class="fp-dot" style="background:#febc2e"></div>
         <div class="fp-dot" style="background:#28c840"></div>
       </div>
-      <div class="bp-body">
-        <div class="bp-hd">
-          <div class="bp-shop-av">🚗</div>
-          <div>
-            <div class="bp-sn">Mike's Auto Detail</div>
-            <div class="bp-sm"><span class="bp-sm-stars">★★★★★</span> 4.9 · Dallas, TX · detailops.io/mikes</div>
-          </div>
-        </div>
-        <div class="bp-slabel">Select a Service</div>
-        <div class="svcs">
-          <div class="svc sel">
-            <div class="svc-l">
-              <div class="svc-check">✓</div>
-              <div><div class="svc-n">Full Interior & Exterior Detail</div><div class="svc-d">⏱ 4 hours</div></div>
-            </div>
-            <div class="svc-p">$280</div>
-          </div>
-          <div class="svc">
-            <div class="svc-l">
-              <div class="svc-check"></div>
-              <div><div class="svc-n">Ceramic Coating</div><div class="svc-d">⏱ 8 hours</div></div>
-            </div>
-            <div class="svc-p">$650</div>
-          </div>
-          <div class="svc">
-            <div class="svc-l">
-              <div class="svc-check"></div>
-              <div><div class="svc-n">Express Wash & Wax</div><div class="svc-d">⏱ 1.5 hours</div></div>
-            </div>
-            <div class="svc-p">$85</div>
-          </div>
-          <div class="svc">
-            <div class="svc-l">
-              <div class="svc-check"></div>
-              <div><div class="svc-n">Paint Correction</div><div class="svc-d">⏱ 6 hours</div></div>
-            </div>
-            <div class="svc-p">$400+</div>
-          </div>
-        </div>
-        <button class="book-btn">Continue — $70 Deposit to Confirm Slot</button>
-        <div class="bp-powered">⚡ Powered by DetailOps · Payments by Stripe</div>
+      <div class="fp-crm-wrap">
+        <iframe src="/demo-crm" title="CRM dashboard demo" class="fp-crm-iframe"></iframe>
+      </div>
+    </div>
+    <div class="feat-panel rv d1" data-panel="invoicing" id="feat-panel-invoicing" style="display:none;">
+      <div class="fp-bar">
+        <div class="fp-dot" style="background:#ff5f57"></div>
+        <div class="fp-dot" style="background:#febc2e"></div>
+        <div class="fp-dot" style="background:#28c840"></div>
+      </div>
+      <div class="fp-crm-wrap">
+        <iframe src="/demo-invoicing" title="Invoicing demo" class="fp-crm-iframe"></iframe>
+      </div>
+    </div>
+    <div class="feat-panel rv d1" data-panel="reminders" id="feat-panel-reminders" style="display:none;">
+      <div class="fp-bar">
+        <div class="fp-dot" style="background:#ff5f57"></div>
+        <div class="fp-dot" style="background:#febc2e"></div>
+        <div class="fp-dot" style="background:#28c840"></div>
+      </div>
+      <div class="fp-crm-wrap">
+        <iframe src="/demo-reminders" title="Automated reminders demo" class="fp-crm-iframe"></iframe>
+      </div>
+    </div>
+    <div class="feat-panel rv d1" data-panel="clients" id="feat-panel-clients" style="display:none;">
+      <div class="fp-bar">
+        <div class="fp-dot" style="background:#ff5f57"></div>
+        <div class="fp-dot" style="background:#febc2e"></div>
+        <div class="fp-dot" style="background:#28c840"></div>
+      </div>
+      <div class="fp-crm-wrap">
+        <iframe src="/demo-clients" title="Client history & notes demo" class="fp-crm-iframe"></iframe>
       </div>
     </div>
   </div>
@@ -1428,22 +1549,19 @@ footer {
     <div class="tag rv">Simple Setup</div>
     <h2 class="sec-h rv">Up and running <em>in 10 minutes.</em></h2>
     <p class="sec-p rv" style="margin-bottom:44px;">No tech experience needed. If you can post on Instagram, you can set up DetailOps.</p>
-    <div class="how-grid">
-      <div class="how-card rv">
-        <div class="how-ico">⚡</div>
-        <span class="how-n">Step 01</span>
+    <div class="how-stepper">
+      <div class="how-step rv">
+        <div class="how-step-num">1</div>
         <h3>Create your account</h3>
         <p>Sign up, connect your Stripe in a few clicks, add your services and pricing. You're live in minutes — not days.</p>
       </div>
-      <div class="how-card rv d1">
-        <div class="how-ico">🔗</div>
-        <span class="how-n">Step 02</span>
+      <div class="how-step rv d1">
+        <div class="how-step-num">2</div>
         <h3>Share your booking link</h3>
         <p>Drop your link in your Instagram bio, Google Business, or text it to clients. They pick a time and pay the deposit themselves.</p>
       </div>
-      <div class="how-card rv d2">
-        <div class="how-ico">💰</div>
-        <span class="how-n">Step 03</span>
+      <div class="how-step rv d2">
+        <div class="how-step-num">3</div>
         <h3>Get paid and detail</h3>
         <p>Clients book, deposit lands in your Stripe, reminders go out automatically. You show up to a full, paid calendar.</p>
       </div>
@@ -1457,7 +1575,7 @@ footer {
     <h2 class="sec-h rv">Don't take our word for it.</h2>
     <p class="sec-p rv" style="margin-bottom:44px;">Here's what detailers are saying after switching to DetailOps.</p>
     <div class="testi-grid">
-      <div class="testi-card rv">
+      <div class="testi-card testi-side rv">
         <div class="testi-stars">★★★★★</div>
         <div class="testi-q">"My no-shows dropped to zero the moment I started requiring deposits. DetailOps paid for itself in literally the first week. I don't know how I ran my business before this."</div>
         <div class="testi-meta">
@@ -1465,7 +1583,7 @@ footer {
           <div><div class="t-name">Marcus Rodriguez</div><div class="t-shop">MR Auto Detailing · Dallas, TX</div></div>
         </div>
       </div>
-      <div class="testi-card rv d1">
+      <div class="testi-card testi-featured rv d1">
         <div class="testi-stars">★★★★★</div>
         <div class="testi-q">"Setup took me 20 minutes. Now I just wake up, check my schedule, and detail. My booking page makes me look way more professional than the guys charging the same prices."</div>
         <div class="testi-meta">
@@ -1473,7 +1591,7 @@ footer {
           <div><div class="t-name">Jordan Thompson</div><div class="t-shop">Pristine Mobile · Miami, FL</div></div>
         </div>
       </div>
-      <div class="testi-card rv d2">
+      <div class="testi-card testi-side rv d2">
         <div class="testi-stars">★★★★★</div>
         <div class="testi-q">"The client history feature alone is worth it. I can see every car I've done for a customer, what products I used, their notes. My clients think I have an insane memory."</div>
         <div class="testi-meta">
@@ -1490,28 +1608,36 @@ footer {
     <div class="tag rv">Security & Trust</div>
     <h2 class="sec-h rv">Your money. Your clients. <em>Always.</em></h2>
     <p class="sec-p rv">Connecting your payment info is a big deal. Here's exactly how we protect you.</p>
-    <div class="trust-grid">
-      <div class="trust-card rv">
-        <span class="trust-ico">💳</span>
-        <h4>Direct Stripe Payouts</h4>
-        <p>Money flows straight into your Stripe. We never hold, touch, or see your funds at any point.</p>
-      </div>
-      <div class="trust-card rv d1">
-        <span class="trust-ico">🔐</span>
-        <h4>Bank-Level Encryption</h4>
-        <p>All data encrypted in transit and at rest. We follow the same standards as financial institutions.</p>
-      </div>
-      <div class="trust-card rv d2">
-        <span class="trust-ico">🤝</span>
-        <h4>Cancel Anytime</h4>
-        <p>No long-term contracts, no cancellation fees. We earn your business every single month.</p>
-      </div>
-      <div class="trust-card rv d3">
-        <span class="trust-ico">💬</span>
-        <h4>Real Human Support</h4>
-        <p>Chat with a real person who understands the detailing business. We respond in hours, not days.</p>
-      </div>
-    </div>
+    <ul class="trust-list">
+      <li class="trust-item rv">
+        <span class="trust-check">✓</span>
+        <div class="trust-item-content">
+          <strong>Direct Stripe Payouts</strong>
+          <span>Money flows straight into your Stripe. We never hold, touch, or see your funds at any point.</span>
+        </div>
+      </li>
+      <li class="trust-item rv d1">
+        <span class="trust-check">✓</span>
+        <div class="trust-item-content">
+          <strong>Bank-Level Encryption</strong>
+          <span>All data encrypted in transit and at rest. We follow the same standards as financial institutions.</span>
+        </div>
+      </li>
+      <li class="trust-item rv d2">
+        <span class="trust-check">✓</span>
+        <div class="trust-item-content">
+          <strong>Cancel Anytime</strong>
+          <span>No long-term contracts, no cancellation fees. We earn your business every single month.</span>
+        </div>
+      </li>
+      <li class="trust-item rv d3">
+        <span class="trust-check">✓</span>
+        <div class="trust-item-content">
+          <strong>Real Human Support</strong>
+          <span>Chat with a real person who understands the detailing business. We respond in hours, not days.</span>
+        </div>
+      </li>
+    </ul>
   </div>
 </section>
 
@@ -1589,6 +1715,7 @@ footer {
 <footer>
   <div class="foot-center">
     <div class="foot-copy">© 2025 DetailOps. Built for detailers, by people who get it.</div>
+    <div class="foot-dev" style="font-size:11px;opacity:0.7;margin-top:4px;"><a href="https://newlegacyai.ca" target="_blank" rel="noopener noreferrer" style="color:inherit;text-decoration:none;">Developed by New Legacy</a></div>
     <div class="foot-links">
       <a href="/privacy.html">Privacy</a>
       <a href="/terms.html">Terms</a>
@@ -1639,8 +1766,14 @@ document.querySelectorAll('.ftab').forEach(tab => {
   tab.addEventListener('click', () => {
     document.querySelectorAll('.ftab').forEach(t => t.classList.remove('on'));
     tab.classList.add('on');
+    const panelId = tab.getAttribute('data-tab');
+    document.querySelectorAll('.feat-panel[data-panel]').forEach(p => { p.style.display = 'none'; });
+    const panel = document.querySelector('.feat-panel[data-panel="' + panelId + '"]');
+    if (panel) panel.style.display = '';
+    else document.getElementById('feat-panel-dashboard').style.display = '';
   });
 });
+
 </script>
 </body>
 </html>

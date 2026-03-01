@@ -85,10 +85,14 @@ function JoinPageContent() {
     try {
       const supabase = createClient()
       await supabase.auth.signOut()
+      const baseUrl = typeof window !== 'undefined' ? window.location.origin : ''
       const { error } = await supabase.auth.signUp({
         email: invite.email,
         password,
-        options: { data: { full_name: name.trim() || undefined } },
+        options: {
+          emailRedirectTo: baseUrl ? `${baseUrl}/auth/callback` : undefined,
+          data: { full_name: name.trim() || undefined },
+        },
       })
       if (error) {
         if (error.message.includes('already registered')) {

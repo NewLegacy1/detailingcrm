@@ -15,7 +15,7 @@ export async function GET(request: NextRequest) {
   const state = searchParams.get('state')
   const errorParam = searchParams.get('error')
 
-  const redirectTo = `${baseUrl}/settings/integrations`
+  const redirectTo = `${baseUrl}/crm/settings/bookings`
 
   if (errorParam) {
     return NextResponse.redirect(`${redirectTo}?google_error=${encodeURIComponent(errorParam)}`)

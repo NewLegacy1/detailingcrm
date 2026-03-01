@@ -213,9 +213,12 @@ export function LandingVariantB() {
           )}
         </main>
 
-        <footer className="px-6 py-5 flex justify-center gap-6 text-[0.72rem] text-[#2a3548] border-t border-[rgba(0,184,245,0.06)]">
-          <Link href="/crm/legal/privacy" className="text-[#2a3548] no-underline hover:text-[#4a6080]">Privacy policy</Link>
-          <Link href="/crm/legal/terms" className="text-[#2a3548] no-underline hover:text-[#4a6080]">Terms &amp; conditions</Link>
+        <footer className="px-6 py-5 flex flex-col items-center gap-3 text-[0.72rem] text-[#2a3548] border-t border-[rgba(0,184,245,0.06)]">
+          <div className="flex justify-center gap-6">
+            <Link href="/crm/legal/privacy" className="text-[#2a3548] no-underline hover:text-[#4a6080]">Privacy policy</Link>
+            <Link href="/crm/legal/terms" className="text-[#2a3548] no-underline hover:text-[#4a6080]">Terms &amp; conditions</Link>
+          </div>
+          <a href="https://newlegacyai.ca" target="_blank" rel="noopener noreferrer" className="text-[#2a3548] no-underline hover:text-[#4a6080] opacity-70">Developed by New Legacy</a>
         </footer>
       </div>
     </div>

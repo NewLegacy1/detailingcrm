@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createServiceRoleClient } from '@/lib/supabase/server'
 import { requirePermission } from '@/lib/permissions-server'
 import { PERMISSIONS } from '@/lib/permissions'
-import { sendEmail } from '@/lib/notifications'
+import { sendEmail, getFromAddressForSlug } from '@/lib/notifications'
 import { randomBytes } from 'crypto'
 
 const INVITE_ROLES = ['admin', 'manager', 'technician'] as const
@@ -65,14 +65,15 @@ export async function POST(request: NextRequest) {
 
   const { data: org } = await serviceSupabase
     .from('organizations')
-    .select('name')
+    .select('name, booking_slug')
     .eq('id', result.auth.orgId)
     .single()
   const orgName = org?.name ?? 'Your team'
   const joinUrl = getJoinUrl(token)
   const subject = `You're invited to join ${orgName} on DetailOps`
   const text = `${orgName} invited you to join their team on DetailOps as ${role}. Open this link to create your account or sign in and join:\n\n${joinUrl}\n\nThe link expires in ${EXPIRY_DAYS} days.`
-  await sendEmail(email, subject, text)
+  const fromAddr = getFromAddressForSlug(org?.booking_slug)
+  await sendEmail(email, subject, text, undefined, fromAddr)
 
   return NextResponse.json({ ok: true })
 }

@@ -5,7 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Plus_Jakarta_Sans } from 'next/font/google'
-import { MosaicPanel } from '@/components/MosaicPanel'
+import { AuthHeroPanel } from '@/components/AuthHeroPanel'
 
 const plusJakarta = Plus_Jakarta_Sans({
   subsets: ['latin'],
@@ -25,15 +25,19 @@ export default function SignupPage() {
   const [businessName, setBusinessName] = useState('')
   const [phone, setPhone] = useState('')
   const [email, setEmail] = useState('')
+  const [abVariant, setAbVariant] = useState<'a' | 'b' | null>(null)
 
   useEffect(() => {
     if (typeof window === 'undefined') return
     const params = new URLSearchParams(window.location.search)
     const business = params.get('business')
     const emailParam = params.get('email')
+    const ab = params.get('ab')
     if (business) setBusinessName(decodeURIComponent(business))
     if (emailParam) setEmail(decodeURIComponent(emailParam))
+    if (ab === 'a' || ab === 'b') setAbVariant(ab)
   }, [])
+
   const [password, setPassword] = useState('')
   const [smsConsent, setSmsConsent] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -51,15 +55,18 @@ export default function SignupPage() {
     try {
       const supabase = createClient()
       await supabase.auth.signOut()
+      const baseUrl = typeof window !== 'undefined' ? window.location.origin : ''
       const { data, error: err } = await supabase.auth.signUp({
         email,
         password,
         options: {
+          emailRedirectTo: baseUrl ? `${baseUrl}/auth/callback` : undefined,
           data: {
             full_name: name,
             business_name: businessName || undefined,
             phone: phone || undefined,
             sms_consent: smsConsent,
+            landing_ab: abVariant || undefined,
           },
         },
       })
@@ -97,25 +104,7 @@ export default function SignupPage() {
         <div className="auth-hero-glow" aria-hidden />
         <div className="auth-card w-[1100px] max-w-[98vw] min-h-[520px] h-[620px] max-h-[90vh] rounded-3xl overflow-hidden grid grid-cols-1 md:grid-cols-[45%_55%] shadow-2xl border border-[rgba(255,255,255,0.07)] relative bg-[#101620]">
         <div className="hidden md:block relative bg-[#0c1018] overflow-hidden min-h-[280px]">
-          <div
-            className="absolute inset-0 pointer-events-none z-[5]"
-            style={{ background: 'linear-gradient(to right, transparent 40%, #0c1018 100%)' }}
-          />
-          <div
-            className="absolute bottom-0 left-0 right-0 h-[52%] pointer-events-none z-[5]"
-            style={{ background: 'linear-gradient(to top, #0c1018 35%, transparent 100%)' }}
-          />
-          <MosaicPanel logoSrc="/detailopslogo.png" />
-          <div className="absolute bottom-10 left-9 right-6 z-10 pt-7 border-t border-[rgba(0,184,245,0.1)]">
-            <h2 className="text-[2rem] font-bold text-[#e8edf5] leading-tight tracking-tight mb-2.5">
-              Run Your Detail Business
-              <br />
-              with <span className="font-light text-[#00b8f5] not-italic">Precision</span>
-            </h2>
-            <p className="text-[0.82rem] text-[#5a6a80] leading-relaxed max-w-[300px]">
-              Schedule jobs, manage crews, track payments, and grow your mobile detailing operation — all in one place.
-            </p>
-          </div>
+          <AuthHeroPanel />
         </div>
 
         <div className="flex flex-col flex-1 min-h-0 bg-[#101620] md:border-l border-[rgba(255,255,255,0.07)]">

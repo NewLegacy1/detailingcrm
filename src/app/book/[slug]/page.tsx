@@ -43,8 +43,16 @@ export interface BookingContext {
   upsells: BookingUpsell[]
 }
 
-export default async function BookPage({ params }: { params: Promise<{ slug: string }> }) {
+export interface MaintenanceContext {
+  serviceId: string
+  serviceName: string
+  /** When customer comes from maintenance link and org has a discount configured. */
+  discount?: { type: 'percent' | 'fixed'; value: number }
+}
+
+export default async function BookPage({ params, searchParams }: { params: Promise<{ slug: string }>; searchParams: Promise<{ [key: string]: string | string[] | undefined }> }) {
   const { slug } = await params
+  const resolvedSearchParams = await searchParams
   const normalizedSlug = slug.trim().toLowerCase()
   if (!normalizedSlug) notFound()
 
@@ -178,9 +186,42 @@ export default async function BookPage({ params }: { params: Promise<{ slug: str
     }
   }
 
+  let maintenanceContext: MaintenanceContext | null = null
+  const ref = resolvedSearchParams.ref
+  const jobParam = resolvedSearchParams.job
+  const jobIdStr = typeof jobParam === 'string' ? jobParam.trim() : Array.isArray(jobParam) ? String(jobParam[0] ?? '').trim() : ''
+  if (ref === 'maintenance' && jobIdStr && context) {
+    const { data: orgRow } = await supabase
+      .from('organizations')
+      .select('id, maintenance_discount_type, maintenance_discount_value')
+      .eq('booking_slug', normalizedSlug)
+      .single()
+    if (orgRow?.id) {
+      const { data: jobRow } = await supabase
+        .from('jobs')
+        .select('id, service_id')
+        .eq('id', jobIdStr)
+        .eq('org_id', orgRow.id)
+        .single()
+      if (jobRow?.service_id) {
+        const { data: serviceRow } = await supabase.from('services').select('name').eq('id', jobRow.service_id).single()
+        if (serviceRow?.name) {
+          const discountType = orgRow.maintenance_discount_type
+          const discountValue = Number(orgRow.maintenance_discount_value) || 0
+          const hasDiscount = (discountType === 'percent' || discountType === 'fixed') && discountValue > 0
+          maintenanceContext = {
+            serviceId: jobRow.service_id,
+            serviceName: serviceRow.name,
+            ...(hasDiscount && { discount: { type: discountType as 'percent' | 'fixed', value: discountValue } }),
+          }
+        }
+      }
+    }
+  }
+
   return (
     <Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-[#212121] text-white">Loading…</div>}>
-      <BookingPageClient slug={slug} context={context} />
+      <BookingPageClient slug={slug} context={context} maintenanceContext={maintenanceContext} />
     </Suspense>
   )
 }

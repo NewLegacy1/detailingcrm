@@ -16,7 +16,8 @@ export interface GoogleTokens {
 }
 
 function getRedirectUri(): string {
-  const base = process.env.NEXT_PUBLIC_APP_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000')
+  const raw = process.env.NEXT_PUBLIC_APP_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000')
+  const base = raw ? String(raw).replace(/\/+$/, '') : 'http://localhost:3000'
   return `${base}/api/integrations/google/callback`
 }
 

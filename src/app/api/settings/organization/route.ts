@@ -66,10 +66,16 @@ export async function PATCH(request: NextRequest) {
   if (typeof body.job_reminder_email_on === 'boolean') upd.job_reminder_email_on = body.job_reminder_email_on
   if (Array.isArray(body.maintenance_upsell_days)) upd.maintenance_upsell_days = body.maintenance_upsell_days
   if (typeof body.maintenance_detail_url === 'string') upd.maintenance_detail_url = body.maintenance_detail_url
+  if (typeof body.maintenance_upsell_subject === 'string' || body.maintenance_upsell_subject === null) upd.maintenance_upsell_subject = body.maintenance_upsell_subject
+  if (typeof body.maintenance_upsell_message === 'string' || body.maintenance_upsell_message === null) upd.maintenance_upsell_message = body.maintenance_upsell_message
+  if (typeof body.maintenance_discount_type === 'string' && ['none', 'percent', 'fixed'].includes(body.maintenance_discount_type)) upd.maintenance_discount_type = body.maintenance_discount_type
+  if (typeof body.maintenance_discount_value === 'number' && body.maintenance_discount_value >= 0) upd.maintenance_discount_value = body.maintenance_discount_value
   if (typeof body.new_booking_sms_message === 'string' || body.new_booking_sms_message === null) upd.new_booking_sms_message = body.new_booking_sms_message
   if (typeof body.new_booking_email_message === 'string' || body.new_booking_email_message === null) upd.new_booking_email_message = body.new_booking_email_message
   if (typeof body.job_reminder_sms_message === 'string' || body.job_reminder_sms_message === null) upd.job_reminder_sms_message = body.job_reminder_sms_message
   if (typeof body.review_request_message === 'string' || body.review_request_message === null) upd.review_request_message = body.review_request_message
+  if (typeof body.review_request_subject === 'string' || body.review_request_subject === null) upd.review_request_subject = body.review_request_subject
+  if (typeof body.job_reminder_subject === 'string' || body.job_reminder_subject === null) upd.job_reminder_subject = body.job_reminder_subject
   if (typeof body.timezone === 'string') upd.timezone = body.timezone
   if (typeof body.min_notice_minutes === 'number') upd.min_notice_minutes = body.min_notice_minutes
   if (typeof body.max_days_in_advance === 'number') upd.max_days_in_advance = body.max_days_in_advance

@@ -5,7 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 import { useRouter, useParams } from 'next/navigation'
 import Link from 'next/link'
 import { Plus_Jakarta_Sans } from 'next/font/google'
-import { MosaicPanel } from '@/components/MosaicPanel'
+import { AuthHeroPanel } from '@/components/AuthHeroPanel'
 
 const plusJakarta = Plus_Jakarta_Sans({
   subsets: ['latin'],
@@ -289,19 +289,7 @@ export default function SignupOnboardingPage() {
 
         {/* Left panel */}
         <div className="hidden md:block relative bg-[#0c1018] overflow-hidden min-h-[280px]">
-          <div className="absolute inset-0 pointer-events-none z-[5]" style={{ background: 'linear-gradient(to right, transparent 40%, #0c1018 100%)' }} />
-          <div className="absolute bottom-0 left-0 right-0 h-[55%] pointer-events-none z-[5]" style={{ background: 'linear-gradient(to top, #0c1018 30%, transparent 100%)' }} />
-          <MosaicPanel logoSrc="/detailopslogo.png" />
-          <div className="absolute bottom-10 left-9 right-6 z-10">
-            <h2 className="text-[1.75rem] font-bold text-[#e8edf5] leading-tight tracking-tight mb-2.5">
-              Run Your Detail Business
-              <br />
-              with <span className="font-light text-[#00b8f5] not-italic">Precision</span>
-            </h2>
-            <p className="text-[0.82rem] text-[#5a6a80] leading-relaxed max-w-[300px]">
-              Schedule jobs, manage crews, track payments, and grow your mobile detailing operation — all in one place.
-            </p>
-          </div>
+          <AuthHeroPanel />
         </div>
 
         {/* Right panel */}

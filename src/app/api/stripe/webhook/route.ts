@@ -108,6 +108,7 @@ export async function POST(request: Request) {
             notes: jobNotes,
             base_price: Number(pending.base_price),
             size_price_offset: Number(pending.size_price_offset),
+            discount_amount: Number((pending as { discount_amount?: number }).discount_amount ?? 0),
           })
           .select('id')
           .single()

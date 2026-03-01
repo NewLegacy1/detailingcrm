@@ -16,6 +16,7 @@ export async function POST(req: NextRequest) {
     upsells?: { id?: string; name: string; price: number }[]
     customer?: { name?: string; email?: string; phone?: string }
     vehicle?: { make?: string; model?: string; year?: number; color?: string }
+    discountAmount?: number
   }
   try {
     body = await req.json()
@@ -34,6 +35,7 @@ export async function POST(req: NextRequest) {
   const upsellsInput = Array.isArray(body.upsells) ? body.upsells : []
   const customer = body.customer && typeof body.customer === 'object' ? body.customer : {}
   const vehicleInput = body.vehicle && typeof body.vehicle === 'object' ? body.vehicle : {}
+  const discountAmount = typeof body.discountAmount === 'number' && body.discountAmount >= 0 ? body.discountAmount : 0
 
   const jobNotes = [notesRaw, sizeKey ? `Vehicle size: ${sizeKey}` : null].filter(Boolean).join('\n') || null
 
@@ -162,6 +164,7 @@ export async function POST(req: NextRequest) {
       notes: jobNotes,
       base_price: basePrice,
       size_price_offset: sizePriceOffset,
+      discount_amount: discountAmount,
     })
     .select('id')
     .single()

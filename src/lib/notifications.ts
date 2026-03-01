@@ -1,20 +1,45 @@
 /**
  * Email (Resend) and SMS (Twilio) helpers for automations.
- * Set RESEND_API_KEY, NOTIFICATION_FROM_EMAIL for email; TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_FROM_NUMBER for SMS.
+ * Set RESEND_API_KEY, NOTIFICATION_EMAIL_DOMAIN (e.g. contact.newlegacyai.ca) for email.
+ * Emails are sent from {booking_slug}@{domain} when fromAddress is provided.
+ * Set TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_FROM_NUMBER for SMS.
  */
 
 export type NotifyResult = { ok: boolean; error?: string; externalId?: string }
 
-const FROM_EMAIL = process.env.NOTIFICATION_FROM_EMAIL ?? process.env.RESEND_FROM_EMAIL ?? ''
+const EMAIL_DOMAIN = process.env.NOTIFICATION_EMAIL_DOMAIN ?? ''
+const FALLBACK_FROM = process.env.NOTIFICATION_FROM_EMAIL ?? process.env.RESEND_FROM_EMAIL ?? ''
 
-export async function sendEmail(to: string, subject: string, text: string, html?: string): Promise<NotifyResult> {
+function getFromEmail(fromAddress?: string): string {
+  if (fromAddress) return fromAddress
+  if (FALLBACK_FROM) return FALLBACK_FROM
+  if (EMAIL_DOMAIN) return `noreply@${EMAIL_DOMAIN}`
+  return ''
+}
+
+/** Build from-address from org booking slug: e.g. showroom-autocare@contact.newlegacyai.ca */
+export function getFromAddressForSlug(slug: string | null | undefined): string | undefined {
+  if (!EMAIL_DOMAIN || !slug?.trim()) return undefined
+  const safe = slug.trim().toLowerCase().replace(/[^a-z0-9-]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '')
+  if (!safe) return undefined
+  return `${safe}@${EMAIL_DOMAIN}`
+}
+
+export async function sendEmail(
+  to: string,
+  subject: string,
+  text: string,
+  html?: string,
+  fromAddress?: string
+): Promise<NotifyResult> {
   const key = process.env.RESEND_API_KEY
-  if (!key || !FROM_EMAIL) return { ok: false, error: 'Email not configured (RESEND_API_KEY, NOTIFICATION_FROM_EMAIL)' }
+  const from = getFromEmail(fromAddress)
+  if (!key || !from) return { ok: false, error: 'Email not configured (RESEND_API_KEY, NOTIFICATION_EMAIL_DOMAIN or NOTIFICATION_FROM_EMAIL)' }
   try {
     const { Resend } = await import('resend')
     const resend = new Resend(key)
     const { data, error } = await resend.emails.send({
-      from: FROM_EMAIL,
+      from,
       to: to.trim(),
       subject,
       ...(html ? { html } : { text }),

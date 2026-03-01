@@ -11,7 +11,7 @@ const createDemoContext = (businessName: string): BookingContext => ({
   mapLat: 43.6532,
   mapLng: -79.3832,
   showPrices: true,
-  primaryColor: '#00b8f5',
+  primaryColor: '#151c28',
   accentColor: '#00b8f5',
   theme: 'dark',
   mapTheme: 'dark',

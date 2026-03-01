@@ -64,11 +64,6 @@ export async function updateSession(request: NextRequest) {
 
   const pathname = request.nextUrl.pathname
   if (pathname === '/') {
-    const { data: { session } } = await supabase.auth.getSession()
-    if (session) {
-      return NextResponse.redirect(new URL('/crm/dashboard', request.url))
-    }
-    // Guest: serve the restored marketing landing (public/index.html)
     return NextResponse.rewrite(new URL('/index.html', request.url))
   }
 

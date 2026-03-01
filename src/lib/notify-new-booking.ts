@@ -3,7 +3,7 @@
  * Used by the CRM notify-new-booking API when a job is created.
  */
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { sendEmail, sendSms } from '@/lib/notifications'
+import { sendEmail, sendSms, getFromAddressForSlug } from '@/lib/notifications'
 
 export async function notifyNewBooking(supabase: SupabaseClient, jobId: string): Promise<{ sent: number }> {
   const { data: job, error: jobErr } = await supabase
@@ -18,7 +18,7 @@ export async function notifyNewBooking(supabase: SupabaseClient, jobId: string):
 
   const { data: org } = await supabase
     .from('organizations')
-    .select('new_booking_email_on, new_booking_sms_on')
+    .select('new_booking_email_on, new_booking_sms_on, booking_slug')
     .eq('id', orgId)
     .single()
 
@@ -46,7 +46,8 @@ export async function notifyNewBooking(supabase: SupabaseClient, jobId: string):
   if (emailOn && client.email?.trim()) {
     const subject = 'Booking confirmed'
     const text = `Hi ${client.name ?? 'there'}, your ${serviceName} is scheduled for ${scheduledStr}${addressStr ? ` at ${addressStr}` : ''}.`
-    const r = await sendEmail(client.email.trim(), subject, text)
+    const fromAddr = getFromAddressForSlug(org?.booking_slug)
+    const r = await sendEmail(client.email.trim(), subject, text, undefined, fromAddr)
     if (r.ok) {
       await supabase.from('communications').insert({
         client_id: client.id,

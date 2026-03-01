@@ -133,6 +133,10 @@ interface BookingServicePanelProps {
   onBookSuccess: (data: BookingSuccessData) => void
   open: boolean
   onClose?: () => void
+  /** Pre-select this service when panel opens (e.g. from maintenance link). */
+  initialServiceId?: string | null
+  /** Applied when ref=maintenance; reduces total on booking page. */
+  maintenanceDiscount?: { type: 'percent' | 'fixed'; value: number } | null
 }
 
 export function BookingServicePanel({
@@ -147,7 +151,10 @@ export function BookingServicePanel({
   onBookSuccess,
   open,
   onClose,
+  initialServiceId,
+  maintenanceDiscount,
 }: BookingServicePanelProps) {
+  const maintenancePreSelectRef = useRef(false)
   const [step, setStep] = useState<Step>('service')
   const [selectedService, setSelectedService] = useState<BookingService | null>(null)
   const [selectedSize, setSelectedSize] = useState<SizeOption | null>(null)
@@ -169,6 +176,17 @@ export function BookingServicePanel({
     setAddress(initialAddress)
   }, [initialAddress])
 
+  // Pre-select service from maintenance link (once)
+  useEffect(() => {
+    if (!open || maintenancePreSelectRef.current || !initialServiceId || services.length === 0) return
+    const svc = services.find((s) => s.id === initialServiceId)
+    if (svc) {
+      maintenancePreSelectRef.current = true
+      setSelectedService(svc)
+      setStep('size')
+    }
+  }, [open, initialServiceId, services])
+
   const sizes = selectedService?.size_prices ?? []
   const hasSizes = sizes.length > 0
 
@@ -177,11 +195,18 @@ export function BookingServicePanel({
     (u) => !u.service_ids || u.service_ids.length === 0 || (selectedService && u.service_ids.includes(selectedService.id))
   )
 
-  // Live price total
-  const totalPrice =
+  // Live price total (before discount)
+  const subtotal =
     (selectedService?.base_price ?? 0) +
     (selectedSize?.price_offset ?? 0) +
     selectedAddOns.reduce((s, a) => s + Number(a.price), 0)
+  const discountAmount =
+    maintenanceDiscount && subtotal > 0
+      ? maintenanceDiscount.type === 'percent'
+        ? Math.min(subtotal * (maintenanceDiscount.value / 100), subtotal)
+        : Math.min(maintenanceDiscount.value, subtotal)
+      : 0
+  const totalPrice = Math.max(0, subtotal - discountAmount)
 
   const fetchSlots = useCallback(async (dateStr: string) => {
     if (!dateStr || !selectedService || dateStr.length !== 10) {
@@ -288,6 +313,7 @@ export function BookingServicePanel({
         basePrice: selectedService.base_price,
         sizePriceOffset: selectedSize?.price_offset ?? 0,
         upsells: selectedAddOns.map((a) => ({ id: a.id, name: a.name, price: a.price })),
+        discountAmount: discountAmount > 0 ? discountAmount : undefined,
       }
 
       if (requiresDeposit) {
@@ -517,11 +543,19 @@ export function BookingServicePanel({
             </div>
           )}
           {showPrices && (
-            <div className="border-t border-[var(--border)] pt-3 mb-3 flex items-center justify-between">
-              <span className="text-sm text-[var(--text-muted)]">Total</span>
-              <span className="text-lg font-bold text-[var(--text)]">
-                {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(totalPrice)}
-              </span>
+            <div className="border-t border-[var(--border)] pt-3 mb-3 flex flex-col gap-1">
+              {discountAmount > 0 && (
+                <div className="flex items-center justify-between text-sm text-[var(--accent)]">
+                  <span>Discount</span>
+                  <span>-{new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(discountAmount)}</span>
+                </div>
+              )}
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-[var(--text-muted)]">Total</span>
+                <span className="text-lg font-bold text-[var(--text)]">
+                  {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(totalPrice)}
+                </span>
+              </div>
             </div>
           )}
           <Button onClick={handleAddOnContinue} className="w-full">Continue to date &amp; time</Button>
@@ -662,7 +696,7 @@ export function BookingServicePanel({
           </div>
 
           {/* Price summary before booking */}
-          {showPrices && selectedAddOns.length > 0 && (
+          {showPrices && (selectedAddOns.length > 0 || discountAmount > 0) && (
             <div className="mt-4 rounded-lg border border-[var(--border)] p-3 space-y-1">
               <div className="flex justify-between text-xs text-[var(--text-muted)]">
                 <span>{selectedService.name}</span>
@@ -674,6 +708,12 @@ export function BookingServicePanel({
                   <span>+{new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(a.price)}</span>
                 </div>
               ))}
+              {discountAmount > 0 && (
+                <div className="flex justify-between text-xs text-[var(--accent)]">
+                  <span>Discount</span>
+                  <span>-{new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(discountAmount)}</span>
+                </div>
+              )}
               <div className="flex justify-between text-sm font-bold text-[var(--text)] pt-1 border-t border-[var(--border)]">
                 <span>Total</span>
                 <span>{new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(totalPrice)}</span>

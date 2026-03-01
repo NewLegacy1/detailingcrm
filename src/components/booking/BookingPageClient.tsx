@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { AnimatePresence } from 'framer-motion'
-import type { BookingContext } from '@/app/book/[slug]/page'
+import type { BookingContext, MaintenanceContext } from '@/app/book/[slug]/page'
 import { isLightBackground } from '@/lib/utils'
 import { BookingHeader } from './BookingHeader'
 import { BookingMap } from './BookingMap'
@@ -59,9 +59,10 @@ export interface BookingSuccessData {
 interface BookingPageClientProps {
   slug: string
   context: BookingContext
+  maintenanceContext?: MaintenanceContext | null
 }
 
-export function BookingPageClient({ slug, context }: BookingPageClientProps) {
+export function BookingPageClient({ slug, context, maintenanceContext = null }: BookingPageClientProps) {
   const searchParams = useSearchParams()
   const [mapReady, setMapReady] = useState(false)
   const [addressValue, setAddressValue] = useState('')
@@ -159,13 +160,25 @@ export function BookingPageClient({ slug, context }: BookingPageClientProps) {
             onBookSuccess={(data) => setBookSuccess(data)}
             open={panelOpen}
             onClose={() => setPanelOpen(false)}
+            initialServiceId={maintenanceContext && context.services.some((s) => s.id === maintenanceContext.serviceId) ? maintenanceContext.serviceId : undefined}
+            maintenanceDiscount={maintenanceContext?.discount}
           />
         </AnimatePresence>
       </div>
 
       {!panelOpen && (
         <div className="absolute top-24 left-0 right-0 flex justify-center pointer-events-none px-4 pb-4">
-          <div className="pointer-events-auto w-full max-w-md mx-auto">
+          <div className="pointer-events-auto w-full max-w-md mx-auto space-y-2">
+            {maintenanceContext && (
+              <p className="text-sm text-[var(--text-2)] text-center">
+                Based on your recent <span className="font-medium text-[var(--text)]">{maintenanceContext.serviceName}</span>, book your next visit below.
+                {maintenanceContext.discount && (
+                  <span className="block mt-0.5 text-[var(--accent)]">
+                    {maintenanceContext.discount.type === 'percent' ? `${maintenanceContext.discount.value}% off` : `$${maintenanceContext.discount.value} off`}
+                  </span>
+                )}
+              </p>
+            )}
             <BookingSearchCard
               businessName={context.businessName}
               logoUrl={context.logoUrl}

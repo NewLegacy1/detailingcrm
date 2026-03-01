@@ -9,8 +9,14 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Card } from '@/components/ui/card'
 import { EmptyState } from '@/components/ui/empty-state'
 import { crmPath } from '@/lib/crm-path'
-import { Pencil } from 'lucide-react'
+import { Pencil, UserPlus } from 'lucide-react'
 import type { Profile } from '@/types/database'
+
+const INVITE_ROLES = [
+  { value: 'admin', label: 'Admin' },
+  { value: 'manager', label: 'Manager' },
+  { value: 'technician', label: 'Technician' },
+]
 
 interface TeamTableProps {
   initialProfiles: Profile[]
@@ -29,6 +35,11 @@ export function TeamTable({ initialProfiles }: TeamTableProps) {
   const [editingProfile, setEditingProfile] = useState<Profile | null>(null)
   const [selectedRole, setSelectedRole] = useState('')
   const [loading, setLoading] = useState(false)
+  const [inviteOpen, setInviteOpen] = useState(false)
+  const [inviteEmail, setInviteEmail] = useState('')
+  const [inviteRole, setInviteRole] = useState('technician')
+  const [inviteSending, setInviteSending] = useState(false)
+  const [inviteError, setInviteError] = useState<string | null>(null)
 
   function openEditDialog(profile: Profile) {
     setEditingProfile(profile)
@@ -58,8 +69,39 @@ export function TeamTable({ initialProfiles }: TeamTableProps) {
     setLoading(false)
   }
 
+  async function handleInvite(e: React.FormEvent) {
+    e.preventDefault()
+    const email = inviteEmail.trim()
+    if (!email) return
+    setInviteError(null)
+    setInviteSending(true)
+    try {
+      const res = await fetch('/api/settings/team/invite', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, role: inviteRole }),
+      })
+      const data = await res.json()
+      if (res.ok) {
+        setInviteOpen(false)
+        setInviteEmail('')
+        setInviteRole('technician')
+      } else {
+        setInviteError(data.error || 'Failed to send invite')
+      }
+    } finally {
+      setInviteSending(false)
+    }
+  }
+
   return (
     <>
+      <div className="flex justify-end mb-6">
+        <Button onClick={() => setInviteOpen(true)}>
+          <UserPlus className="h-4 w-4 mr-2" />
+          Invite team member
+        </Button>
+      </div>
       <Card className="overflow-hidden">
         <Table>
           <TableHeader>
@@ -154,6 +196,58 @@ export function TeamTable({ initialProfiles }: TeamTableProps) {
               </Button>
               <Button type="submit" disabled={loading}>
                 {loading ? 'Saving...' : 'Update Role'}
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={inviteOpen} onOpenChange={setInviteOpen}>
+        <DialogContent>
+          <DialogClose onClick={() => setInviteOpen(false)} />
+          <DialogHeader>
+            <DialogTitle>Invite team member</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleInvite} className="space-y-4">
+            <p className="text-sm text-[var(--text-muted)]">
+              They&apos;ll receive an email with a link to sign up or sign in and join your organization.
+            </p>
+            <div>
+              <Label htmlFor="invite-email">Email</Label>
+              <input
+                id="invite-email"
+                type="email"
+                value={inviteEmail}
+                onChange={(e) => setInviteEmail(e.target.value)}
+                placeholder="teammate@example.com"
+                className="mt-2 flex h-10 w-full rounded-lg border border-[var(--border)] bg-[var(--bg-card)] px-3 py-2 text-sm text-[var(--text)]"
+                required
+              />
+            </div>
+            <div>
+              <Label htmlFor="invite-role">Role</Label>
+              <select
+                id="invite-role"
+                value={inviteRole}
+                onChange={(e) => setInviteRole(e.target.value)}
+                className="mt-2 flex h-10 w-full rounded-lg border border-[var(--border)] bg-[var(--bg-card)] px-3 py-2 text-sm text-[var(--text)]"
+              >
+                {INVITE_ROLES.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            {inviteError && (
+              <p className="text-sm text-red-500">{inviteError}</p>
+            )}
+            <div className="flex justify-end gap-2">
+              <Button type="button" variant="outline" onClick={() => setInviteOpen(false)}>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={inviteSending}>
+                {inviteSending ? 'Sending…' : 'Send invite'}
               </Button>
             </div>
           </form>

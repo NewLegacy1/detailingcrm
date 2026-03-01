@@ -20,6 +20,7 @@ export async function POST(req: NextRequest) {
     upsells?: { id?: string; name: string; price: number }[]
     customer?: { name?: string; email?: string; phone?: string }
     vehicle?: { make?: string; model?: string; year?: number; color?: string }
+    discountAmount?: number
   }
   try {
     body = await req.json()
@@ -36,6 +37,7 @@ export async function POST(req: NextRequest) {
   const basePrice = typeof body.basePrice === 'number' ? body.basePrice : 0
   const sizePriceOffset = typeof body.sizePriceOffset === 'number' ? body.sizePriceOffset : 0
   const upsellsInput = Array.isArray(body.upsells) ? body.upsells : []
+  const discountAmount = typeof body.discountAmount === 'number' && body.discountAmount >= 0 ? body.discountAmount : 0
   const customer = body.customer && typeof body.customer === 'object' ? body.customer : {}
   const vehicleInput = body.vehicle && typeof body.vehicle === 'object' ? body.vehicle : {}
 
@@ -80,8 +82,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Service not found' }, { status: 404 })
   }
 
-  const totalCents = Math.round((basePrice + sizePriceOffset + upsellsInput.reduce((s, u) => s + Number(u.price || 0), 0)) * 100)
-  const depositCents = Math.max(100, Math.round(totalCents * 0.5))
+  const totalCents = Math.round((basePrice + sizePriceOffset + upsellsInput.reduce((s, u) => s + Number(u.price || 0), 0) - discountAmount) * 100)
+  const depositCents = Math.max(100, Math.round(Math.max(0, totalCents) * 0.5))
 
   const { data: pending, error: pendingError } = await supabase
     .from('pending_bookings')
@@ -100,6 +102,7 @@ export async function POST(req: NextRequest) {
       notes: notesRaw || null,
       status: 'pending',
       deposit_amount_cents: depositCents,
+      discount_amount: discountAmount,
       updated_at: new Date().toISOString(),
     })
     .select('id')
