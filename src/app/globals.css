@@ -240,17 +240,10 @@ body {
   pointer-events: none;
   z-index: 0;
 }
-/* Desktop: glow centered on card, soft fade in all directions — no hard top cutoff */
+/* Desktop: no blue glow (avoids hard cutoffs); glow remains on mobile */
 @media (min-width: 768px) {
   .auth-hero-glow {
-    background: radial-gradient(
-      ellipse 100% 100% at 50% 50%,
-      rgba(0,184,245,0.06) 0%,
-      rgba(0,184,245,0.04) 25%,
-      rgba(0,184,245,0.02) 50%,
-      rgba(0,184,245,0.008) 75%,
-      transparent 100%
-    );
+    background: transparent;
   }
 }
 /* Only non-glOW children get position relative (glow must stay absolute so it doesn't push content down) */
