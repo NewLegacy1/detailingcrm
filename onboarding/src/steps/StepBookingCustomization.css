@@ -1,0 +1,25 @@
+.booking-customization-preview {
+  margin-bottom: 8px;
+}
+
+.booking-customization-preview__frame {
+  border: 1px solid var(--right-border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  max-width: 320px;
+  background: var(--right-surface);
+}
+
+.booking-customization-preview__map {
+  padding: 16px;
+  font-size: 0.875rem;
+  color: var(--right-text-muted);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border-top: 1px solid var(--right-border);
+}
+
+.booking-customization-preview__map-pin {
+  font-size: 1.25rem;
+}

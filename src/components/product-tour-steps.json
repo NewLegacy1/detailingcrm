@@ -1,0 +1,11 @@
+[
+  {"title":"Welcome to your CRM","body":"This quick tour shows you where the main features live. You can skip anytime."},
+  {"title":"Dashboard","body":"Your home base. See your jobs for today, recent activity, and quick stats at a glance.","path":"/crm/dashboard"},
+  {"title":"Customers","body":"Add and manage customers. You will link them to jobs.","path":"/crm/customers"},
+  {"title":"Jobs","body":"Create jobs, link them to customers and services. All jobs appear on the Schedule.","path":"/crm/jobs"},
+  {"title":"Schedule","body":"View jobs by day, week, or list. Drag to reschedule and manage your calendar.","path":"/crm/schedule"},
+  {"title":"Services","body":"Define what you offer—services, durations, and prices. Clients see these on your booking page.","path":"/crm/services"},
+  {"title":"Invoices","body":"Turn completed jobs into invoices and get paid. Send and track from here.","path":"/crm/invoices"},
+  {"title":"Settings & booking link","body":"In Settings you can set your branding, booking page URL, payments (Stripe), and team. Share your booking link so clients can book online.","path":"/crm/settings/branding"},
+  {"title":"You are all set","body":"Explore the sidebar to jump to any section. You can always reopen this tour from Settings → Help if we add that later."}
+]

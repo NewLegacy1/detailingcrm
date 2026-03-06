@@ -1,0 +1,57 @@
+.step-progress-wrap {
+  padding: 20px 32px 0;
+  flex-shrink: 0;
+}
+
+.step-progress-bar {
+  height: 6px;
+  background: var(--right-border);
+  border-radius: var(--radius-pill);
+  overflow: hidden;
+  margin-bottom: 16px;
+}
+
+.step-progress-bar__fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent-from), var(--accent-to));
+  border-radius: var(--radius-pill);
+  transition: width 0.35s ease;
+}
+
+.step-progress-dots {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.step-progress-dots__dot {
+  width: 10px;
+  height: 10px;
+  border-radius: var(--radius-pill);
+  background: var(--right-border);
+  transition: background 0.2s, transform 0.2s;
+}
+
+.step-progress-dots__dot--active {
+  background: linear-gradient(135deg, var(--accent-from), var(--accent-to));
+  transform: scale(1.15);
+}
+
+.step-progress-dots__dot--done {
+  background: var(--success);
+}
+
+@media (max-width: 600px) {
+  .step-progress-wrap {
+    padding: 14px 20px 0;
+  }
+
+  .step-progress-bar {
+    margin-bottom: 10px;
+  }
+
+  .step-progress-dots__dot {
+    width: 8px;
+    height: 8px;
+  }
+}
