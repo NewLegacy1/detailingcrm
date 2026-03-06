@@ -134,7 +134,7 @@ export function MainLayoutClient({
       s['--accent-dim'] = hexToRgba(crmColors.accent.trim(), 0.12)
     }
     const bg = crmColors?.bg?.trim()
-    if (bg) {
+    if (bg && crmColors) {
       s['--bg'] = bg
       const textBorder = isLightBackground(bg) ? LIGHT_THEME_TEXT : DARK_THEME_TEXT
       Object.assign(s, textBorder)

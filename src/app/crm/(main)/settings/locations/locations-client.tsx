@@ -158,7 +158,7 @@ export function LocationsClient({ initialLocations, orgTimezone, isPro, multiLoc
         <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{editingLocation ? 'Edit location' : 'Add location'}</DialogTitle>
-            <DialogClose />
+            <DialogClose onClick={closeForm} />
           </DialogHeader>
           <LocationForm
             location={editingLocation}
@@ -174,7 +174,7 @@ export function LocationsClient({ initialLocations, orgTimezone, isPro, multiLoc
           <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Services at this location</DialogTitle>
-              <DialogClose />
+              <DialogClose onClick={() => setServicesEditorLocationId(null)} />
             </DialogHeader>
             <LocationServicesEditor
               locationId={servicesEditorLocationId}

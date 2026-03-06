@@ -42,7 +42,7 @@ async function serveDefaultFavicon(): Promise<NextResponse> {
     })
     .png()
     .toBuffer()
-  return new NextResponse(resized, {
+  return new NextResponse(new Uint8Array(resized), {
     headers: { 'Content-Type': 'image/png', 'Cache-Control': 'public, max-age=86400' },
   })
 }
@@ -66,7 +66,8 @@ export async function GET(request: NextRequest) {
   const { data: raw } = await supabase.rpc('get_public_booking_context', { p_slug: normalizedSlug })
   const r = raw != null && typeof raw === 'object' ? (raw as Record<string, unknown>) : null
   const website = (r?.website as string | null)?.trim()
-  const logoUrl = (r?.logoUrl ?? r?.logo_url as string | null)?.trim()
+  const logoUrlRaw = r?.logoUrl ?? r?.logo_url
+  const logoUrl = typeof logoUrlRaw === 'string' ? logoUrlRaw.trim() : null
 
   // Try website favicon first
   if (website) {
@@ -113,7 +114,7 @@ export async function GET(request: NextRequest) {
                     } else {
                       const buf = Buffer.from(await favRes.arrayBuffer())
                       if (buf.length <= MAX_FAVICON_SIZE) {
-                        return new NextResponse(buf, {
+                        return new NextResponse(new Uint8Array(buf), {
                           headers: {
                             'Content-Type': favType.startsWith('image/') ? favType : 'image/x-icon',
                             'Cache-Control': 'public, max-age=86400',
@@ -166,7 +167,7 @@ export async function GET(request: NextRequest) {
         })
         .png()
         .toBuffer()
-      return new NextResponse(resized, {
+      return new NextResponse(new Uint8Array(resized), {
         headers: { 'Content-Type': 'image/png', 'Cache-Control': 'public, max-age=86400' },
       })
     } catch {

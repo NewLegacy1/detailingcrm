@@ -22,7 +22,7 @@ export async function GET(request: NextRequest) {
       })
       .png()
       .toBuffer()
-    return new NextResponse(resized, {
+    return new NextResponse(new Uint8Array(resized), {
       headers: {
         'Content-Type': 'image/png',
         'Cache-Control': 'public, max-age=86400',
