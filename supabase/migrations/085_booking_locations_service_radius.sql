@@ -30,6 +30,8 @@ set search_path = public
 as $$
 declare
   v_org_id uuid;
+  v_lat float;
+  v_lng float;
 begin
   select o.id into v_org_id
   from public.organizations o
@@ -39,6 +41,9 @@ begin
   if v_org_id is null then
     return;
   end if;
+
+  v_lat := p_lat::float;
+  v_lng := p_lng::float;
 
   return query
   select
@@ -58,14 +63,11 @@ begin
     l.sort_order,
     l.is_active,
     case
-      when p_lat is not null and p_lng is not null and l.lat is not null and l.lng is not null then
-        round(
-          (6371 * acos(
-            least(1, greatest(-1,
-              cos(radians(p_lat::float)) * cos(radians(l.lat::float)) * cos(radians(l.lng::float) - radians(p_lng::float))
-              + sin(radians(p_lat::float)) * sin(radians(l.lat::float))
-            ))
-          ))::decimal(10, 2)
+      when p_lat is not null and p_lng is not null and l.lat is not null and l.lng is not null
+      then round((6371 * acos(least(1, greatest(-1,
+        cos(radians(v_lat)) * cos(radians(l.lat::float)) * cos(radians(l.lng::float) - radians(v_lng))
+        + sin(radians(v_lat)) * sin(radians(l.lat::float))
+      )))))::decimal(10, 2)
       else null
     end as distance_km,
     l.service_radius_km
@@ -74,10 +76,10 @@ begin
     and l.is_active = true
   order by
     case when p_lat is not null and p_lng is not null and l.lat is not null and l.lng is not null
-      then (6371 * acos(least(1, greatest(-1,
-        cos(radians(p_lat::float)) * cos(radians(l.lat::float)) * cos(radians(l.lng::float) - radians(p_lng::float))
-        + sin(radians(p_lat::float)) * sin(radians(l.lat::float))
-      ))))
+      then 6371 * acos(least(1, greatest(-1,
+        cos(radians(v_lat)) * cos(radians(l.lat::float)) * cos(radians(l.lng::float) - radians(v_lng))
+        + sin(radians(v_lat)) * sin(radians(l.lat::float))
+      )))
       else 999999
     end,
     l.sort_order,

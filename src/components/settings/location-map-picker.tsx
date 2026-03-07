@@ -157,10 +157,12 @@ export function LocationMapPicker({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl p-0 gap-0 overflow-hidden">
-        <DialogHeader className="p-4 pb-2">
-          <DialogTitle className="text-[var(--text)]">Set service area on map</DialogTitle>
-          <DialogClose className="right-4 top-4" />
-        </DialogHeader>
+        <div className="p-4 pb-2">
+          <DialogHeader>
+            <DialogTitle className="text-[var(--text)]">Set service area on map</DialogTitle>
+            <DialogClose onClick={() => onOpenChange(false)} className="right-4 top-4" />
+          </DialogHeader>
+        </div>
         <p className="text-sm text-[var(--text-muted)] px-4 pb-3">
           Drag the center pin to move the service area. Enter the radius below to set the circle size (1–100 km).
         </p>
