@@ -6,7 +6,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogClose } from '@
 import { LocationForm } from '@/components/settings/location-form'
 import { LocationServicesEditor } from '@/components/settings/location-services-editor'
 import type { Location } from '@/types/locations'
-import { MapPin, Pencil, Trash2 } from 'lucide-react'
+import { GripVertical, MapPin, Pencil, Trash2 } from 'lucide-react'
 
 interface LocationsClientProps {
   initialLocations: Location[]
@@ -22,6 +22,9 @@ export function LocationsClient({ initialLocations, orgTimezone, isPro, multiLoc
   const [formOpen, setFormOpen] = useState(false)
   const [editingLocation, setEditingLocation] = useState<Location | null>(null)
   const [servicesEditorLocationId, setServicesEditorLocationId] = useState<string | null>(null)
+  const [draggedId, setDraggedId] = useState<string | null>(null)
+  const [dragOverId, setDragOverId] = useState<string | null>(null)
+  const [reordering, setReordering] = useState(false)
 
   const fetchLocations = () => {
     fetch('/api/locations')
@@ -54,6 +57,63 @@ export function LocationsClient({ initialLocations, orgTimezone, isPro, multiLoc
     if (!confirm(`Delete "${loc.name}"? This cannot be undone.`)) return
     const res = await fetch(`/api/locations/${loc.id}`, { method: 'DELETE' })
     if (res.ok) fetchLocations()
+  }
+
+  const handleReorder = async (newOrder: Location[]) => {
+    setLocations(newOrder)
+    setReordering(true)
+    try {
+      const res = await fetch('/api/locations/reorder', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ order: newOrder.map((l) => l.id) }),
+      })
+      if (!res.ok) fetchLocations()
+    } catch {
+      fetchLocations()
+    } finally {
+      setReordering(false)
+    }
+  }
+
+  const handleDragStart = (e: React.DragEvent, id: string) => {
+    setDraggedId(id)
+    e.dataTransfer.effectAllowed = 'move'
+    e.dataTransfer.setData('text/plain', id)
+    e.dataTransfer.setData('application/json', JSON.stringify({ id }))
+  }
+
+  const handleDragOver = (e: React.DragEvent, id: string) => {
+    e.preventDefault()
+    e.dataTransfer.dropEffect = 'move'
+    if (draggedId && draggedId !== id) setDragOverId(id)
+  }
+
+  const handleDragLeave = () => setDragOverId(null)
+
+  const handleDrop = (e: React.DragEvent, targetId: string) => {
+    e.preventDefault()
+    setDragOverId(null)
+    if (!draggedId || draggedId === targetId) {
+      setDraggedId(null)
+      return
+    }
+    const fromIndex = locations.findIndex((l) => l.id === draggedId)
+    const toIndex = locations.findIndex((l) => l.id === targetId)
+    if (fromIndex === -1 || toIndex === -1) {
+      setDraggedId(null)
+      return
+    }
+    const reordered = [...locations]
+    const [removed] = reordered.splice(fromIndex, 1)
+    reordered.splice(toIndex, 0, removed)
+    setDraggedId(null)
+    handleReorder(reordered)
+  }
+
+  const handleDragEnd = () => {
+    setDraggedId(null)
+    setDragOverId(null)
   }
 
   const handleMultiLocationToggle = async () => {
@@ -108,9 +168,23 @@ export function LocationsClient({ initialLocations, orgTimezone, isPro, multiLoc
           {locations.map((loc) => (
             <li
               key={loc.id}
-              className="flex items-center justify-between gap-4 rounded-lg border border-[var(--border)] bg-[var(--bg-card)] p-4"
+              draggable
+              onDragStart={(e) => handleDragStart(e, loc.id)}
+              onDragOver={(e) => handleDragOver(e, loc.id)}
+              onDragLeave={handleDragLeave}
+              onDrop={(e) => handleDrop(e, loc.id)}
+              onDragEnd={handleDragEnd}
+              className={`flex items-center gap-3 rounded-lg border bg-[var(--bg-card)] p-4 transition-colors ${
+                draggedId === loc.id ? 'opacity-50 border-[var(--accent)]' : dragOverId === loc.id ? 'border-[var(--accent)] ring-1 ring-[var(--accent)]/30' : 'border-[var(--border)]'
+              } ${reordering ? 'pointer-events-none' : ''}`}
             >
-              <div className="min-w-0">
+              <span
+                className="cursor-grab active:cursor-grabbing text-[var(--text-muted)] hover:text-[var(--text)] shrink-0 touch-none"
+                aria-label="Drag to reorder"
+              >
+                <GripVertical className="h-5 w-5" />
+              </span>
+              <div className="min-w-0 flex-1">
                 <div className="font-medium text-[var(--text)] flex items-center gap-2">
                   <MapPin className="h-4 w-4 shrink-0 text-[var(--text-muted)]" />
                   {loc.name}
@@ -122,7 +196,7 @@ export function LocationsClient({ initialLocations, orgTimezone, isPro, multiLoc
                   {loc.service_mode} · {loc.hours_start}:00–{loc.hours_end}:00 · {loc.is_active ? 'Active' : 'Inactive'}
                 </p>
               </div>
-              <div className="flex items-center gap-2 shrink-0">
+              <div className="flex items-center gap-2 shrink-0" onClick={(e) => e.stopPropagation()}>
                 <Button variant="ghost" size="sm" onClick={() => setServicesEditorLocationId(loc.id)}>
                   Services
                 </Button>
