@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { LocationMapPicker } from '@/components/settings/location-map-picker'
 import type { Location } from '@/types/locations'
 
 export interface LocationFormValues {
@@ -11,14 +12,13 @@ export interface LocationFormValues {
   address: string
   lat: number | null
   lng: number | null
+  service_radius_km: number | null
   timezone: string
   service_mode: 'mobile' | 'shop' | 'both'
   hours_start: number
   hours_end: number
   slot_interval_minutes: number
-  sort_order: number
   is_active: boolean
-  booking_promo_code_prefix: string
 }
 
 const defaultValues: LocationFormValues = {
@@ -26,14 +26,13 @@ const defaultValues: LocationFormValues = {
   address: '',
   lat: null,
   lng: null,
+  service_radius_km: null,
   timezone: '',
   service_mode: 'both',
   hours_start: 9,
   hours_end: 18,
   slot_interval_minutes: 30,
-  sort_order: 0,
   is_active: true,
-  booking_promo_code_prefix: '',
 }
 
 interface LocationFormProps {
@@ -47,6 +46,9 @@ export function LocationForm({ location, orgTimezone = 'America/Toronto', onSucc
   const [form, setForm] = useState<LocationFormValues>(defaultValues)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [geocoding, setGeocoding] = useState(false)
+  const [geocodeError, setGeocodeError] = useState<string | null>(null)
+  const [mapPickerOpen, setMapPickerOpen] = useState(false)
 
   useEffect(() => {
     if (location) {
@@ -55,14 +57,13 @@ export function LocationForm({ location, orgTimezone = 'America/Toronto', onSucc
         address: location.address ?? '',
         lat: location.lat != null ? Number(location.lat) : null,
         lng: location.lng != null ? Number(location.lng) : null,
+        service_radius_km: location.service_radius_km != null ? Number(location.service_radius_km) : null,
         timezone: location.timezone ?? orgTimezone,
         service_mode: location.service_mode ?? 'both',
         hours_start: location.hours_start ?? 9,
         hours_end: location.hours_end ?? 18,
         slot_interval_minutes: location.slot_interval_minutes ?? 30,
-        sort_order: location.sort_order ?? 0,
         is_active: location.is_active !== false,
-        booking_promo_code_prefix: location.booking_promo_code_prefix ?? '',
       })
     } else {
       setForm({ ...defaultValues, timezone: orgTimezone })
@@ -78,14 +79,15 @@ export function LocationForm({ location, orgTimezone = 'America/Toronto', onSucc
       address: form.address.trim() || null,
       lat: form.lat,
       lng: form.lng,
+      service_radius_km: form.service_radius_km,
       timezone: form.timezone.trim() || null,
       service_mode: form.service_mode,
       hours_start: form.hours_start,
       hours_end: form.hours_end,
       slot_interval_minutes: form.slot_interval_minutes,
-      sort_order: form.sort_order,
+      sort_order: 0,
       is_active: form.is_active,
-      booking_promo_code_prefix: form.booking_promo_code_prefix.trim() || null,
+      booking_promo_code_prefix: null,
     }
     try {
       if (location?.id) {
@@ -122,14 +124,25 @@ export function LocationForm({ location, orgTimezone = 'America/Toronto', onSucc
 
   const geocodeAddress = async () => {
     const a = form.address.trim()
-    if (!a) return
+    setGeocodeError(null)
+    if (!a) {
+      setGeocodeError('Enter an address first')
+      return
+    }
+    setGeocoding(true)
     try {
       const res = await fetch(`/api/geocode/forward?address=${encodeURIComponent(a)}`)
       const data = await res.json().catch(() => ({}))
       if (res.ok && typeof data.lat === 'number' && typeof data.lng === 'number') {
         setForm((f) => ({ ...f, lat: data.lat, lng: data.lng }))
+      } else {
+        setGeocodeError(data.error || 'Could not find coordinates for this address')
       }
-    } catch {}
+    } catch {
+      setGeocodeError('Geocoding failed. Check your connection or try a different address.')
+    } finally {
+      setGeocoding(false)
+    }
   }
 
   return (
@@ -146,23 +159,69 @@ export function LocationForm({ location, orgTimezone = 'America/Toronto', onSucc
       </div>
       <div>
         <Label htmlFor="loc-address">Address</Label>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2 items-start">
           <Input
             id="loc-address"
             value={form.address}
             onChange={(e) => setForm((f) => ({ ...f, address: e.target.value }))}
             placeholder="Street, city, postal code"
+            className="flex-1 min-w-[200px]"
           />
-          <Button type="button" variant="outline" size="sm" onClick={geocodeAddress}>
-            Set map
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            onClick={geocodeAddress}
+            disabled={geocoding}
+            className="shrink-0 bg-[var(--accent)]/15 text-[var(--accent)] hover:bg-[var(--accent)]/25 border-[var(--accent)]/50"
+          >
+            {geocoding ? 'Looking up…' : 'Set from address'}
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            onClick={() => setMapPickerOpen(true)}
+            className="shrink-0 bg-[var(--accent)]/15 text-[var(--accent)] hover:bg-[var(--accent)]/25 border-[var(--accent)]/50"
+          >
+            Set on map
           </Button>
         </div>
-        {form.lat != null && form.lng != null && (
-          <p className="text-xs text-[var(--text-muted)] mt-1">
-            Coordinates: {form.lat.toFixed(4)}, {form.lng.toFixed(4)}
-          </p>
+        {geocodeError && (
+          <p className="text-xs text-[var(--danger)] mt-1">{geocodeError}</p>
+        )}
+        {(form.lat != null && form.lng != null && !geocodeError) && (
+          <>
+            <p className="text-xs text-[var(--text-muted)] mt-1">
+              {form.service_radius_km != null
+                ? `Service area: ${form.lat.toFixed(4)}, ${form.lng.toFixed(4)} · ${form.service_radius_km.toFixed(1)} km radius`
+                : `Map coordinates: ${form.lat.toFixed(4)}, ${form.lng.toFixed(4)}`}
+            </p>
+            <div className="mt-2 rounded-lg overflow-hidden border border-[var(--border)] bg-[var(--bg)]">
+              <img
+                src={`/api/map?lat=${form.lat}&lng=${form.lng}&w=400&h=180`}
+                alt="Selected location"
+                className="w-full h-[180px] object-cover"
+              />
+            </div>
+          </>
         )}
       </div>
+      <LocationMapPicker
+        open={mapPickerOpen}
+        onOpenChange={setMapPickerOpen}
+        initialCenter={form.lat != null && form.lng != null ? { lat: form.lat, lng: form.lng } : null}
+        initialRadiusKm={form.service_radius_km}
+        onConfirm={(center, radiusKm) => {
+          setForm((f) => ({
+            ...f,
+            lat: center.lat,
+            lng: center.lng,
+            service_radius_km: radiusKm,
+          }))
+          setGeocodeError(null)
+        }}
+      />
       <div className="grid grid-cols-2 gap-4">
         <div>
           <Label htmlFor="loc-hours-start">Hours start (0–23)</Label>
@@ -222,24 +281,6 @@ export function LocationForm({ location, orgTimezone = 'America/Toronto', onSucc
           value={form.timezone}
           onChange={(e) => setForm((f) => ({ ...f, timezone: e.target.value }))}
           placeholder="America/Toronto"
-        />
-      </div>
-      <div>
-        <Label htmlFor="loc-sort">Sort order</Label>
-        <Input
-          id="loc-sort"
-          type="number"
-          value={form.sort_order}
-          onChange={(e) => setForm((f) => ({ ...f, sort_order: parseInt(e.target.value, 10) || 0 }))}
-        />
-      </div>
-      <div>
-        <Label htmlFor="loc-promo">Promo code prefix (optional)</Label>
-        <Input
-          id="loc-promo"
-          value={form.booking_promo_code_prefix}
-          onChange={(e) => setForm((f) => ({ ...f, booking_promo_code_prefix: e.target.value }))}
-          placeholder="e.g. DOWNTOWN10"
         />
       </div>
       <div className="flex items-center gap-2">

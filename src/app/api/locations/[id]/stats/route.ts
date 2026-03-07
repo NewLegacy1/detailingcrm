@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { requirePermission } from '@/lib/permissions-server'
 import { PERMISSIONS } from '@/lib/permissions'
+import { allowProFeatures } from '@/lib/pro-features'
 
 /** GET /api/locations/[id]/stats — revenue, booking count, utilization for this location. Pro only. */
 export async function GET(
@@ -20,7 +21,7 @@ export async function GET(
     .select('subscription_plan')
     .eq('id', orgId)
     .single()
-  if (org?.subscription_plan !== 'pro') {
+  if (!allowProFeatures(org?.subscription_plan)) {
     return NextResponse.json({ error: 'Pro plan required' }, { status: 403 })
   }
 

@@ -39,9 +39,9 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="dark">
+    <html lang="en" className="dark" suppressHydrationWarning>
       <head />
-      <body className={`${geist.variable} ${instrumentSans.variable} ${rajdhani.variable} ${nunito.variable} font-sans antialiased bg-[var(--bg)] text-[var(--text)]`}>
+      <body className={`${geist.variable} ${instrumentSans.variable} ${rajdhani.variable} ${nunito.variable} font-sans antialiased bg-[var(--bg)] text-[var(--text)]`} suppressHydrationWarning>
         {/* Redirect password-reset links that land on / to /auth/callback before React hydrates */}
         <script
           dangerouslySetInnerHTML={{

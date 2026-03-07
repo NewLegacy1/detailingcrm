@@ -1,13 +1,11 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import Link from 'next/link'
+import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogClose } from '@/components/ui/dialog'
 import { LocationForm } from '@/components/settings/location-form'
 import { LocationServicesEditor } from '@/components/settings/location-services-editor'
 import type { Location } from '@/types/locations'
-import { PLAN_PAGE_PATH } from '@/components/settings/plan-page-actions'
 import { MapPin, Pencil, Trash2 } from 'lucide-react'
 
 interface LocationsClientProps {
@@ -59,7 +57,6 @@ export function LocationsClient({ initialLocations, orgTimezone, isPro, multiLoc
   }
 
   const handleMultiLocationToggle = async () => {
-    if (!isPro) return
     setTogglingMulti(true)
     try {
       const res = await fetch('/api/settings/organization', {
@@ -70,19 +67,6 @@ export function LocationsClient({ initialLocations, orgTimezone, isPro, multiLoc
       if (res.ok) setMultiLocationEnabled((v) => !v)
     } catch {}
     setTogglingMulti(false)
-  }
-
-  if (!isPro) {
-    return (
-      <div className="space-y-4">
-        <p className="text-[var(--text-muted)]">
-          Multi-location booking is available on the Pro plan. Upgrade to add multiple locations and show a location step on your booking page.
-        </p>
-        <Link href={PLAN_PAGE_PATH}>
-          <Button>View plan</Button>
-        </Link>
-      </div>
-    )
   }
 
   return (

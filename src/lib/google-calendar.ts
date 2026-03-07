@@ -159,13 +159,16 @@ export interface JobForEvent {
   serviceName: string
   durationMins: number
   assigned_tech_id: string | null
+  /** Location name for multi-location; shown in calendar event title so it's not confusing. */
+  locationName?: string | null
 }
 
 export function buildEventBody(job: JobForEvent, options: { calendarId: string }): { summary: string; description: string; location: string; start: { dateTime: string; timeZone: string }; end: { dateTime: string; timeZone: string } } {
   const start = new Date(job.scheduled_at)
   const end = new Date(start.getTime() + job.durationMins * 60 * 1000)
   const timeZone = 'UTC'
-  const summary = `${job.serviceName} – ${job.clientName}${job.vehicleSummary ? ` (${job.vehicleSummary})` : ''}`
+  const baseSummary = `${job.serviceName} – ${job.clientName}${job.vehicleSummary ? ` (${job.vehicleSummary})` : ''}`
+  const summary = job.locationName?.trim() ? `[${job.locationName.trim()}] ${baseSummary}` : baseSummary
   const description = [
     job.serviceName,
     job.notes || '',

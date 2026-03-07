@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { requirePermission } from '@/lib/permissions-server'
 import { PERMISSIONS } from '@/lib/permissions'
+import { allowProFeatures } from '@/lib/pro-features'
 
 /** GET /api/locations — list locations for current org. Pro only. */
 export async function GET() {
@@ -17,7 +18,7 @@ export async function GET() {
     .select('subscription_plan')
     .eq('id', orgId)
     .single()
-  if (org?.subscription_plan !== 'pro') {
+  if (!allowProFeatures(org?.subscription_plan)) {
     return NextResponse.json({ error: 'Pro plan required' }, { status: 403 })
   }
 
@@ -46,7 +47,7 @@ export async function POST(req: NextRequest) {
     .select('subscription_plan, timezone')
     .eq('id', orgId)
     .single()
-  if (org?.subscription_plan !== 'pro') {
+  if (!allowProFeatures(org?.subscription_plan)) {
     return NextResponse.json({ error: 'Pro plan required' }, { status: 403 })
   }
 
@@ -66,6 +67,7 @@ export async function POST(req: NextRequest) {
     address: typeof body.address === 'string' ? body.address.trim() || null : null,
     lat: typeof body.lat === 'number' && !Number.isNaN(body.lat) ? body.lat : null,
     lng: typeof body.lng === 'number' && !Number.isNaN(body.lng) ? body.lng : null,
+    service_radius_km: typeof body.service_radius_km === 'number' && body.service_radius_km >= 0 ? body.service_radius_km : null,
     timezone: typeof body.timezone === 'string' ? body.timezone.trim() || null : null,
     service_mode: body.service_mode === 'shop' || body.service_mode === 'mobile' ? body.service_mode : 'both',
     hours_start: typeof body.hours_start === 'number' ? Math.max(0, Math.min(23, body.hours_start)) : 9,

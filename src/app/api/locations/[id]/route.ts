@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { requirePermission } from '@/lib/permissions-server'
 import { PERMISSIONS } from '@/lib/permissions'
+import { allowProFeatures } from '@/lib/pro-features'
 
 async function getOrgIdAndEnsurePro(supabase: Awaited<ReturnType<typeof createClient>>) {
   const result = await requirePermission(PERMISSIONS.SETTINGS_VIEW)
@@ -13,7 +14,7 @@ async function getOrgIdAndEnsurePro(supabase: Awaited<ReturnType<typeof createCl
     .select('subscription_plan')
     .eq('id', orgId)
     .single()
-  if (org?.subscription_plan !== 'pro') {
+  if (!allowProFeatures(org?.subscription_plan)) {
     return { error: NextResponse.json({ error: 'Pro plan required' }, { status: 403 }) }
   }
   return { orgId }
@@ -57,7 +58,7 @@ export async function PATCH(
     .select('subscription_plan')
     .eq('id', orgId)
     .single()
-  if (org?.subscription_plan !== 'pro') {
+  if (!allowProFeatures(org?.subscription_plan)) {
     return NextResponse.json({ error: 'Pro plan required' }, { status: 403 })
   }
 
@@ -81,6 +82,8 @@ export async function PATCH(
   if (typeof body.address === 'string') upd.address = body.address.trim() || null
   if (typeof body.lat === 'number' && !Number.isNaN(body.lat)) upd.lat = body.lat
   if (typeof body.lng === 'number' && !Number.isNaN(body.lng)) upd.lng = body.lng
+  if (typeof body.service_radius_km === 'number' && body.service_radius_km >= 0) upd.service_radius_km = body.service_radius_km
+  if (body.service_radius_km === null) upd.service_radius_km = null
   if (typeof body.timezone === 'string') upd.timezone = body.timezone.trim() || null
   if (body.service_mode === 'shop' || body.service_mode === 'mobile' || body.service_mode === 'both') upd.service_mode = body.service_mode
   if (typeof body.hours_start === 'number') upd.hours_start = Math.max(0, Math.min(23, body.hours_start))
@@ -121,7 +124,7 @@ export async function DELETE(
     .select('subscription_plan')
     .eq('id', orgId)
     .single()
-  if (org?.subscription_plan !== 'pro') {
+  if (!allowProFeatures(org?.subscription_plan)) {
     return NextResponse.json({ error: 'Pro plan required' }, { status: 403 })
   }
 

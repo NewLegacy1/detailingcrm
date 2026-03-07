@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation'
 import { LocationsClient } from './locations-client'
 import type { Location } from '@/types/locations'
 import { crmPath } from '@/lib/crm-path'
+import { allowProFeatures } from '@/lib/pro-features'
 
 export default async function SettingsLocationsPage() {
   const supabase = await createAuthClient()
@@ -31,9 +32,10 @@ export default async function SettingsLocationsPage() {
     .eq('id', orgId)
     .single()
 
-  const isPro = org?.subscription_plan === 'pro'
-  const orgTimezone = org?.timezone ?? 'America/Toronto'
   const multiLocationEnabled = org?.multi_location_enabled === true
+  // Pro UI when: plan is Pro (or FORCE_PRO_FEATURES=true), or multi-location already enabled
+  const isPro = allowProFeatures(org?.subscription_plan) || multiLocationEnabled
+  const orgTimezone = org?.timezone ?? 'America/Toronto'
 
   const { data: locations } = await supabase
     .from('locations')

@@ -35,7 +35,7 @@ export async function syncJobToGoogle(
 
   const { data: job, error: jobError } = await supabase
     .from('jobs')
-    .select('id, status, scheduled_at, address, notes, assigned_tech_id, google_company_event_id, customer_id, vehicle_id, service_id')
+    .select('id, status, scheduled_at, address, notes, assigned_tech_id, google_company_event_id, customer_id, vehicle_id, service_id, location_id')
     .eq('id', jobId)
     .single()
 
@@ -43,10 +43,15 @@ export async function syncJobToGoogle(
     return { synced: false, error: jobError?.message ?? 'Job not found' }
   }
 
-  const jobRow = job as { customer_id?: string; vehicle_id?: string; service_id?: string }
+  const jobRow = job as { customer_id?: string; vehicle_id?: string; service_id?: string; location_id?: string | null }
   let client: { name: string } | null = null
   let vehicle: { make: string; model: string; year: number | null } | null = null
   let service: { name: string; duration_mins: number } | null = null
+  let locationName: string | null = null
+  if (jobRow.location_id) {
+    const { data: loc } = await supabase.from('locations').select('name').eq('id', jobRow.location_id).single()
+    if (loc?.name) locationName = loc.name
+  }
 
   if (jobRow.customer_id) {
     const { data: clientRow } = await supabase
@@ -85,6 +90,7 @@ export async function syncJobToGoogle(
     serviceName: service?.name ?? 'Job',
     durationMins: service?.duration_mins ?? 60,
     assigned_tech_id: job.assigned_tech_id,
+    locationName: locationName ?? undefined,
   }
 
   const calendarId = org.google_company_calendar_id

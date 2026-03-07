@@ -100,8 +100,11 @@ export function BookingPageClientMultiLocation({
   const handleGeoSuccess = (lat: number, lng: number) => {
     fetch(`/api/booking/locations?slug=${encodeURIComponent(slug)}&lat=${lat}&lng=${lng}`)
       .then((res) => res.ok ? res.json() : null)
-      .then((data: { locations?: LocationCardLocation[] } | null) => {
+      .then((data: { locations?: LocationCardLocation[]; suggestedLocationId?: string } | null) => {
         if (data?.locations?.length) setLocations(data.locations)
+        if (data?.suggestedLocationId && data.locations?.some((loc) => loc.id === data.suggestedLocationId)) {
+          setSelectedLocationId(data.suggestedLocationId)
+        }
       })
       .catch(() => {})
       .finally(() => setGeoComplete(true))

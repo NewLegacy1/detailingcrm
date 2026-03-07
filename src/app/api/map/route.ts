@@ -5,13 +5,18 @@ const key =
   process.env.GOOGLE_MAPS_API_KEY
 
 /**
- * GET /api/map?address=... → static map image with a pin at the address.
+ * GET /api/map?address=... OR ?lat=...&lng=... → static map image with a pin.
  * Proxies Google Maps Static API so the key stays server-side.
  */
 export async function GET(request: NextRequest) {
   const address = request.nextUrl.searchParams.get('address')
-  if (!address || typeof address !== 'string' || !address.trim()) {
-    return NextResponse.json({ error: 'address required' }, { status: 400 })
+  const lat = request.nextUrl.searchParams.get('lat')
+  const lng = request.nextUrl.searchParams.get('lng')
+  const hasLatLng = lat != null && lng != null && !Number.isNaN(Number(lat)) && !Number.isNaN(Number(lng))
+  const hasAddress = address && typeof address === 'string' && address.trim().length > 0
+
+  if (!hasLatLng && !hasAddress) {
+    return NextResponse.json({ error: 'address or lat and lng required' }, { status: 400 })
   }
   if (!key) {
     return NextResponse.json(
@@ -20,11 +25,23 @@ export async function GET(request: NextRequest) {
     )
   }
 
-  const encoded = encodeURIComponent(address.trim())
   const width = Math.min(800, Math.max(200, Number(request.nextUrl.searchParams.get('w')) || 415))
   const height = Math.min(400, Math.max(100, Number(request.nextUrl.searchParams.get('h')) || 150))
   const size = `${Math.round(width)}x${Math.round(height)}`
-  const url = `https://maps.googleapis.com/maps/api/staticmap?center=${encoded}&zoom=15&size=${size}&markers=color:red%7C${encoded}&key=${key}`
+
+  let center: string
+  let marker: string
+  if (hasLatLng) {
+    const latNum = Number(lat)
+    const lngNum = Number(lng)
+    center = `${latNum},${lngNum}`
+    marker = `color:red%7C${latNum},${lngNum}`
+  } else {
+    const encoded = encodeURIComponent((address as string).trim())
+    center = encoded
+    marker = `color:red%7C${encoded}`
+  }
+  const url = `https://maps.googleapis.com/maps/api/staticmap?center=${center}&zoom=14&size=${size}&markers=${marker}&key=${key}`
 
   const res = await fetch(url, { cache: 'force-cache', next: { revalidate: 86400 } })
   if (!res.ok) {

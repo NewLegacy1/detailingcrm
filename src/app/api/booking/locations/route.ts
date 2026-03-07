@@ -46,7 +46,21 @@ export async function GET(req: NextRequest) {
     sort_order: r.sort_order,
     is_active: r.is_active,
     distance_km: r.distance_km != null ? Number(r.distance_km) : null,
+    service_radius_km: r.service_radius_km != null ? Number(r.service_radius_km) : null,
   }))
+
+  // When customer provided lat/lng, suggest a location if exactly one has them inside its service area
+  let suggestedLocationId: string | null = null
+  if (pLat != null && pLng != null && !Number.isNaN(pLat) && !Number.isNaN(pLng)) {
+    const inServiceArea = locations.filter(
+      (loc: { distance_km: number | null; service_radius_km: number | null }) =>
+        loc.distance_km != null &&
+        loc.service_radius_km != null &&
+        loc.service_radius_km > 0 &&
+        loc.distance_km <= loc.service_radius_km
+    )
+    if (inServiceArea.length === 1) suggestedLocationId = inServiceArea[0].id as string
+  }
 
   const durationMins = 60
   const today = new Date()
@@ -68,5 +82,5 @@ export async function GET(req: NextRequest) {
     withNext.push({ ...loc, next_available })
   }
 
-  return NextResponse.json({ locations: withNext })
+  return NextResponse.json({ locations: withNext, suggestedLocationId })
 }

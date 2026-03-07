@@ -9,6 +9,8 @@ export interface Location {
   address: string | null
   lat: number | null
   lng: number | null
+  /** Service area radius in km (from map picker). Null = use org default. */
+  service_radius_km: number | null
   timezone: string | null
   service_mode: 'mobile' | 'shop' | 'both'
   hours_start: number
