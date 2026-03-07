@@ -7,6 +7,7 @@ import { GoogleCalendarCard } from '@/components/settings/google-calendar-card'
 import { ScheduleHoursForm } from '@/components/settings/schedule-hours-form'
 import { TimezoneForm } from '@/components/settings/timezone-form'
 import { ShopLocationSettings } from '@/components/settings/shop-location-settings'
+import { PerLocationScheduleSection } from '@/components/settings/per-location-schedule-section'
 import { IntegrationsAlerts } from '../integrations/integrations-alerts'
 
 export default async function SettingsBookingsPage() {
@@ -57,6 +58,8 @@ export default async function SettingsBookingsPage() {
         </p>
         <ScheduleHoursForm />
       </section>
+
+      <PerLocationScheduleSection />
 
       <ShopLocationSettings isPro={isPro} />
     </div>

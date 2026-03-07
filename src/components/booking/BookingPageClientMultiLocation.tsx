@@ -1,24 +1,23 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useSearchParams } from 'next/navigation'
 import type { BookingContext, MaintenanceContext } from '@/app/book/[slug]/page'
 import { BookingPageClient } from './BookingPageClient'
-import { BookingLocationStep } from './BookingLocationStep'
-import { BookingGeoStep } from './BookingGeoStep'
 import type { LocationCardLocation } from './LocationCard'
 
 interface BookingPageClientMultiLocationProps {
   slug: string
-  /** Org-level context (used only to show location step; after selection we use location-scoped context). */
+  /** Org-level context (used until a location is selected; then we use location-scoped context). */
   initialContext: BookingContext
   locations: LocationCardLocation[]
   maintenanceContext?: MaintenanceContext | null
 }
 
 /**
- * Multi-location booking wrapper: geo step (optional) → location step → location-scoped booking.
- * Supports ?location=uuid to pre-select and skip geo + location steps (e.g. embed).
+ * Multi-location booking: same main booking page with location selector added.
+ * User sees map + address + "Choose location" on the same page; address auto-assigns/sorts locations.
+ * Supports ?location=uuid to pre-select (e.g. embed).
  */
 export function BookingPageClientMultiLocation({
   slug,
@@ -28,7 +27,6 @@ export function BookingPageClientMultiLocation({
 }: BookingPageClientMultiLocationProps) {
   const searchParams = useSearchParams()
   const [locations, setLocations] = useState<LocationCardLocation[]>(initialLocations)
-  const [geoComplete, setGeoComplete] = useState(false)
   const [selectedLocationId, setSelectedLocationId] = useState<string | null>(null)
   const [locationContext, setLocationContext] = useState<BookingContext | null>(null)
   const [loadingContext, setLoadingContext] = useState(false)
@@ -49,11 +47,10 @@ export function BookingPageClientMultiLocation({
       .catch(() => {})
   }, [slug, initialLocations.length])
 
-  // Pre-select from ?location=uuid (skip geo + location steps)
+  // Pre-select from ?location=uuid
   useEffect(() => {
     if (validPreSelectId && !selectedLocationId && !locationContext) {
       setSelectedLocationId(validPreSelectId)
-      setGeoComplete(true)
     }
   }, [validPreSelectId, selectedLocationId, locationContext])
 
@@ -73,6 +70,7 @@ export function BookingPageClientMultiLocation({
           if (res.status === 404) setContextError('Location no longer available.')
           else setContextError('Unable to load this location.')
           setLocationContext(null)
+          setSelectedLocationId(null)
           setLoadingContext(false)
           return
         }
@@ -87,6 +85,7 @@ export function BookingPageClientMultiLocation({
         if (!cancelled) {
           setContextError('Something went wrong.')
           setLocationContext(null)
+          setSelectedLocationId(null)
         }
       })
       .finally(() => {
@@ -97,9 +96,13 @@ export function BookingPageClientMultiLocation({
     }
   }, [slug, selectedLocationId])
 
-  const handleGeoSuccess = (lat: number, lng: number) => {
+  const handleSelectLocation = useCallback((locationId: string) => {
+    setSelectedLocationId(locationId)
+  }, [])
+
+  const handleAddressSelect = useCallback((lat: number, lng: number) => {
     fetch(`/api/booking/locations?slug=${encodeURIComponent(slug)}&lat=${lat}&lng=${lng}`)
-      .then((res) => res.ok ? res.json() : null)
+      .then((res) => (res.ok ? res.json() : null))
       .then((data: { locations?: LocationCardLocation[]; suggestedLocationId?: string } | null) => {
         if (data?.locations?.length) setLocations(data.locations)
         if (data?.suggestedLocationId && data.locations?.some((loc) => loc.id === data.suggestedLocationId)) {
@@ -107,57 +110,22 @@ export function BookingPageClientMultiLocation({
         }
       })
       .catch(() => {})
-      .finally(() => setGeoComplete(true))
-  }
+  }, [slug])
 
-  const handleGeoSkip = () => setGeoComplete(true)
-
-  const handleSelectLocation = (locationId: string) => {
-    setSelectedLocationId(locationId)
-  }
-
-  // Phase 1: Geo (nearest locations). Skip when ?location= is set.
-  if (!geoComplete && !validPreSelectId) {
-    return (
-      <BookingGeoStep
-        onSuccess={handleGeoSuccess}
-        onSkip={handleGeoSkip}
-      />
-    )
-  }
-
-  // Phase 2: Location selection
-  if (!selectedLocationId) {
-    return (
-      <BookingLocationStep
-        slug={slug}
-        locations={locations}
-        onSelect={handleSelectLocation}
-      />
-    )
-  }
-
-  // Loading location-scoped context
-  if (loadingContext || !locationContext) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-[var(--booking-bg,#212121)] text-[var(--text)]">
-        <div className="text-center">
-          {contextError ? (
-            <p className="text-[var(--text-2)]">{contextError}</p>
-          ) : (
-            <p className="text-[var(--text-2)]">Loading…</p>
-          )}
-        </div>
-      </div>
-    )
-  }
+  const context = locationContext ?? initialContext
+  const showLocationSelector = locations.length > 0
 
   return (
     <BookingPageClient
       slug={slug}
-      context={locationContext}
+      context={context}
       maintenanceContext={maintenanceContext}
       locationId={selectedLocationId}
+      locations={showLocationSelector ? locations : undefined}
+      onSelectLocation={showLocationSelector ? handleSelectLocation : undefined}
+      onAddressSelect={showLocationSelector ? handleAddressSelect : undefined}
+      contextLoading={loadingContext && !!selectedLocationId}
+      contextError={contextError}
     />
   )
 }

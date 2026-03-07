@@ -9,6 +9,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogClose } from '@/components/ui/dialog'
 import { ChevronLeft, ChevronRight, Check, Plus, Minus } from 'lucide-react'
 import type { BookingSuccessData } from './BookingPageClient'
+import { LocationCard, type LocationCardLocation } from './LocationCard'
 
 const WEEKDAYS = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa']
 
@@ -177,6 +178,11 @@ interface BookingServicePanelProps {
   /** When not signed in, show Create account / Sign in / Continue as guest on details step; these open auth or close panel. */
   onSignInClick?: () => void
   onSignUpClick?: () => void
+  /** Multi-location: show "Choose location" in panel after address is entered (not on first page). */
+  locations?: LocationCardLocation[]
+  onSelectLocation?: (locationId: string) => void
+  /** Multi-location: true while loading location context after user picked a location. */
+  contextLoading?: boolean
 }
 
 export function BookingServicePanel({
@@ -205,6 +211,9 @@ export function BookingServicePanel({
   customerProfile,
   onSignInClick,
   onSignUpClick,
+  locations = undefined,
+  onSelectLocation,
+  contextLoading = false,
 }: BookingServicePanelProps) {
   const isShopService = serviceLocation === 'shop'
   const maintenancePreSelectRef = useRef(false)
@@ -232,6 +241,7 @@ export function BookingServicePanel({
   const [error, setError] = useState<string | null>(null)
   const [distanceResult, setDistanceResult] = useState<{ distanceKm: number; durationMins: number } | null>(null)
   const [selectedSavedVehicleId, setSelectedSavedVehicleId] = useState<string | null>(null)
+  const [showLocationPicker, setShowLocationPicker] = useState(false)
   const addressInputRef = useRef<HTMLInputElement>(null)
   const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null)
   const lastSessionPayloadRef = useRef<{ slug: string; sessionToken: string; stepReached: Step; address?: string; serviceId?: string; name?: string; email?: string; phone?: string; booked?: boolean } | null>(null)
@@ -261,7 +271,10 @@ export function BookingServicePanel({
   }, [open, BOOKING_STORAGE_KEY])
 
   useEffect(() => {
-    if (!open) hasLoadedSavedContactRef.current = false
+    if (!open) {
+      hasLoadedSavedContactRef.current = false
+      setShowLocationPicker(false)
+    }
   }, [open])
 
   const trackBookingSession = useCallback(
@@ -642,40 +655,107 @@ export function BookingServicePanel({
 
   if (!open) return null
 
+  const hasLocationFeature = locations != null && locations.length > 0 && onSelectLocation != null
+  const selectedLocationName = locationId && locations?.length ? (locations.find((l) => l.id === locationId)?.name ?? null) : null
+
   const content = (
     <div className="w-full max-w-sm md:max-w-none mx-auto md:mx-0 p-4 overflow-y-auto h-full flex flex-col">
-      {onClose && (
-        <div className="md:hidden flex justify-end mb-2">
+      {/* Top row: location (when multi-location) + close button on mobile */}
+      <div className="flex items-center justify-between gap-2 mb-3 min-h-[44px]">
+        <div className="flex-1 min-w-0">
+          {hasLocationFeature && (
+            contextLoading ? (
+              <span className="text-sm text-[var(--text-2)]">Loading your location…</span>
+            ) : (
+              <span className="text-sm text-[var(--text)]">
+                {selectedLocationName ? (
+                  <>
+                    {selectedLocationName}
+                    {' · '}
+                    <button
+                      type="button"
+                      onClick={() => setShowLocationPicker((v) => !v)}
+                      className="text-[var(--accent)] underline hover:no-underline"
+                    >
+                      Change location
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setShowLocationPicker(true)}
+                    className="text-[var(--accent)] underline hover:no-underline"
+                  >
+                    Choose location
+                  </button>
+                )}
+              </span>
+            )
+          )}
+        </div>
+        {onClose && (
           <button
             type="button"
             onClick={onClose}
-            className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-lg border border-[var(--border-hi)] text-[var(--text-2)] hover:text-[var(--text)] hover:bg-[var(--booking-surface-hover)]"
+            className="md:hidden shrink-0 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-lg border border-[var(--border-hi)] text-[var(--text-2)] hover:text-[var(--text)] hover:bg-[var(--booking-surface-hover)]"
             aria-label="Close"
           >
             ×
           </button>
+        )}
+      </div>
+
+      {/* Location list: only when user clicks Change/Choose location */}
+      {hasLocationFeature && showLocationPicker && !contextLoading && (
+        <div className="mb-4 p-4 rounded-xl border border-[var(--border)] bg-[var(--booking-surface)]">
+          <div className="flex items-center justify-between gap-2 mb-3">
+            <p className="text-sm font-medium text-[var(--text)]">Select location</p>
+            <button
+              type="button"
+              onClick={() => setShowLocationPicker(false)}
+              className="shrink-0 min-h-[32px] min-w-[32px] flex items-center justify-center rounded-lg text-[var(--text-2)] hover:text-[var(--text)] hover:bg-[var(--booking-surface-hover)]"
+              aria-label="Close"
+            >
+              ×
+            </button>
+          </div>
+          <div className="space-y-2 max-h-40 overflow-y-auto">
+            {locations!.map((loc) => (
+              <LocationCard
+                key={loc.id}
+                location={loc}
+                selected={loc.id === locationId}
+                onSelect={() => {
+                  onSelectLocation!(loc.id)
+                  setShowLocationPicker(false)
+                }}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Sign-in / guest */}
+      {step === 'service' && !customerProfile && (onSignInClick != null || onSignUpClick != null) && (
+        <div className="flex flex-wrap items-center gap-2 mb-4 p-3 rounded-lg border border-[var(--border)] bg-[var(--booking-surface)]">
+          <span className="text-xs text-[var(--text-muted)] w-full">Sign in to auto-fill your details later</span>
+          {onSignUpClick && (
+            <Button type="button" variant="outline" size="sm" className="border-[var(--border-hi)] text-[var(--text)]" onClick={onSignUpClick}>
+              Create account
+            </Button>
+          )}
+          {onSignInClick && (
+            <Button type="button" variant="outline" size="sm" className="border-[var(--border-hi)] text-[var(--text)]" onClick={onSignInClick}>
+              Sign in
+            </Button>
+          )}
+          <span className="text-xs text-[var(--text-muted)]">or continue as guest</span>
         </div>
       )}
 
       {/* ── Service selection (grouped by category) ── */}
       {step === 'service' && (
         <>
-          {!customerProfile && (onSignInClick != null || onSignUpClick != null) && (
-            <div className="flex flex-wrap items-center gap-2 mb-4 p-3 rounded-lg border border-[var(--border)] bg-[var(--booking-surface)]">
-              <span className="text-xs text-[var(--text-muted)] w-full">Sign in to auto-fill your details later</span>
-              {onSignUpClick && (
-                <Button type="button" variant="outline" size="sm" className="border-[var(--border-hi)] text-[var(--text)]" onClick={onSignUpClick}>
-                  Create account
-                </Button>
-              )}
-              {onSignInClick && (
-                <Button type="button" variant="outline" size="sm" className="border-[var(--border-hi)] text-[var(--text)]" onClick={onSignInClick}>
-                  Sign in
-                </Button>
-              )}
-              <span className="text-xs text-[var(--text-muted)]">or continue as guest</span>
-            </div>
-          )}
           <h2 className="text-sm font-semibold text-[var(--text)] uppercase tracking-wider mb-3">Select a service</h2>
           {services.length === 0 ? (
             <p className="text-sm text-[var(--text-muted)]">No services available yet.</p>

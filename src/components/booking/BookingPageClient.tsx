@@ -13,6 +13,7 @@ import { BookingSearchCard } from './BookingSearchCard'
 import { BookingServicePanel } from './BookingServicePanel'
 import { BookingRouteSummary } from './BookingRouteSummary'
 import { BookingAuthModal } from './BookingAuthModal'
+import type { LocationCardLocation } from './LocationCard'
 
 const BOOKING_BG_DEFAULT = '#212121'
 /** Default accent for prices and highlights when org has no accent set. Light green to match the default dark template. */
@@ -72,9 +73,29 @@ interface BookingPageClientProps {
   maintenanceContext?: MaintenanceContext | null
   /** Multi-location (Pro): selected location id; included in slot and booking API calls. */
   locationId?: string | null
+  /** Multi-location: list to choose from when locationId is not set yet. */
+  locations?: LocationCardLocation[]
+  /** Multi-location: when user picks a location. */
+  onSelectLocation?: (locationId: string) => void
+  /** Multi-location: when user enters address (lat/lng) so parent can fetch sorted locations and auto-assign. */
+  onAddressSelect?: (lat: number, lng: number) => void
+  /** Multi-location: true while loading location-scoped context after user picked a location. */
+  contextLoading?: boolean
+  /** Multi-location: error message when location context failed to load (e.g. pick again). */
+  contextError?: string | null
 }
 
-export function BookingPageClient({ slug, context, maintenanceContext = null, locationId = null }: BookingPageClientProps) {
+export function BookingPageClient({
+  slug,
+  context,
+  maintenanceContext = null,
+  locationId = null,
+  locations = undefined,
+  onSelectLocation,
+  onAddressSelect,
+  contextLoading = false,
+  contextError = null,
+}: BookingPageClientProps) {
   const searchParams = useSearchParams()
   const [mapReady, setMapReady] = useState(false)
   const [addressValue, setAddressValue] = useState('')
@@ -89,6 +110,7 @@ export function BookingPageClient({ slug, context, maintenanceContext = null, lo
   /** When serviceMode is 'both', customer choice: 'mobile' = at their address, 'shop' = at shop. */
   const [serviceLocation, setServiceLocation] = useState<'mobile' | 'shop'>('mobile')
   const sessionTokenRef = useRef<string | null>(null)
+  const prevLocationIdRef = useRef<string | null>(null)
   const supabase = useMemo(() => createClient(), [])
 
   const serviceMode = context.serviceMode ?? 'mobile'
@@ -128,6 +150,17 @@ export function BookingPageClient({ slug, context, maintenanceContext = null, lo
       })
     return () => { cancelled = true }
   }, [bookingUser?.id, slug])
+
+  // Multi-location: open panel after address is entered when we have a location (auto-selected or to pick)
+  useEffect(() => {
+    if (!markerPosition) return
+    const shouldOpen =
+      locationId != null
+        ? true
+        : Boolean(locations?.length && onSelectLocation)
+    if (shouldOpen) setPanelOpen(true)
+    prevLocationIdRef.current = locationId
+  }, [locationId, markerPosition, locations?.length, onSelectLocation])
 
   const getOrCreateSessionToken = useCallback(() => {
     if (sessionTokenRef.current) return sessionTokenRef.current
@@ -256,23 +289,29 @@ export function BookingPageClient({ slug, context, maintenanceContext = null, lo
     context.mapLat != null && context.mapLng != null
       ? { lat: context.mapLat, lng: context.mapLng }
       : null
+  // When customer has entered an address, center map on it so the pin is visible (desktop + mobile)
+  const mapCenterOrMarker = markerPosition ?? mapCenter
 
   const handlePlaceSelect = useCallback((place: { address: string; lat: number; lng: number }) => {
     setAddressError(null)
-    const radiusKm = context.serviceRadiusKm != null && context.serviceRadiusKm > 0 ? context.serviceRadiusKm : null
-    const centerLat = context.mapLat
-    const centerLng = context.mapLng
-    if (radiusKm != null && centerLat != null && centerLng != null) {
-      const dist = haversineDistanceKm(centerLat, centerLng, place.lat, place.lng)
-      if (dist > radiusKm) {
-        setAddressError(`This address is outside our service area (${Math.round(dist)} km away; we serve within ${radiusKm} km).`)
-        return
+    const isMultiLocationPick = locations?.length && onSelectLocation && !locationId
+    if (!isMultiLocationPick) {
+      const radiusKm = context.serviceRadiusKm != null && context.serviceRadiusKm > 0 ? context.serviceRadiusKm : null
+      const centerLat = context.mapLat
+      const centerLng = context.mapLng
+      if (radiusKm != null && centerLat != null && centerLng != null) {
+        const dist = haversineDistanceKm(centerLat, centerLng, place.lat, place.lng)
+        if (dist > radiusKm) {
+          setAddressError(`This address is outside our service area (${Math.round(dist)} km away; we serve within ${radiusKm} km).`)
+          return
+        }
       }
     }
     setAddressValue(place.address)
     setMarkerPosition({ lat: place.lat, lng: place.lng })
-    setPanelOpen(true)
-  }, [context.serviceRadiusKm, context.mapLat, context.mapLng])
+    onAddressSelect?.(place.lat, place.lng)
+    if (!isMultiLocationPick) setPanelOpen(true)
+  }, [context.serviceRadiusKm, context.mapLat, context.mapLng, locations?.length, onSelectLocation, locationId, onAddressSelect])
 
   useEffect(() => {
     const key =
@@ -327,7 +366,7 @@ export function BookingPageClient({ slug, context, maintenanceContext = null, lo
         <div className="absolute inset-0 top-14 overflow-hidden">
           <BookingMap
             mapReady={mapReady}
-            center={mapCenter}
+            center={mapCenterOrMarker}
             markerPosition={markerPosition}
             mapTheme={context.mapTheme}
           />
@@ -359,6 +398,9 @@ export function BookingPageClient({ slug, context, maintenanceContext = null, lo
             customerProfile={bookingProfile}
             onSignInClick={() => setAuthModal('signin')}
             onSignUpClick={() => setAuthModal('signup')}
+            locations={locations}
+            onSelectLocation={onSelectLocation}
+            contextLoading={contextLoading}
           />
         </AnimatePresence>
       </div>
@@ -459,34 +501,60 @@ export function BookingPageClient({ slug, context, maintenanceContext = null, lo
                   onPlaceSelect={handlePlaceSelect}
                   mapReady={mapReady}
                   footer={
-                    bookingUser && bookingProfile?.client ? (
+                    (locations?.length && onSelectLocation) ? undefined : (
+                      bookingUser && bookingProfile?.client ? (
+                        <p className="text-sm">
+                          <span className="text-[var(--text-2)]">Welcome, </span>
+                          <Link
+                            href={`/book/${slug}/profile`}
+                            className="text-[var(--accent)] font-semibold underline underline-offset-2 hover:opacity-90"
+                          >
+                            {bookingProfile.client.name?.trim() || 'your profile'}
+                          </Link>
+                        </p>
+                      ) : (
+                        <p className="text-sm">
+                          <span className="text-[var(--text-2)]">Already a customer? </span>
+                          <button
+                            type="button"
+                            onClick={() => setAuthModal('signin')}
+                            className="text-[var(--accent)] font-semibold underline underline-offset-2 hover:opacity-90"
+                          >
+                            Sign in
+                          </button>
+                        </p>
+                      )
+                    )
+                  }
+                />
+                {contextError && (
+                  <p className="text-sm text-amber-500 text-center w-full max-w-md mx-auto" role="alert">
+                    {contextError}
+                  </p>
+                )}
+                {addressError && (
+                  <p className="text-sm text-red-500 text-center mt-1" role="alert">
+                    {addressError}
+                  </p>
+                )}
+                {locations?.length && onSelectLocation && !contextLoading && locationId && (
+                  <div className="mt-4 pt-3 border-t border-[var(--border)] text-center text-[var(--text)] flex items-center justify-center w-full max-w-md mx-auto">
+                    {bookingUser && bookingProfile?.client ? (
                       <p className="text-sm">
                         <span className="text-[var(--text-2)]">Welcome, </span>
-                        <Link
-                          href={`/book/${slug}/profile`}
-                          className="text-[var(--accent)] font-semibold underline underline-offset-2 hover:opacity-90"
-                        >
+                        <Link href={`/book/${slug}/profile`} className="text-[var(--accent)] font-semibold underline underline-offset-2 hover:opacity-90">
                           {bookingProfile.client.name?.trim() || 'your profile'}
                         </Link>
                       </p>
                     ) : (
                       <p className="text-sm">
                         <span className="text-[var(--text-2)]">Already a customer? </span>
-                        <button
-                          type="button"
-                          onClick={() => setAuthModal('signin')}
-                          className="text-[var(--accent)] font-semibold underline underline-offset-2 hover:opacity-90"
-                        >
+                        <button type="button" onClick={() => setAuthModal('signin')} className="text-[var(--accent)] font-semibold underline underline-offset-2 hover:opacity-90">
                           Sign in
                         </button>
                       </p>
-                    )
-                  }
-                />
-                {addressError && (
-                  <p className="text-sm text-red-500 text-center mt-1" role="alert">
-                    {addressError}
-                  </p>
+                    )}
+                  </div>
                 )}
               </>
             )}
