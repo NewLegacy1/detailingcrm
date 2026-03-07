@@ -297,9 +297,16 @@ export function BrandingForm({ org, profile, isStarter = false }: BrandingFormPr
     setSaving(false)
   }
 
+  // Use canonical app URL when set (e.g. https://detailops.ca) so the booking link shows your domain, not the Vercel URL
+  const canonicalOrigin =
+    typeof process.env.NEXT_PUBLIC_APP_URL === 'string' && process.env.NEXT_PUBLIC_APP_URL.trim()
+      ? process.env.NEXT_PUBLIC_APP_URL.trim().replace(/\/$/, '')
+      : null
   const bookingBase =
     typeof window !== 'undefined'
-      ? `${window.location.origin}/book`
+      ? canonicalOrigin
+        ? `${canonicalOrigin}/book`
+        : `${window.location.origin}/book`
       : ''
 
   if (loading) return <p className="text-sm text-[var(--text-muted)]">Loading…</p>

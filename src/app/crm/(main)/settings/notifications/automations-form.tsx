@@ -404,13 +404,14 @@ export function AutomationsForm({ orgData, onSaved }: { orgData?: OrgAutomations
                   <div className="mt-1 flex items-center gap-2">
                     <input
                       readOnly
-                      value={`${typeof window !== 'undefined' ? window.location.origin : 'https://detailops.vercel.app'}/review/${bookingSlug}`}
+                      value={`${(typeof process.env.NEXT_PUBLIC_APP_URL === 'string' && process.env.NEXT_PUBLIC_APP_URL.trim() ? process.env.NEXT_PUBLIC_APP_URL.trim().replace(/\/$/, '') : null) ?? (typeof window !== 'undefined' ? window.location.origin : 'https://detailops.ca')}/review/${bookingSlug}`}
                       className="flex h-10 flex-1 rounded-md border border-[var(--border)] bg-[var(--surface-2)] px-3 py-2 text-sm text-[var(--text-2)] cursor-default focus:outline-none"
                     />
                     <button
                       type="button"
                       onClick={() => {
-                        const url = `${window.location.origin}/review/${bookingSlug}`
+                        const origin = (typeof process.env.NEXT_PUBLIC_APP_URL === 'string' && process.env.NEXT_PUBLIC_APP_URL.trim() ? process.env.NEXT_PUBLIC_APP_URL.trim().replace(/\/$/, '') : null) ?? (typeof window !== 'undefined' ? window.location.origin : 'https://detailops.ca')
+                        const url = `${origin}/review/${bookingSlug}`
                         navigator.clipboard.writeText(url)
                       }}
                       className="shrink-0 rounded-md border border-[var(--border)] px-3 py-2 text-sm text-[var(--text-2)] hover:bg-white/10 transition-colors"
