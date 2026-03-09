@@ -31,10 +31,11 @@ function parseDateParam(dateStr: string | undefined): string | undefined {
 export default async function SchedulePage({
   searchParams,
 }: {
-  searchParams: Promise<{ date?: string }>
+  searchParams: Promise<{ date?: string; location?: string; job?: string }>
 }) {
   const params = await searchParams
   const dateParam = parseDateParam(params.date)
+  const initialSelectedJobId = typeof params.job === 'string' && params.job.trim() ? params.job.trim() : undefined
 
   const supabase = await createAuthClient()
   const auth = await getAuthAndPermissions()
@@ -59,6 +60,23 @@ export default async function SchedulePage({
     if (org?.service_hours_start != null && org.service_hours_start >= 0 && org.service_hours_start <= 23) serviceHoursStart = org.service_hours_start
     if (org?.service_hours_end != null && org.service_hours_end >= 1 && org.service_hours_end <= 24 && org.service_hours_end > serviceHoursStart) serviceHoursEnd = org.service_hours_end
     if (org?.crm_accent_color?.trim()) calendarAccentColor = org.crm_accent_color.trim()
+  }
+
+  let locations: { id: string; name: string }[] = []
+  let locationFilterId: string | null = null
+  if (!auth?.locationId && orgId && orgSubscriptionPlan === 'pro') {
+    const { data: locs } = await supabase
+      .from('locations')
+      .select('id, name')
+      .eq('org_id', orgId)
+      .eq('is_active', true)
+      .order('sort_order', { ascending: true })
+      .order('name', { ascending: true })
+    locations = (locs ?? []).map((l) => ({ id: l.id, name: l.name }))
+    if (locations.length > 1 && typeof params.location === 'string' && params.location.trim()) {
+      const valid = locations.some((l) => l.id === params.location!.trim())
+      if (valid) locationFilterId = params.location!.trim()
+    }
   }
 
   const todayInOrg = getTodayInTimezone(timeZone)
@@ -94,7 +112,12 @@ export default async function SchedulePage({
     .lt('scheduled_at', fetchEnd.toISOString())
     .order('scheduled_at', { ascending: true })
   if (orgId) jobsQuery = jobsQuery.eq('org_id', orgId)
+  if (auth?.locationId) jobsQuery = jobsQuery.eq('location_id', auth.locationId)
+  else if (locationFilterId) jobsQuery = jobsQuery.eq('location_id', locationFilterId)
   const { data: jobs } = await jobsQuery
+
+  const effectiveLocationId = auth?.locationId ?? locationFilterId ?? undefined
+  const showLocationFilter = !auth?.locationId && locations.length > 1
 
   return (
     <div className="space-y-6 p-6 lg:p-8" style={{ background: 'var(--bg)' }}>
@@ -113,6 +136,11 @@ export default async function SchedulePage({
         serviceHoursStart={serviceHoursStart}
         serviceHoursEnd={serviceHoursEnd}
         calendarAccentColor={calendarAccentColor}
+        locationId={effectiveLocationId}
+        showLocationFilter={showLocationFilter}
+        locations={locations}
+        locationFilterParam={params.location ?? undefined}
+        initialSelectedJobId={initialSelectedJobId}
       />
     </div>
   )

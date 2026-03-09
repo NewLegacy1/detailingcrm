@@ -1,4 +1,5 @@
 import { createAuthClient } from '@/lib/supabase/server'
+import { getAuthAndPermissions } from '@/lib/permissions-server'
 import Link from 'next/link'
 import { crmPath } from '@/lib/crm-path'
 import { Suspense } from 'react'
@@ -56,8 +57,10 @@ export default async function JobsPage({
     )
   }
 
+  const auth = await getAuthAndPermissions()
   const { data: profile } = await supabase.from('profiles').select('org_id').eq('id', user.id).single()
   const orgId = profile?.org_id ?? null
+  const locationId = auth?.locationId ?? null
 
   if (!orgId) {
     return (
@@ -108,6 +111,7 @@ export default async function JobsPage({
     .lt('scheduled_at', dayEnd.toISOString())
     .order('scheduled_at', { ascending: true })
   if (orgId) dayQuery = dayQuery.eq('org_id', orgId)
+  if (locationId) dayQuery = dayQuery.eq('location_id', locationId)
   const { data: dayJobsRaw, error: dayJobsError } = await dayQuery
 
   if (dayJobsError) {
@@ -170,6 +174,7 @@ export default async function JobsPage({
     .gte('scheduled_at', monthStart.toISOString())
     .lt('scheduled_at', monthEnd.toISOString())
   if (orgId) monthQuery = monthQuery.eq('org_id', orgId)
+  if (locationId) monthQuery = monthQuery.eq('location_id', locationId)
   const { data: monthJobs } = await monthQuery
   const datesWithJobs = new Set(
     (monthJobs ?? []).map((j) => new Date(j.scheduled_at).toISOString().slice(0, 10))
@@ -179,11 +184,13 @@ export default async function JobsPage({
   if (subscriptionPlan === 'starter') {
     const utcNow = new Date()
     const utcMonthStart = new Date(Date.UTC(utcNow.getUTCFullYear(), utcNow.getUTCMonth(), 1)).toISOString()
-    const { count } = await supabase
+    let starterQuery = supabase
       .from('jobs')
       .select('*', { count: 'exact', head: true })
       .eq('org_id', orgId)
       .gte('created_at', utcMonthStart)
+    if (locationId) starterQuery = starterQuery.eq('location_id', locationId)
+    const { count } = await starterQuery
     jobsThisMonthCount = count ?? 0
   }
 
@@ -226,6 +233,7 @@ export default async function JobsPage({
     .order('scheduled_at', { ascending: false })
     .limit(200)
   if (orgId) listQuery = listQuery.eq('org_id', orgId)
+  if (locationId) listQuery = listQuery.eq('location_id', locationId)
   const { data: allJobsRaw, error: listError } = await listQuery
   if (listError) console.error('Jobs list query error:', listError.message)
   const listRows = allJobsRaw ?? []
@@ -245,12 +253,14 @@ export default async function JobsPage({
 
   let recentJobs: { id: string; status: string; updated_at: string; clients: { name?: string } | { name?: string }[] | null; services: { name?: string } | { name?: string }[] | null }[] = []
   if (orgId) {
-    const res = await supabase
+    let recentQuery = supabase
       .from('jobs')
       .select('id, status, updated_at, clients(name), services(name)')
       .eq('org_id', orgId)
       .order('updated_at', { ascending: false })
       .limit(10)
+    if (locationId) recentQuery = recentQuery.eq('location_id', locationId)
+    const res = await recentQuery
     recentJobs = res.data ?? []
   }
   const activityItems = recentJobs.map((j) => {

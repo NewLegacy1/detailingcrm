@@ -26,9 +26,24 @@ export async function POST(request: NextRequest) {
   const role = typeof body.role === 'string' && (INVITE_ROLES as readonly string[]).includes(body.role)
     ? body.role
     : 'technician'
+  let locationId: string | null = typeof body.location_id === 'string' && body.location_id.trim() ? body.location_id.trim() : null
 
   if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
     return NextResponse.json({ error: 'Valid email required' }, { status: 400 })
+  }
+
+  if (locationId) {
+    const serviceSupabaseCheck = await createServiceRoleClient()
+    const { data: loc } = await serviceSupabaseCheck
+      .from('locations')
+      .select('id')
+      .eq('id', locationId)
+      .eq('org_id', result.auth.orgId)
+      .eq('is_active', true)
+      .single()
+    if (!loc) {
+      return NextResponse.json({ error: 'Invalid or inactive location' }, { status: 400 })
+    }
   }
 
   const serviceSupabase = await createServiceRoleClient()
@@ -55,6 +70,7 @@ export async function POST(request: NextRequest) {
     org_id: result.auth.orgId,
     email,
     role,
+    location_id: locationId || null,
     token,
     expires_at: expiresAt.toISOString(),
   })

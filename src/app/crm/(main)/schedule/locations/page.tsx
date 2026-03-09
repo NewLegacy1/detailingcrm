@@ -75,13 +75,15 @@ export default async function ScheduleLocationsPage({
   const fetchStart = fromZonedTime(fetchStartLocal, timeZone)
   const fetchEnd = fromZonedTime(fetchEndLocal, timeZone)
 
-  const { data: locations } = await supabase
+  let locationsQuery = supabase
     .from('locations')
     .select('id, name, address')
     .eq('org_id', orgId)
     .eq('is_active', true)
     .order('sort_order', { ascending: true })
     .order('name', { ascending: true })
+  if (auth?.locationId) locationsQuery = locationsQuery.eq('id', auth.locationId)
+  const { data: locations } = await locationsQuery
 
   let jobsQuery = supabase
     .from('jobs')
@@ -98,6 +100,7 @@ export default async function ScheduleLocationsPage({
     .lt('scheduled_at', fetchEnd.toISOString())
     .order('scheduled_at', { ascending: true })
     .eq('org_id', orgId!)
+  if (auth?.locationId) jobsQuery = jobsQuery.eq('location_id', auth.locationId)
   const { data: jobs } = await jobsQuery
 
   return (

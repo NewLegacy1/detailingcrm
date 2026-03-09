@@ -1,4 +1,5 @@
 import { createAuthClient } from '@/lib/supabase/server'
+import { getAuthAndPermissions } from '@/lib/permissions-server'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { crmPath } from '@/lib/crm-path'
@@ -12,6 +13,7 @@ export default async function ReportsLocationsPage() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
+  const auth = await getAuthAndPermissions()
   const { data: profile } = await supabase
     .from('profiles')
     .select('org_id')
@@ -19,6 +21,7 @@ export default async function ReportsLocationsPage() {
     .single()
 
   const orgId = profile?.org_id ?? null
+  const locationId = auth?.locationId ?? null
   if (!orgId) {
     return (
       <div className="p-6" style={{ color: 'var(--text-2)' }}>
@@ -42,12 +45,14 @@ export default async function ReportsLocationsPage() {
     )
   }
 
-  const { data: locations } = await supabase
+  let locationsQuery = supabase
     .from('locations')
     .select('id, name, address')
     .eq('org_id', orgId)
     .order('sort_order', { ascending: true })
     .order('name', { ascending: true })
+  if (locationId) locationsQuery = locationsQuery.eq('id', locationId)
+  const { data: locations } = await locationsQuery
 
   const locationsList = (locations ?? []) as Pick<Location, 'id' | 'name' | 'address'>[]
 

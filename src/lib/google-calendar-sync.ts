@@ -48,9 +48,11 @@ export async function syncJobToGoogle(
   let vehicle: { make: string; model: string; year: number | null } | null = null
   let service: { name: string; duration_mins: number } | null = null
   let locationName: string | null = null
+  let locationCalendarId: string | null = null
   if (jobRow.location_id) {
-    const { data: loc } = await supabase.from('locations').select('name').eq('id', jobRow.location_id).single()
+    const { data: loc } = await supabase.from('locations').select('name, google_calendar_id').eq('id', jobRow.location_id).single()
     if (loc?.name) locationName = loc.name
+    if (loc?.google_calendar_id) locationCalendarId = loc.google_calendar_id
   }
 
   if (jobRow.customer_id) {
@@ -93,7 +95,7 @@ export async function syncJobToGoogle(
     locationName: locationName ?? undefined,
   }
 
-  const calendarId = org.google_company_calendar_id
+  const calendarId = locationCalendarId ?? org.google_company_calendar_id
   const existingEventId = job.google_company_event_id ?? null
 
   const onTokensRefreshed: OnTokensRefreshed = async (newEncrypted) => {

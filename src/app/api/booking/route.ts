@@ -23,6 +23,7 @@ export async function POST(req: NextRequest) {
     customer?: { name?: string; email?: string; phone?: string }
     vehicle?: { make?: string; model?: string; year?: number; color?: string }
     discountAmount?: number
+    promoCodeId?: string
   }
   try {
     body = await req.json()
@@ -46,9 +47,9 @@ export async function POST(req: NextRequest) {
   const customer = body.customer && typeof body.customer === 'object' ? body.customer : {}
   const vehicleInput = body.vehicle && typeof body.vehicle === 'object' ? body.vehicle : {}
   const discountAmount = typeof body.discountAmount === 'number' && body.discountAmount >= 0 ? body.discountAmount : 0
+  const promoCodeId = typeof body.promoCodeId === 'string' ? body.promoCodeId.trim() || null : null
 
   const jobNotes = [notesRaw, sizeKey ? `Vehicle size: ${sizeKey}` : null].filter(Boolean).join('\n') || null
-
 
   if (!slug) return NextResponse.json({ error: 'slug required' }, { status: 400 })
   if (!serviceId) return NextResponse.json({ error: 'serviceId required' }, { status: 400 })
@@ -290,6 +291,28 @@ export async function POST(req: NextRequest) {
     if (!vehicleError && newVehicle?.id) vehicleId = newVehicle.id
   }
 
+  if (promoCodeId) {
+    const { data: promoRow } = await supabase
+      .from('promo_codes')
+      .select('uses_per_customer')
+      .eq('id', promoCodeId)
+      .single()
+    const usesPerCustomer = promoRow?.uses_per_customer != null ? Number(promoRow.uses_per_customer) : null
+    if (usesPerCustomer != null && usesPerCustomer >= 1) {
+      const { count } = await supabase
+        .from('jobs')
+        .select('*', { count: 'exact', head: true })
+        .eq('promo_code_id', promoCodeId)
+        .eq('customer_id', clientId)
+      if ((count ?? 0) >= usesPerCustomer) {
+        return NextResponse.json(
+          { error: 'You have already used this promo code the maximum number of times.' },
+          { status: 400 }
+        )
+      }
+    }
+  }
+
   const { data: newJob, error: jobError } = await supabase
     .from('jobs')
     .insert({
@@ -305,6 +328,7 @@ export async function POST(req: NextRequest) {
       base_price: basePrice,
       size_price_offset: sizePriceOffset,
       discount_amount: discountAmount,
+      promo_code_id: promoCodeId,
     })
     .select('id')
     .single()
@@ -315,6 +339,24 @@ export async function POST(req: NextRequest) {
   }
 
   const jobId = newJob.id
+
+  if (promoCodeId && discountAmount > 0) {
+    const { data: promoRow } = await supabase
+      .from('promo_codes')
+      .select('used_count, total_discount_amount')
+      .eq('id', promoCodeId)
+      .single()
+    if (promoRow) {
+      await supabase
+        .from('promo_codes')
+        .update({
+          used_count: (Number(promoRow.used_count) || 0) + 1,
+          total_discount_amount: (Number(promoRow.total_discount_amount) || 0) + discountAmount,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', promoCodeId)
+    }
+  }
   console.info('[Booking] Created job_id=%s org_id=%s slug=%s', jobId, orgId, slug)
 
   // Save selected upsells

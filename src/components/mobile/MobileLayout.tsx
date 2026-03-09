@@ -69,6 +69,7 @@ const DARK_THEME_TEXT = {
 
 interface MobileLayoutProps {
   role: UserRole
+  locationId?: string | null
   displayName?: string | null
   logoUrl?: string | null
   jobCount?: number
@@ -88,6 +89,7 @@ interface MobileLayoutProps {
 
 export function MobileLayout({
   role,
+  locationId = null,
   displayName,
   logoUrl,
   jobCount = 0,
@@ -145,7 +147,7 @@ export function MobileLayout({
       >
         {children}
       </main>
-      <BottomTabBar role={role} jobCount={jobCount} invoiceCount={invoiceCount} subscriptionPlan={subscriptionPlan} />
+      <BottomTabBar role={role} locationId={locationId} jobCount={jobCount} invoiceCount={invoiceCount} subscriptionPlan={subscriptionPlan} />
     </div>
   )
 }

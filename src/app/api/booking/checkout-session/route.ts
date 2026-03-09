@@ -26,6 +26,7 @@ export async function POST(req: NextRequest) {
     customer?: { name?: string; email?: string; phone?: string }
     vehicle?: { make?: string; model?: string; year?: number; color?: string }
     discountAmount?: number
+    promoCodeId?: string
     sessionToken?: string
   }
   try {
@@ -50,6 +51,7 @@ export async function POST(req: NextRequest) {
   const sizePriceOffset = typeof body.sizePriceOffset === 'number' ? body.sizePriceOffset : 0
   const upsellsInput = Array.isArray(body.upsells) ? body.upsells : []
   const discountAmount = typeof body.discountAmount === 'number' && body.discountAmount >= 0 ? body.discountAmount : 0
+  const promoCodeId = typeof body.promoCodeId === 'string' ? body.promoCodeId.trim() || null : null
   const customer = body.customer && typeof body.customer === 'object' ? body.customer : {}
   const vehicleInput = body.vehicle && typeof body.vehicle === 'object' ? body.vehicle : {}
 
@@ -145,6 +147,41 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Service not found' }, { status: 404 })
   }
 
+  if (promoCodeId) {
+    const emailNorm = typeof customer.email === 'string' ? customer.email.trim().toLowerCase() || null : null
+    const phoneNorm = typeof customer.phone === 'string' ? customer.phone.trim() || null : null
+    const { data: promoRow } = await supabase
+      .from('promo_codes')
+      .select('uses_per_customer')
+      .eq('id', promoCodeId)
+      .single()
+    const usesPerCustomer = promoRow?.uses_per_customer != null ? Number(promoRow.uses_per_customer) : null
+    if (usesPerCustomer != null && usesPerCustomer >= 1 && (emailNorm || phoneNorm)) {
+      let existingClientId: string | null = null
+      if (emailNorm) {
+        const { data: c } = await supabase.from('clients').select('id').eq('org_id', org.id).ilike('email', emailNorm).limit(1).maybeSingle()
+        existingClientId = c?.id ?? null
+      }
+      if (!existingClientId && phoneNorm) {
+        const { data: c } = await supabase.from('clients').select('id').eq('org_id', org.id).eq('phone', phoneNorm).limit(1).maybeSingle()
+        existingClientId = c?.id ?? null
+      }
+      if (existingClientId) {
+        const { count } = await supabase
+          .from('jobs')
+          .select('*', { count: 'exact', head: true })
+          .eq('promo_code_id', promoCodeId)
+          .eq('customer_id', existingClientId)
+        if ((count ?? 0) >= usesPerCustomer) {
+          return NextResponse.json(
+            { error: 'You have already used this promo code the maximum number of times.' },
+            { status: 400 }
+          )
+        }
+      }
+    }
+  }
+
   if (isDeposit) {
   const totalCents = Math.round((basePrice + sizePriceOffset + upsellsInput.reduce((s, u) => s + Number(u.price || 0), 0) - discountAmount) * 100)
   const depositCents = Math.max(100, Math.round(Math.max(0, totalCents) * 0.5))
@@ -167,6 +204,7 @@ export async function POST(req: NextRequest) {
       status: 'pending',
       deposit_amount_cents: depositCents,
       discount_amount: discountAmount,
+      promo_code_id: promoCodeId,
       location_id: resolvedLocationId,
       updated_at: new Date().toISOString(),
     })
@@ -245,6 +283,7 @@ export async function POST(req: NextRequest) {
       status: 'pending',
       deposit_amount_cents: 0,
       discount_amount: discountAmount,
+      promo_code_id: promoCodeId,
       location_id: resolvedLocationId,
       updated_at: new Date().toISOString(),
     })

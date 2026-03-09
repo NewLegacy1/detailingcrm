@@ -21,6 +21,8 @@ export interface Location {
   sort_order: number
   is_active: boolean
   booking_promo_code_prefix: string | null
+  /** Optional Google Calendar ID for this location; uses org Google connection. */
+  google_calendar_id?: string | null
   created_at: string
   updated_at: string
 }

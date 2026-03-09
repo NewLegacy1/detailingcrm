@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import { createPortal } from 'react-dom'
 import Link from 'next/link'
 import { crmPath } from '@/lib/crm-path'
 import { createClient } from '@/lib/supabase/client'
@@ -49,6 +50,8 @@ interface JobDetailPopupProps {
   onUpdated?: () => void
   /** Schedule only: open edit modal with this job id. Pass jobData to avoid re-fetch (fixes "Job not found"). */
   onOpenEdit?: (jobId: string, jobData?: JobData | null) => void
+  /** When opening from schedule, pass the job row we already have so we can show it immediately and avoid "Job not found" if fetch fails. */
+  initialJobData?: Partial<JobData> | null
 }
 
 type JobData = {
@@ -98,6 +101,7 @@ export function JobDetailPopup({
   onDeleted,
   onUpdated,
   onOpenEdit,
+  initialJobData,
 }: JobDetailPopupProps) {
   const [job, setJob] = useState<JobData | null>(null)
   const [photos, setPhotos] = useState<{ id: string; url: string; type: string }[]>([])
@@ -137,7 +141,11 @@ export function JobDetailPopup({
       .single()
 
     if (jobError || !jobRow) {
-      setJob(null)
+      if (initialJobData && initialJobData.id === jobId) {
+        setJob(initialJobData as JobData)
+      } else {
+        setJob(null)
+      }
       setLoading(false)
       return
     }
@@ -184,8 +192,17 @@ export function JobDetailPopup({
   }, [open, jobId])
 
   useEffect(() => {
+    if (open && jobId) {
+      if (initialJobData && initialJobData.id === jobId) {
+        setJob(initialJobData as JobData)
+      } else {
+        setJob(null)
+      }
+    } else {
+      setJob(null)
+    }
     fetchJob()
-  }, [fetchJob])
+  }, [fetchJob, open, jobId])
 
   /** Refetch popup data only; do not call onUpdated (router.refresh would unmount parent and close popup). */
   const refresh = useCallback(() => {
@@ -304,7 +321,7 @@ export function JobDetailPopup({
 
   if (!open) return null
 
-  return (
+  const content = (
     <>
       <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
         <DialogContent className="max-md:max-w-none max-md:h-[100dvh] max-md:max-h-[100dvh] max-md:rounded-none max-h-[90dvh] w-full max-w-lg flex flex-col p-0 gap-0">
@@ -700,4 +717,5 @@ export function JobDetailPopup({
       </Dialog>
     </>
   )
+  return createPortal(content, document.body)
 }

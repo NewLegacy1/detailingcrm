@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { redirect } from 'next/navigation'
 import { ChevronLeft } from 'lucide-react'
 import { createAuthClient } from '@/lib/supabase/server'
 import { SettingsNav } from '@/components/settings/settings-nav'
@@ -12,8 +13,12 @@ export default async function SettingsLayout({
   const supabase = await createAuthClient()
   const { data: { user } } = await supabase.auth.getUser()
   const { data: profile } = user
-    ? await supabase.from('profiles').select('is_super_admin').eq('id', user.id).single()
+    ? await supabase.from('profiles').select('is_super_admin, location_id').eq('id', user.id).single()
     : { data: null }
+
+  if (profile?.location_id) {
+    redirect(crmPath('/dashboard'))
+  }
 
   const isSuperAdmin = profile?.is_super_admin ?? false
 

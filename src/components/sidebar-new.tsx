@@ -27,6 +27,7 @@ import {
 
 interface SidebarNewProps {
   role: UserRole
+  locationId?: string | null
   fullName?: string | null
   userRole?: string | null
   avatarUrl?: string | null
@@ -39,6 +40,7 @@ interface SidebarNewProps {
 
 export function SidebarNew({
   role,
+  locationId = null,
   fullName,
   userRole,
   avatarUrl,
@@ -67,7 +69,7 @@ export function SidebarNew({
     window.location.href = '/login'
   }
 
-  const groups = getNavGroupsForRole(role)
+  const groups = getNavGroupsForRole(role, locationId)
   const initials = (fullName ?? 'User').split(/\s+/).map((s) => s[0]).join('').slice(0, 2).toUpperCase() || 'U'
 
   return (

@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
   const supabase = await createServiceRoleClient()
   const { data: invite, error } = await supabase
     .from('team_invites')
-    .select('id, email, role, org_id, expires_at')
+    .select('id, email, role, org_id, location_id, expires_at')
     .eq('token', token.trim())
     .is('accepted_at', null)
     .single()
@@ -26,15 +26,20 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Invite has expired' }, { status: 410 })
   }
 
-  const { data: org } = await supabase
-    .from('organizations')
-    .select('name')
-    .eq('id', invite.org_id)
-    .single()
+  const [orgRes, locationRes] = await Promise.all([
+    supabase.from('organizations').select('name').eq('id', invite.org_id).single(),
+    invite.location_id
+      ? supabase.from('locations').select('name').eq('id', invite.location_id).single()
+      : Promise.resolve({ data: null }),
+  ])
+  const org = orgRes.data
+  const location = locationRes.data
 
   return NextResponse.json({
     email: invite.email,
     orgName: org?.name ?? 'The team',
     role: invite.role,
+    locationId: invite.location_id ?? undefined,
+    locationName: location?.name ?? undefined,
   })
 }

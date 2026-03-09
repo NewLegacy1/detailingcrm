@@ -2,11 +2,11 @@
 
 import { useState, useEffect, useMemo, useCallback } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { crmPath } from '@/lib/crm-path'
 import { createClient } from '@/lib/supabase/client'
-import { Calendar, Search, Plus, GripVertical, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Calendar, Search, Plus, GripVertical, ChevronLeft, ChevronRight, Pencil, MapPin, Clock } from 'lucide-react'
 import { ScheduleJobDetailModal } from './schedule-job-detail-modal'
-import { JobDetailPopup } from '@/components/job-detail-popup'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogClose } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
@@ -58,6 +58,16 @@ interface ScheduleViewProps {
   serviceHoursEnd?: number
   /** CRM accent colour (hex) for calendar gradient; default blue when null */
   calendarAccentColor?: string | null
+  /** When set (location manager or owner filter), only jobs for this location are shown/fetched */
+  locationId?: string | null
+  /** When true (owner/admin, multi-location), show location filter dropdown */
+  showLocationFilter?: boolean
+  /** List of locations for the filter dropdown */
+  locations?: { id: string; name: string }[]
+  /** Current location query param so dropdown can reflect URL */
+  locationFilterParam?: string
+  /** When set (e.g. from ?job=), open job detail popup for this job id */
+  initialSelectedJobId?: string | null
 }
 
 /** Date (YYYY-MM-DD) of a UTC timestamp in the given timezone. Used so schedule "today" matches dashboard. */
@@ -179,7 +189,7 @@ function getMonthDays(year: number, month: number): (Date | null)[][] {
   return rows
 }
 
-export function ScheduleView({ initialJobs, initialDate, timeZone, serviceHoursStart = 9, serviceHoursEnd = 18, calendarAccentColor }: ScheduleViewProps) {
+export function ScheduleView({ initialJobs, initialDate, timeZone, serviceHoursStart = 9, serviceHoursEnd = 18, calendarAccentColor, locationId, showLocationFilter = false, locations = [], locationFilterParam, initialSelectedJobId }: ScheduleViewProps) {
   const calendarGradient = getCalendarGradientBackground(calendarAccentColor)
   const [view, setView] = useState<ViewMode>('week')
   const todayStr = new Date().toISOString().slice(0, 10)
@@ -189,6 +199,9 @@ export function ScheduleView({ initialJobs, initialDate, timeZone, serviceHoursS
   useEffect(() => {
     if (validInitial) setDate(validInitial)
   }, [validInitial])
+  useEffect(() => {
+    if (initialSelectedJobId) setSelectedJobId(initialSelectedJobId)
+  }, [initialSelectedJobId])
   const hourStart = Math.max(0, Math.min(23, serviceHoursStart))
   const hourEnd = Math.max(hourStart + 1, Math.min(24, serviceHoursEnd))
   const totalSlots = ((hourEnd - hourStart) * 60) / SLOT_MINS
@@ -203,10 +216,28 @@ export function ScheduleView({ initialJobs, initialDate, timeZone, serviceHoursS
   const [movedConfirm, setMovedConfirm] = useState<MovedConfirm | null>(null)
   const [movedEdit, setMovedEdit] = useState<{ start: string; end: string; summary?: string; notes?: string } | null>(null)
   const [sendNotifyAfterMove, setSendNotifyAfterMove] = useState(true)
-  const [selectedJobId, setSelectedJobId] = useState<string | null>(null)
+  const [selectedJobId, setSelectedJobId] = useState<string | null>(() => initialSelectedJobId ?? null)
   const [createModalOpen, setCreateModalOpen] = useState(false)
+  const router = useRouter()
   const [editModalOpen, setEditModalOpen] = useState(false)
   const [editJobId, setEditJobId] = useState<string | null>(null)
+
+  /** URL for this schedule view with optional job id (opens detail popup when present). */
+  const getScheduleJobUrl = useCallback((jobId: string) => {
+    const params = new URLSearchParams()
+    if (date) params.set('date', date)
+    if (locationFilterParam) params.set('location', locationFilterParam)
+    params.set('job', jobId)
+    return crmPath('/schedule') + '?' + params.toString()
+  }, [date, locationFilterParam])
+
+  /** Current schedule URL without job param (used when closing popup). */
+  const scheduleUrlWithoutJob = useMemo(() => {
+    const params = new URLSearchParams()
+    if (date) params.set('date', date)
+    if (locationFilterParam) params.set('location', locationFilterParam)
+    return crmPath('/schedule') + (params.toString() ? '?' + params.toString() : '')
+  }, [date, locationFilterParam])
 
   function toDatetimeLocal(d: Date): string {
     const t = new Date(d.getTime() - d.getTimezoneOffset() * 60_000)
@@ -241,16 +272,20 @@ export function ScheduleView({ initialJobs, initialDate, timeZone, serviceHoursS
     bufferStart.setDate(bufferStart.getDate() - 1)
     const bufferEnd = new Date(rangeEnd)
     bufferEnd.setDate(bufferEnd.getDate() + 1)
-    supabase
+    let q = supabase
       .from('jobs')
       .select('id, scheduled_at, status, address, notes, actual_started_at, actual_ended_at, google_company_event_id, clients(name), services(name, duration_mins)')
       .gte('scheduled_at', bufferStart.toISOString())
       .lt('scheduled_at', bufferEnd.toISOString())
       .order('scheduled_at', { ascending: true })
-      .then(({ data, error }) => {
-        if (!error) setJobs(data ?? [])
-      })
-  }, [rangeStart.toISOString(), rangeEnd.toISOString()])
+    if (locationId) q = q.eq('location_id', locationId)
+    q.then(({ data, error }) => {
+      if (!error) {
+        const next = data ?? []
+        setJobs((prev) => (next.length > 0 ? next : prev))
+      }
+    })
+  }, [rangeStart.toISOString(), rangeEnd.toISOString(), locationId])
 
   const [googleEvents, setGoogleEvents] = useState<GoogleEventRow[]>([])
 
@@ -631,8 +666,35 @@ export function ScheduleView({ initialJobs, initialDate, timeZone, serviceHoursS
     return `${s} – ${e}`
   }
 
+  const handleLocationFilterChange = (value: string) => {
+    const params = new URLSearchParams()
+    if (date) params.set('date', date)
+    if (value && value !== 'all') params.set('location', value)
+    router.push(crmPath('/schedule') + (params.toString() ? '?' + params.toString() : ''))
+  }
+
   return (
     <div className="space-y-6">
+      {showLocationFilter && locations.length > 1 && (
+        <div className="flex items-center gap-2">
+          <label htmlFor="schedule-location-filter" className="text-sm font-medium text-[var(--text-2)]">
+            Location:
+          </label>
+          <select
+            id="schedule-location-filter"
+            value={locationFilterParam ?? 'all'}
+            onChange={(e) => handleLocationFilterChange(e.target.value)}
+            className="rounded-lg border border-[var(--border)] bg-[var(--bg-card)] px-3 py-1.5 text-sm text-[var(--text)]"
+          >
+            <option value="all">All locations</option>
+            {locations.map((loc) => (
+              <option key={loc.id} value={loc.id}>
+                {loc.name}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
       {isMobile ? (
         /* Mobile schedule: week header, day strip, time column + cards, FAB */
         <div className="flex flex-col gap-0 min-h-0">
@@ -705,21 +767,25 @@ export function ScheduleView({ initialJobs, initialDate, timeZone, serviceHoursS
                 return (
                   <div
                     key={job.id}
-                    draggable
-                    onDragStart={(e) => handleDragStartJob(e, job)}
-                    onDragOver={handleColumnDragOver}
-                    onDrop={(e) => handleColumnDrop(e, date)}
-                    className={`absolute left-1 right-2 rounded-lg flex overflow-hidden shadow-sm border cursor-grab active:cursor-grabbing ${getStatusColor(job.status)}`}
+                    data-schedule-job-id={job.id}
+                    className={`absolute left-1 right-2 z-10 rounded-lg flex overflow-hidden shadow-sm border ${getStatusColor(job.status)}`}
                     style={{ top: topPx, height: heightPx, minHeight: 56 }}
-                    title="Drag to reschedule · Tap to open"
                   >
-                    <div className="shrink-0 flex items-center pl-1.5 border-r border-white/20 self-stretch" aria-hidden>
+                    <div
+                      draggable
+                      onDragStart={(e) => handleDragStartJob(e, job)}
+                      className="shrink-0 relative z-[2] flex items-center pl-1.5 border-r border-white/20 self-stretch cursor-grab active:cursor-grabbing"
+                      aria-hidden
+                      data-schedule-drag-handle
+                    >
                       <GripVertical className="h-3.5 w-3.5 opacity-60" />
                     </div>
                     <button
                       type="button"
-                      onClick={() => setSelectedJobId(job.id)}
-                      className={`flex-1 min-w-0 flex flex-col items-start justify-center p-2.5 text-left ${isDone ? 'pr-20' : ''}`}
+                      className={`absolute left-7 top-0 right-0 bottom-0 z-[1] flex flex-col items-start justify-center p-2.5 text-left hover:bg-white/5 transition-colors text-inherit border-0 bg-transparent cursor-pointer w-full ${isDone ? 'pr-20' : ''}`}
+                      title="Click to view or edit"
+                      aria-label={`View job: ${service?.name ?? 'Job'}`}
+                      onClick={(e) => { e.preventDefault(); e.stopPropagation(); setSelectedJobId(job.id); }}
                     >
                       <span className="font-semibold text-sm leading-tight truncate w-full">{service?.name ?? 'Job'}</span>
                       <span className="text-xs mt-1 leading-tight text-white/90">
@@ -727,7 +793,7 @@ export function ScheduleView({ initialJobs, initialDate, timeZone, serviceHoursS
                       </span>
                     </button>
                     {isDone && (
-                      <span className="absolute top-1/2 right-2 -translate-y-1/2 rounded-full bg-white/20 text-white text-[10px] font-medium px-2 py-0.5 whitespace-nowrap">
+                      <span className="absolute top-1/2 right-2 -translate-y-1/2 rounded-full bg-white/20 text-white text-[10px] font-medium px-2 py-0.5 whitespace-nowrap pointer-events-none">
                         Completed
                       </span>
                     )}
@@ -744,15 +810,17 @@ export function ScheduleView({ initialJobs, initialDate, timeZone, serviceHoursS
                 return (
                   <div
                     key={`g-${ev.id}`}
-                    draggable
-                    onDragStart={(e) => handleDragStartGoogleEvent(e, ev)}
-                    onDragOver={handleColumnDragOver}
-                    onDrop={(e) => handleColumnDrop(e, date)}
-                    className="absolute left-1 right-2 rounded-lg border border-violet-400/60 bg-violet-500/35 text-white overflow-hidden shadow-sm flex cursor-grab active:cursor-grabbing"
+                    className="absolute left-1 right-2 rounded-lg border border-violet-400/60 bg-violet-500/35 text-white overflow-hidden shadow-sm flex"
                     style={{ top: topPx, height: heightPx, minHeight: 48 }}
-                    title="Drag to reschedule"
+                    title="Drag from grip to reschedule"
                   >
-                    <div className="shrink-0 flex items-center pl-1.5 border-r border-white/20 self-stretch" aria-hidden>
+                    <div
+                      draggable
+                      onDragStart={(e) => handleDragStartGoogleEvent(e, ev)}
+                      className="shrink-0 flex items-center pl-1.5 border-r border-white/20 self-stretch cursor-grab active:cursor-grabbing"
+                      aria-hidden
+                      data-schedule-drag-handle
+                    >
                       <GripVertical className="h-3.5 w-3.5 opacity-60" />
                     </div>
                     <div className="p-2 flex-1 min-w-0 flex flex-col justify-center overflow-hidden">
@@ -940,10 +1008,8 @@ export function ScheduleView({ initialJobs, initialDate, timeZone, serviceHoursS
                   {timeSlots.map((_, slotIndex) => (
                     <div
                       key={slotIndex}
-                      className="border-b border-[var(--border)]/50"
+                      className="border-b border-[var(--border)]/50 pointer-events-none"
                       style={{ height: SLOT_HEIGHT_PX }}
-                      onDragOver={handleColumnDragOver}
-                      onDrop={(e) => handleDrop(e, dayKey, slotIndex)}
                     />
                   ))}
                   {dayJobs.map((job) => {
@@ -959,21 +1025,25 @@ export function ScheduleView({ initialJobs, initialDate, timeZone, serviceHoursS
                     return (
                       <div
                         key={job.id}
-                        draggable
-                        onDragStart={(e) => handleDragStartJob(e, job)}
-                        className={`absolute left-0.5 right-0.5 rounded border overflow-hidden shadow-sm flex cursor-grab active:cursor-grabbing ${getStatusColor(job.status)}`}
+                        data-schedule-job-id={job.id}
+                        className={`absolute left-0.5 right-0.5 z-10 rounded border overflow-hidden shadow-sm flex ${getStatusColor(job.status)}`}
                         style={{ top, minHeight: height }}
-                        onDragOver={handleColumnDragOver}
-                        onDrop={(e) => handleColumnDrop(e, dayKey)}
-                        title="Drag to reschedule · Click to open"
                       >
-                        <div className="shrink-0 flex items-center pl-1 border-r border-white/20 self-stretch" aria-hidden>
+                        <div
+                          draggable
+                          onDragStart={(e) => handleDragStartJob(e, job)}
+                          className="shrink-0 relative z-[2] flex items-center pl-1 border-r border-white/20 self-stretch cursor-grab active:cursor-grabbing"
+                          aria-hidden
+                          data-schedule-drag-handle
+                        >
                           <GripVertical className="h-3.5 w-3.5 opacity-60" />
                         </div>
                         <button
                           type="button"
-                          onClick={(e) => { e.stopPropagation(); setSelectedJobId(job.id); }}
-                          className="p-1.5 flex-1 min-w-0 flex flex-col text-left"
+                          className="absolute left-6 top-0 right-0 bottom-0 z-[1] p-1.5 flex flex-col text-left hover:bg-white/5 transition-colors text-inherit border-0 bg-transparent cursor-pointer w-full"
+                          title="Click to view or edit"
+                          aria-label={`View job: ${client?.name ?? '—'} – ${service?.name ?? 'Job'}`}
+                          onClick={(e) => { e.preventDefault(); e.stopPropagation(); setSelectedJobId(job.id); }}
                         >
                           <p className="font-medium truncate text-sm">{client?.name ?? '—'}</p>
                           <p className="text-xs opacity-90 truncate">{service?.name ?? 'Job'}</p>
@@ -995,9 +1065,7 @@ export function ScheduleView({ initialJobs, initialDate, timeZone, serviceHoursS
                     return (
                       <div
                         key={`g-${ev.id}`}
-                        draggable
-                        onDragStart={(e) => handleDragStartGoogleEvent(e, ev)}
-                        className="absolute left-0.5 right-0.5 rounded border border-violet-400/60 bg-violet-500/35 text-white overflow-hidden shadow-sm flex shrink-0 backdrop-blur-sm cursor-grab active:cursor-grabbing"
+                        className="absolute left-0.5 right-0.5 rounded border border-violet-400/60 bg-violet-500/35 text-white overflow-hidden shadow-sm flex shrink-0 backdrop-blur-sm"
                         style={{
                           top: `${topPx}px`,
                           height: `${heightPx}px`,
@@ -1005,14 +1073,18 @@ export function ScheduleView({ initialJobs, initialDate, timeZone, serviceHoursS
                           maxHeight: `${heightPx}px`,
                           boxSizing: 'border-box',
                         }}
-                        title={`Google Calendar · ${start.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })} – ${end.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}. Drag to reschedule.`}
-                        onDragOver={handleColumnDragOver}
-                        onDrop={(e) => handleColumnDrop(e, dayKey)}
+                        title={`Google Calendar · Drag from grip to reschedule`}
                       >
-                        <div className="shrink-0 flex items-center pl-1 border-r border-white/20 self-stretch" aria-hidden>
+                        <div
+                          draggable
+                          onDragStart={(e) => handleDragStartGoogleEvent(e, ev)}
+                          className="shrink-0 flex items-center pl-1 border-r border-white/20 self-stretch cursor-grab active:cursor-grabbing"
+                          aria-hidden
+                          data-schedule-drag-handle
+                        >
                           <GripVertical className="h-3.5 w-3.5 opacity-60" />
                         </div>
-                        <div className="p-1.5 flex-1 flex flex-col pointer-events-none overflow-hidden min-h-0" style={{ height: '100%' }}>
+                        <div className="p-1.5 flex-1 flex flex-col overflow-hidden min-h-0" style={{ height: '100%' }}>
                           <p className="font-medium truncate text-sm text-white">{ev.summary}</p>
                           <p className="text-xs opacity-90 text-white/80 shrink-0">
                             {start.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })} – {end.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
@@ -1072,10 +1144,8 @@ export function ScheduleView({ initialJobs, initialDate, timeZone, serviceHoursS
                       {timeSlots.map((_, slotIndex) => (
                         <div
                           key={slotIndex}
-                          className="border-b border-[var(--border)]/50"
+                          className="border-b border-[var(--border)]/50 pointer-events-none"
                           style={{ height: SLOT_HEIGHT_PX }}
-                          onDragOver={handleColumnDragOver}
-                          onDrop={(e) => handleDrop(e, dayKey, slotIndex)}
                         />
                       ))}
                       {dayJobs.map((job) => {
@@ -1092,21 +1162,25 @@ export function ScheduleView({ initialJobs, initialDate, timeZone, serviceHoursS
                         return (
                           <div
                             key={job.id}
-                            draggable
-                            onDragStart={(e) => handleDragStartJob(e, job)}
-                            className={`absolute left-0.5 right-0.5 rounded border overflow-hidden shadow-sm flex cursor-grab active:cursor-grabbing ${getStatusColor(job.status)}`}
+                            data-schedule-job-id={job.id}
+                            className={`absolute left-0.5 right-0.5 z-10 rounded border overflow-hidden shadow-sm flex ${getStatusColor(job.status)}`}
                             style={{ top, minHeight: height }}
-                            onDragOver={handleColumnDragOver}
-                            onDrop={(e) => handleColumnDrop(e, dayKey)}
-                            title="Drag to reschedule · Click to open"
                           >
-                            <div className="shrink-0 flex items-center pl-1 border-r border-white/20 self-stretch" aria-hidden>
+                            <div
+                              draggable
+                              onDragStart={(e) => handleDragStartJob(e, job)}
+                              className="shrink-0 relative z-[2] flex items-center pl-1 border-r border-white/20 self-stretch cursor-grab active:cursor-grabbing"
+                              aria-hidden
+                              data-schedule-drag-handle
+                            >
                               <GripVertical className="h-3.5 w-3.5 opacity-60" />
                             </div>
                             <button
                               type="button"
-                              onClick={(e) => { e.stopPropagation(); setSelectedJobId(job.id); }}
-                              className="p-1.5 flex-1 min-w-0 flex flex-col text-left"
+                              className="absolute left-6 top-0 right-0 bottom-0 z-[1] p-1.5 flex flex-col text-left hover:bg-white/5 transition-colors text-inherit border-0 bg-transparent cursor-pointer w-full"
+                              title="Click to view or edit"
+                              aria-label={`View job: ${client?.name ?? '—'} – ${service?.name ?? 'Job'}`}
+                              onClick={(e) => { e.preventDefault(); e.stopPropagation(); setSelectedJobId(job.id); }}
                             >
                               <p className="font-medium truncate text-sm">{client?.name ?? '—'}</p>
                               <p className="text-xs opacity-90 truncate">{service?.name ?? 'Job'}</p>
@@ -1128,9 +1202,7 @@ export function ScheduleView({ initialJobs, initialDate, timeZone, serviceHoursS
                         return (
                           <div
                             key={`g-${ev.id}`}
-                            draggable
-                            onDragStart={(e) => handleDragStartGoogleEvent(e, ev)}
-                            className="absolute left-0.5 right-0.5 rounded border border-violet-400/60 bg-violet-500/35 text-white overflow-hidden shadow-sm flex shrink-0 backdrop-blur-sm cursor-grab active:cursor-grabbing"
+                            className="absolute left-0.5 right-0.5 rounded border border-violet-400/60 bg-violet-500/35 text-white overflow-hidden shadow-sm flex shrink-0 backdrop-blur-sm"
                             style={{
                               top: `${topPx}px`,
                               height: `${heightPx}px`,
@@ -1138,14 +1210,18 @@ export function ScheduleView({ initialJobs, initialDate, timeZone, serviceHoursS
                               maxHeight: `${heightPx}px`,
                               boxSizing: 'border-box',
                             }}
-                            title={`Google Calendar · ${start.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })} – ${end.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}. Drag to reschedule.`}
-                            onDragOver={handleColumnDragOver}
-                            onDrop={(e) => handleColumnDrop(e, dayKey)}
+                            title="Google Calendar · Drag from grip to reschedule"
                           >
-                            <div className="shrink-0 flex items-center pl-1 border-r border-white/20 self-stretch" aria-hidden>
+                            <div
+                              draggable
+                              onDragStart={(e) => handleDragStartGoogleEvent(e, ev)}
+                              className="shrink-0 flex items-center pl-1 border-r border-white/20 self-stretch cursor-grab active:cursor-grabbing"
+                              aria-hidden
+                              data-schedule-drag-handle
+                            >
                               <GripVertical className="h-3.5 w-3.5 opacity-60" />
                             </div>
-                            <div className="p-1.5 flex-1 flex flex-col pointer-events-none overflow-hidden min-h-0" style={{ height: '100%' }}>
+                            <div className="p-1.5 flex-1 flex flex-col overflow-hidden min-h-0" style={{ height: '100%' }}>
                               <p className="font-medium truncate text-sm text-white">{ev.summary}</p>
                               <p className="text-xs opacity-90 text-white/80 shrink-0">
                                 {start.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })} – {end.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
@@ -1200,17 +1276,30 @@ export function ScheduleView({ initialJobs, initialDate, timeZone, serviceHoursS
                   const showMore = totalCount > combined.length
                   const moreCount = totalCount - combined.length
                   return (
-                    <div key={ci} className="p-2 border-r border-[var(--border)] last:border-r-0 flex flex-col">
-                      <p className={`text-xs font-medium ${key === todayKey ? 'text-[var(--accent)]' : 'text-white'}`}>{cell.getDate()}</p>
+                    <div
+                      key={ci}
+                      className={`p-2 border-r border-[var(--border)] last:border-r-0 flex flex-col min-h-[100px] ${key === todayKey ? 'ring-1 ring-inset ring-[var(--accent)]/50' : ''}`}
+                    >
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setDate(key)
+                          setView('day')
+                        }}
+                        className={`text-xs font-medium shrink-0 text-left w-full py-0.5 rounded hover:bg-white/10 transition-colors cursor-pointer ${key === todayKey ? 'text-[var(--accent)]' : 'text-white'}`}
+                        title={`View ${key}`}
+                      >
+                        {cell.getDate()}
+                      </button>
                       <div className="flex-1 overflow-auto space-y-1 mt-1">
                         {combined.map((item) =>
                           item.type === 'job' ? (
                             <button
                               key={item.job.id}
                               type="button"
-                              onClick={() => setSelectedJobId(item.job.id)}
-                              className={`w-full text-left block rounded px-2 py-1 text-xs truncate border ${getStatusColor(item.job.status)}`}
+                              className={`w-full text-left block rounded px-2 py-1 text-xs truncate border text-inherit ${getStatusColor(item.job.status)} hover:opacity-90 cursor-pointer`}
                               title={item.timeStr}
+                              onClick={(e) => { e.preventDefault(); e.stopPropagation(); setSelectedJobId(item.job.id); }}
                             >
                               {client(item.job)} – {service(item.job)} · {item.timeStr}
                             </button>
@@ -1542,20 +1631,68 @@ export function ScheduleView({ initialJobs, initialDate, timeZone, serviceHoursS
         </DialogContent>
       </Dialog>
 
-      <JobDetailPopup
-        open={!!selectedJobId}
-        jobId={selectedJobId}
-        onClose={() => {
-          setSelectedJobId(null)
-          fetchJobs()
-        }}
-        onDeleted={fetchJobs}
-        onOpenEdit={(id) => {
-          setSelectedJobId(null)
-          setEditJobId(id)
-          setEditModalOpen(true)
-        }}
-      />
+      {/* Schedule job detail: uses only schedule data (no fetch) so it always shows when a job is selected */}
+      {selectedJobId && (() => {
+        const row = filteredJobs.find((j) => j.id === selectedJobId)
+        return (
+          <Dialog open={!!selectedJobId} onOpenChange={(open) => { if (!open) { setSelectedJobId(null); router.replace(scheduleUrlWithoutJob); fetchJobs(); } }}>
+            <DialogContent className="max-md:max-w-none max-md:h-[90dvh] max-w-lg max-h-[90dvh] flex flex-col p-0 gap-0">
+              <DialogClose onClick={() => { setSelectedJobId(null); router.replace(scheduleUrlWithoutJob); fetchJobs(); }} />
+              <DialogHeader>
+                <div className="px-4 pt-4 pb-2 shrink-0 border-b border-[var(--border)] flex items-center gap-2">
+                  <DialogTitle className="text-lg font-semibold text-white truncate min-w-0">
+                    {row ? (Array.isArray(row.clients) ? row.clients[0]?.name : row.clients?.name) ?? 'Job' : 'Job'}
+                  </DialogTitle>
+                  {row && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="shrink-0"
+                      onClick={() => { setSelectedJobId(null); setEditJobId(selectedJobId); setEditModalOpen(true); }}
+                    >
+                      <Pencil className="h-3.5 w-3.5 mr-1" />
+                      Edit
+                    </Button>
+                  )}
+                </div>
+              </DialogHeader>
+              <div className="overflow-y-auto flex-1 px-4 pb-4 space-y-4">
+                {row ? (
+                  <>
+                    <section>
+                      <p className="text-xs text-[var(--text-muted)] mb-1">Customer</p>
+                      <p className="font-medium text-white">{Array.isArray(row.clients) ? row.clients[0]?.name : row.clients?.name ?? '—'}</p>
+                    </section>
+                    <section>
+                      <p className="text-xs text-[var(--text-muted)] mb-1 flex items-center gap-1"><Clock className="h-3.5 w-3.5" /> Time</p>
+                      <p className="text-sm text-[var(--text-secondary)]">
+                        {new Date(row.scheduled_at).toLocaleString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })}
+                      </p>
+                    </section>
+                    <section>
+                      <p className="text-xs text-[var(--text-muted)] mb-1 flex items-center gap-1"><MapPin className="h-3.5 w-3.5" /> Address</p>
+                      <p className="text-sm text-[var(--text-secondary)]">{row.address || '—'}</p>
+                    </section>
+                    <section>
+                      <p className="text-xs text-[var(--text-muted)] mb-1">Service</p>
+                      <p className="font-medium text-white">{Array.isArray(row.services) ? row.services[0]?.name : row.services?.name ?? '—'}</p>
+                      <p className="text-sm text-[var(--text-secondary)]">Status: {row.status}</p>
+                    </section>
+                    {row.notes && (
+                      <section>
+                        <p className="text-xs text-[var(--text-muted)] mb-1">Notes</p>
+                        <p className="text-sm text-[var(--text-secondary)] whitespace-pre-wrap">{row.notes}</p>
+                      </section>
+                    )}
+                  </>
+                ) : (
+                  <p className="py-8 text-center text-[var(--text-muted)]">Job not in this schedule.</p>
+                )}
+              </div>
+            </DialogContent>
+          </Dialog>
+        )
+      })()}
 
       <ScheduleJobDetailModal
         open={createModalOpen || editModalOpen}

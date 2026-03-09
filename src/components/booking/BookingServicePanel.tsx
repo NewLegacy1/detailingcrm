@@ -242,6 +242,15 @@ export function BookingServicePanel({
   const [distanceResult, setDistanceResult] = useState<{ distanceKm: number; durationMins: number } | null>(null)
   const [selectedSavedVehicleId, setSelectedSavedVehicleId] = useState<string | null>(null)
   const [showLocationPicker, setShowLocationPicker] = useState(false)
+  const [promoCodeInput, setPromoCodeInput] = useState('')
+  const [appliedPromo, setAppliedPromo] = useState<{
+    promoCodeId: string
+    name: string
+    discountType: 'percent' | 'fixed'
+    discountValue: number
+  } | null>(null)
+  const [promoError, setPromoError] = useState<string | null>(null)
+  const [promoLoading, setPromoLoading] = useState(false)
   const addressInputRef = useRef<HTMLInputElement>(null)
   const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null)
   const lastSessionPayloadRef = useRef<{ slug: string; sessionToken: string; stepReached: Step; address?: string; serviceId?: string; name?: string; email?: string; phone?: string; booked?: boolean } | null>(null)
@@ -274,6 +283,9 @@ export function BookingServicePanel({
     if (!open) {
       hasLoadedSavedContactRef.current = false
       setShowLocationPicker(false)
+      setAppliedPromo(null)
+      setPromoCodeInput('')
+      setPromoError(null)
     }
   }, [open])
 
@@ -430,12 +442,19 @@ export function BookingServicePanel({
     (selectedService?.base_price ?? 0) +
     (selectedSize?.price_offset ?? 0) +
     selectedAddOns.reduce((s, a) => s + Number(a.price), 0)
-  const discountAmount =
+  const maintenanceDiscountAmount =
     maintenanceDiscount && subtotal > 0
       ? maintenanceDiscount.type === 'percent'
         ? Math.min(subtotal * (maintenanceDiscount.value / 100), subtotal)
         : Math.min(maintenanceDiscount.value, subtotal)
       : 0
+  const promoDiscountAmount =
+    appliedPromo && subtotal > 0
+      ? appliedPromo.discountType === 'percent'
+        ? Math.min(subtotal * (appliedPromo.discountValue / 100), subtotal)
+        : Math.min(appliedPromo.discountValue, subtotal)
+      : 0
+  const discountAmount = maintenanceDiscountAmount + promoDiscountAmount
   const totalPrice = Math.max(0, subtotal - discountAmount)
 
   const fetchSlots = useCallback(async (dateStr: string) => {
@@ -605,6 +624,7 @@ export function BookingServicePanel({
         sizePriceOffset: selectedSize?.price_offset ?? 0,
         upsells: selectedAddOns.map((a) => ({ id: a.id, name: a.name, price: a.price })),
         discountAmount: discountAmount > 0 ? discountAmount : undefined,
+        promoCodeId: appliedPromo?.promoCodeId,
       }
 
       if (requiresDeposit || requiresCardOnFile) {
@@ -958,11 +978,80 @@ export function BookingServicePanel({
             </div>
           )}
           {showPrices && (
-            <div className="border-t border-[var(--border)] pt-3 mb-3 flex flex-col gap-1">
-              {discountAmount > 0 && (
+            <div className="border-t border-[var(--border)] pt-3 mb-3 flex flex-col gap-2">
+              {/* Promo code */}
+              <div className="flex flex-col gap-1">
+                {appliedPromo ? (
+                  <div className="flex items-center justify-between text-sm text-[var(--accent)]">
+                    <span>Promo: {appliedPromo.name}</span>
+                    <span>-{new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(promoDiscountAmount)}</span>
+                    <button
+                      type="button"
+                      onClick={() => { setAppliedPromo(null); setPromoError(null); setPromoCodeInput(''); }}
+                      className="text-xs underline hover:no-underline"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex gap-2">
+                    <Input
+                      value={promoCodeInput}
+                      onChange={(e) => { setPromoCodeInput(e.target.value.toUpperCase()); setPromoError(null); }}
+                      placeholder="Promo code"
+                      className="flex-1 text-sm"
+                      style={{ background: 'var(--booking-surface)', borderColor: 'var(--border)', color: 'var(--text)' }}
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      disabled={!promoCodeInput.trim() || promoLoading}
+                      onClick={async () => {
+                        const code = promoCodeInput.trim().toUpperCase()
+                        if (!code || !slug) return
+                        setPromoError(null)
+                        setPromoLoading(true)
+                        try {
+                          const params = new URLSearchParams({ slug, code, subtotal: String(subtotal) })
+                          if (customer.email?.trim()) params.set('email', customer.email.trim())
+                          if (customer.phone?.trim()) params.set('phone', customer.phone.trim())
+                          const res = await fetch(`/api/booking/validate-promo?${params.toString()}`)
+                          const data = await res.json().catch(() => ({}))
+                          if (data.valid && data.promoCodeId && (data.discountType === 'percent' || data.discountType === 'fixed')) {
+                            setAppliedPromo({
+                              promoCodeId: data.promoCodeId,
+                              name: data.name || code,
+                              discountType: data.discountType,
+                              discountValue: Number(data.discountValue) || 0,
+                            })
+                          } else {
+                            setPromoError((data.error as string) || 'Invalid code')
+                          }
+                        } catch {
+                          setPromoError('Could not validate code')
+                        } finally {
+                          setPromoLoading(false)
+                        }
+                      }}
+                      style={{ borderColor: 'var(--border)', color: 'var(--text)' }}
+                    >
+                      {promoLoading ? '…' : 'Apply'}
+                    </Button>
+                  </div>
+                )}
+                {promoError && <p className="text-xs text-red-400">{promoError}</p>}
+              </div>
+              {discountAmount > 0 && !appliedPromo && maintenanceDiscountAmount > 0 && (
                 <div className="flex items-center justify-between text-sm text-[var(--accent)]">
                   <span>Discount</span>
                   <span>-{new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(discountAmount)}</span>
+                </div>
+              )}
+              {discountAmount > 0 && appliedPromo && maintenanceDiscountAmount > 0 && (
+                <div className="flex items-center justify-between text-sm text-[var(--accent)]">
+                  <span>Other discount</span>
+                  <span>-{new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(maintenanceDiscountAmount)}</span>
                 </div>
               )}
               <div className="flex items-center justify-between">

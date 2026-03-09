@@ -14,6 +14,9 @@ export async function GET(
   if ('error' in result) return result.error
   const orgId = result.auth.orgId
   if (!orgId) return NextResponse.json({ error: 'No organization' }, { status: 400 })
+  if (result.auth.locationId && result.auth.locationId !== locationId) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
 
   const supabase = await createClient()
   const { data: org } = await supabase

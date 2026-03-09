@@ -1,4 +1,5 @@
 import { createAuthClient } from '@/lib/supabase/server'
+import { getAuthAndPermissions } from '@/lib/permissions-server'
 import { CustomerDetailPane } from './customers-master-detail'
 import { CustomersListSidebar } from './customers-list-sidebar'
 import { CustomersMobileLayout } from './customers-mobile-layout'
@@ -11,6 +12,7 @@ export default async function CustomersPage({
 }) {
   const { customer: selectedId, group: groupId, add: openAddParam } = await searchParams
   const supabase = await createAuthClient()
+  const auth = await getAuthAndPermissions()
 
   let orgId: string | null = null
   const { data: { user } } = await supabase.auth.getUser()
@@ -18,17 +20,36 @@ export default async function CustomersPage({
     const { data: profile } = await supabase.from('profiles').select('org_id').eq('id', user.id).single()
     orgId = profile?.org_id ?? null
   }
+  const locationId = auth?.locationId ?? null
 
   let list: { id: string; name: string; email: string | null; phone: string | null; address?: string | null; notes: string | null }[] = []
   let allCustomersForGroup: typeof list | undefined
   if (orgId) {
-    const { data: orgCustomers, error: orgError } = await supabase
-      .from('clients')
-      .select('id, name, email, phone, address, notes')
-      .eq('org_id', orgId)
-      .order('name', { ascending: true })
-    if (orgError) console.error('Error fetching customers:', orgError)
-    const allList = orgCustomers ?? []
+    let allList: typeof list
+    if (locationId) {
+      const { data: jobRows } = await supabase.from('jobs').select('customer_id').eq('location_id', locationId)
+      const customerIds = [...new Set((jobRows ?? []).map((j) => j.customer_id).filter(Boolean))] as string[]
+      if (customerIds.length === 0) {
+        allList = []
+      } else {
+        const { data: orgCustomers, error: orgError } = await supabase
+          .from('clients')
+          .select('id, name, email, phone, address, notes')
+          .eq('org_id', orgId)
+          .in('id', customerIds)
+          .order('name', { ascending: true })
+        if (orgError) console.error('Error fetching customers:', orgError)
+        allList = orgCustomers ?? []
+      }
+    } else {
+      const { data: orgCustomers, error: orgError } = await supabase
+        .from('clients')
+        .select('id, name, email, phone, address, notes')
+        .eq('org_id', orgId)
+        .order('name', { ascending: true })
+      if (orgError) console.error('Error fetching customers:', orgError)
+      allList = orgCustomers ?? []
+    }
     if (groupId) {
       const { data: members } = await supabase
         .from('customer_group_members')
@@ -73,6 +94,7 @@ export default async function CustomersPage({
     amount_total: number
     due_date: string | null
     created_at: string
+    job_id?: string | null
   }[] = []
   let communications: {
     id: string
@@ -85,24 +107,26 @@ export default async function CustomersPage({
 
   let customerGroupIds: string[] = []
   if (selectedId) {
+    let jobsQuery = supabase
+      .from('jobs')
+      .select('id, scheduled_at, status, services(name)')
+      .eq('customer_id', selectedId)
+      .order('scheduled_at', { ascending: false })
+      .limit(200)
+    if (locationId) jobsQuery = jobsQuery.eq('location_id', locationId)
     const [vRes, jRes, iRes, cRes, gRes] = await Promise.all([
       supabase
         .from('vehicles')
         .select('*')
         .eq('customer_id', selectedId)
         .order('created_at', { ascending: false }),
-      supabase
-        .from('jobs')
-        .select('id, scheduled_at, status, services(name)')
-        .eq('customer_id', selectedId)
-        .order('scheduled_at', { ascending: false })
-        .limit(200),
+      jobsQuery,
       supabase
         .from('invoices')
-        .select('id, status, amount_total, due_date, created_at')
+        .select('id, status, amount_total, due_date, created_at, job_id')
         .eq('client_id', selectedId)
         .order('created_at', { ascending: false })
-        .limit(10),
+        .limit(50),
       supabase
         .from('communications')
         .select('id, channel, direction, body, created_at, job_id')
@@ -116,7 +140,13 @@ export default async function CustomersPage({
     ])
     vehicles = vRes.data ?? []
     jobs = jRes.data ?? []
-    invoices = iRes.data ?? []
+    const rawInvoices = iRes.data ?? []
+    if (locationId) {
+      const jobIds = new Set((jRes.data ?? []).map((j) => j.id))
+      invoices = rawInvoices.filter((inv) => inv.job_id && jobIds.has(inv.job_id))
+    } else {
+      invoices = rawInvoices.slice(0, 10)
+    }
     communications = cRes.data ?? []
     customerGroupIds = (gRes.data ?? []).map((r) => r.group_id)
   }

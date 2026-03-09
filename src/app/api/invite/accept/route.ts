@@ -22,7 +22,7 @@ export async function POST(request: NextRequest) {
   const serviceSupabase = await createServiceRoleClient()
   const { data: invite, error: inviteError } = await serviceSupabase
     .from('team_invites')
-    .select('id, org_id, email, role, expires_at')
+    .select('id, org_id, email, role, location_id, expires_at')
     .eq('token', token)
     .is('accepted_at', null)
     .single()
@@ -42,6 +42,7 @@ export async function POST(request: NextRequest) {
     .update({
       org_id: invite.org_id,
       role: invite.role,
+      location_id: invite.location_id ?? null,
       updated_at: new Date().toISOString(),
     })
     .eq('id', user.id)

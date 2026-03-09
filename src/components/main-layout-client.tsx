@@ -74,6 +74,8 @@ const DARK_THEME_TEXT = {
 
 interface MainLayoutClientProps {
   role: UserRole
+  /** When set (location manager), Settings is hidden from nav. */
+  locationId?: string | null
   userEmail?: string | null
   displayName?: string | null
   businessName?: string | null
@@ -100,6 +102,7 @@ interface MainLayoutClientProps {
 
 export function MainLayoutClient({
   role,
+  locationId = null,
   displayName,
   logoUrl,
   jobCount = 0,
@@ -176,6 +179,7 @@ export function MainLayoutClient({
         )}
         <MobileLayout
           role={role}
+          locationId={locationId}
           displayName={displayName}
           logoUrl={logoUrl}
           jobCount={jobCount}
@@ -202,6 +206,7 @@ export function MainLayoutClient({
       )}
       <SidebarNew
         role={role}
+        locationId={locationId}
         fullName={displayName}
         userRole={role}
         avatarUrl={logoUrl}

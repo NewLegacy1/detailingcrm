@@ -83,6 +83,8 @@ export interface Profile {
   role: UserRole
   role_id: string | null
   org_id: string | null
+  /** When set, user is a location manager scoped to this location. */
+  location_id?: string | null
   display_name: string | null
   business_name: string | null
   avatar_url: string | null

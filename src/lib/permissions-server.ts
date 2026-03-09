@@ -8,6 +8,8 @@ export interface AuthResult {
   roleKey: string
   permissions: string[]
   orgId: string | null
+  /** When set, user is a location manager; scope data to this location. */
+  locationId: string | null
 }
 
 /**
@@ -21,7 +23,7 @@ export async function getAuthAndPermissions(): Promise<AuthResult | null> {
 
   const { data: profile } = await supabase
     .from('profiles')
-    .select('id, role, role_id, org_id')
+    .select('id, role, role_id, org_id, location_id')
     .eq('id', user.id)
     .single()
 
@@ -32,6 +34,7 @@ export async function getAuthAndPermissions(): Promise<AuthResult | null> {
       roleKey: 'owner',
       permissions: getDefaultPermissionsForRole('pending'),
       orgId: null,
+      locationId: null,
     }
   }
 
@@ -54,6 +57,7 @@ export async function getAuthAndPermissions(): Promise<AuthResult | null> {
     roleKey,
     permissions,
     orgId: profile.org_id,
+    locationId: profile.location_id ?? null,
   }
 }
 

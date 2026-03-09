@@ -56,7 +56,7 @@ export default async function MainLayout({
 
   const { data: profile } = await supabase
     .from('profiles')
-    .select('role, display_name, business_name, avatar_url, org_id, product_tour_completed, onboarding_complete, onboarding_completed_at')
+    .select('role, display_name, business_name, avatar_url, org_id, location_id, product_tour_completed, onboarding_complete, onboarding_completed_at')
     .eq('id', user.id)
     .single()
 
@@ -124,17 +124,32 @@ export default async function MainLayout({
     }
   }
 
+  const locationId = profile?.location_id ?? null
+  let jobCountQuery = supabase.from('jobs').select('*', { count: 'exact', head: true })
+  let invoiceCountQuery = supabase.from('invoices').select('*', { count: 'exact', head: true })
+  if (locationId) {
+    jobCountQuery = jobCountQuery.eq('location_id', locationId)
+    // Invoice count for location managers: only invoices tied to jobs at their location (approximate via job filter)
+    const { data: jobIds } = await supabase.from('jobs').select('id').eq('location_id', locationId)
+    const ids = (jobIds ?? []).map((j) => j.id)
+    if (ids.length > 0) {
+      invoiceCountQuery = supabase.from('invoices').select('*', { count: 'exact', head: true }).in('job_id', ids)
+    } else {
+      invoiceCountQuery = supabase.from('invoices').select('*', { count: 'exact', head: true }).eq('job_id', '00000000-0000-0000-0000-000000000000')
+    }
+  }
   const [
     { count: jobCount },
     { count: invoiceCount },
   ] = await Promise.all([
-    supabase.from('jobs').select('*', { count: 'exact', head: true }),
-    supabase.from('invoices').select('*', { count: 'exact', head: true }),
+    jobCountQuery,
+    invoiceCountQuery,
   ])
 
   return (
     <MainLayoutClient
       role={effectiveRole}
+      locationId={locationId}
       userEmail={user.email}
       displayName={profile?.display_name}
       businessName={profile?.business_name}

@@ -41,14 +41,15 @@ const MORE_ICONS: Record<string, React.ComponentType<{ className?: string }>> = 
 
 interface BottomTabBarProps {
   role: UserRole
+  locationId?: string | null
   jobCount?: number
   invoiceCount?: number
   subscriptionPlan?: 'starter' | 'pro' | null
 }
 
-export function BottomTabBar({ role, jobCount = 0, invoiceCount = 0, subscriptionPlan }: BottomTabBarProps) {
+export function BottomTabBar({ role, locationId = null, jobCount = 0, invoiceCount = 0, subscriptionPlan }: BottomTabBarProps) {
   const pathname = usePathname()
-  const allItems = getNavItemsForRole(role)
+  const allItems = getNavItemsForRole(role, locationId)
   const moreItems = allItems.filter(
     (i) => !['Dashboard', 'Customers', 'Schedule'].includes(i.label)
   )

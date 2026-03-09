@@ -117,7 +117,7 @@ export function ScheduleByLocationClient({
               </div>
               <ul className="space-y-2">
                 {list.length === 0 ? (
-                  <li className="text-sm text-[var(--text-muted)]">No jobs this week</li>
+                  <li className="text-sm text-[var(--text-muted)]">No jobs on this date</li>
                 ) : (
                   list.map((job) => (
                     <li key={job.id}>

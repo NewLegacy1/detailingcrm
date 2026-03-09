@@ -46,8 +46,21 @@ export function TeamList() {
   const [saving, setSaving] = useState(false)
   const [inviteEmail, setInviteEmail] = useState('')
   const [inviteRole, setInviteRole] = useState('technician')
+  const [inviteLocationId, setInviteLocationId] = useState<string>('')
+  const [inviteLocations, setInviteLocations] = useState<{ id: string; name: string }[]>([])
   const [inviteSending, setInviteSending] = useState(false)
   const [inviteError, setInviteError] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!inviteDialogOpen || inviteRole !== 'manager') {
+      setInviteLocations([])
+      return
+    }
+    fetch('/api/locations')
+      .then((r) => (r.ok ? r.json() : []))
+      .then((list: { id: string; name: string }[]) => setInviteLocations(Array.isArray(list) ? list : []))
+      .catch(() => setInviteLocations([]))
+  }, [inviteDialogOpen, inviteRole])
 
   useEffect(() => {
     Promise.all([
@@ -96,16 +109,21 @@ export function TeamList() {
     setInviteError(null)
     setInviteSending(true)
     try {
+      const body: { email: string; role: string; location_id?: string } = { email, role: inviteRole }
+      if (inviteRole === 'manager' && inviteLocationId && inviteLocationId !== '') {
+        body.location_id = inviteLocationId
+      }
       const res = await fetch('/api/settings/team/invite', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, role: inviteRole }),
+        body: JSON.stringify(body),
       })
       const data = await res.json()
       if (res.ok) {
         setInviteDialogOpen(false)
         setInviteEmail('')
         setInviteRole('technician')
+        setInviteLocationId('')
         const invRes = await fetch('/api/settings/team/invites')
         if (invRes.ok) setInvites(await invRes.json())
       } else {
@@ -248,6 +266,26 @@ export function TeamList() {
                 ))}
               </select>
             </div>
+            {inviteRole === 'manager' && inviteLocations.length > 1 && (
+              <div>
+                <label className="block text-sm font-medium text-[var(--text)] mb-1">Location</label>
+                <select
+                  value={inviteLocationId}
+                  onChange={(e) => setInviteLocationId(e.target.value)}
+                  className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg-card)] px-3 py-2 text-sm text-[var(--text)]"
+                >
+                  <option value="">All locations</option>
+                  {inviteLocations.map((loc) => (
+                    <option key={loc.id} value={loc.id}>
+                      {loc.name}
+                    </option>
+                  ))}
+                </select>
+                <p className="text-xs text-[var(--text-muted)] mt-1">
+                  Optional. Select a location to make them a location manager for that location only.
+                </p>
+              </div>
+            )}
             {inviteError && (
               <p className="text-sm text-red-500">{inviteError}</p>
             )}

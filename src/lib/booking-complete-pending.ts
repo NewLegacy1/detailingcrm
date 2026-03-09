@@ -17,6 +17,7 @@ export type PendingBookingRow = {
   notes: string | null
   deposit_amount_cents?: number
   discount_amount?: number
+  promo_code_id?: string | null
   location_id?: string | null
 }
 
@@ -155,6 +156,9 @@ export async function completePendingBooking(
     .filter(Boolean)
     .join('\n') || null
 
+  const discountAmount = Number((pending as { discount_amount?: number }).discount_amount ?? 0)
+  const promoCodeId = (pending as { promo_code_id?: string | null }).promo_code_id ?? null
+
   const { data: newJob, error: jobError } = await supabase
     .from('jobs')
     .insert({
@@ -169,7 +173,8 @@ export async function completePendingBooking(
       notes: jobNotes,
       base_price: Number(pending.base_price),
       size_price_offset: Number(pending.size_price_offset),
-      discount_amount: Number((pending as { discount_amount?: number }).discount_amount ?? 0),
+      discount_amount: discountAmount,
+      promo_code_id: promoCodeId || null,
     })
     .select('id')
     .single()
@@ -177,6 +182,24 @@ export async function completePendingBooking(
   if (jobError || !newJob?.id) {
     console.error('Booking complete pending: job insert', jobError)
     return { jobId: null, error: jobError?.message ?? 'Job insert failed' }
+  }
+
+  if (promoCodeId && discountAmount > 0) {
+    const { data: promoRow } = await supabase
+      .from('promo_codes')
+      .select('used_count, total_discount_amount')
+      .eq('id', promoCodeId)
+      .single()
+    if (promoRow) {
+      await supabase
+        .from('promo_codes')
+        .update({
+          used_count: (Number(promoRow.used_count) || 0) + 1,
+          total_discount_amount: (Number(promoRow.total_discount_amount) || 0) + discountAmount,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', promoCodeId)
+    }
   }
 
   const upsells = Array.isArray(pending.upsells) ? pending.upsells : []

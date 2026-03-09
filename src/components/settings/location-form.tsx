@@ -42,6 +42,12 @@ interface LocationFormProps {
   onCancel: () => void
 }
 
+interface CalendarOption {
+  id: string
+  summary: string
+  primary?: boolean
+}
+
 export function LocationForm({ location, orgTimezone = 'America/Toronto', onSuccess, onCancel }: LocationFormProps) {
   const [form, setForm] = useState<LocationFormValues>(defaultValues)
   const [saving, setSaving] = useState(false)
@@ -49,9 +55,13 @@ export function LocationForm({ location, orgTimezone = 'America/Toronto', onSucc
   const [geocoding, setGeocoding] = useState(false)
   const [geocodeError, setGeocodeError] = useState<string | null>(null)
   const [mapPickerOpen, setMapPickerOpen] = useState(false)
+  const [googleCalendarId, setGoogleCalendarId] = useState<string>('')
+  const [calendars, setCalendars] = useState<CalendarOption[]>([])
+  const [googleConnected, setGoogleConnected] = useState(false)
 
   useEffect(() => {
     if (location) {
+      setGoogleCalendarId(location.google_calendar_id ?? '')
       setForm({
         name: location.name ?? '',
         address: location.address ?? '',
@@ -67,14 +77,30 @@ export function LocationForm({ location, orgTimezone = 'America/Toronto', onSucc
       })
     } else {
       setForm({ ...defaultValues, timezone: orgTimezone })
+      setGoogleCalendarId('')
     }
   }, [location, orgTimezone])
+
+  useEffect(() => {
+    if (!location?.id) return
+    fetch('/api/integrations/google/status')
+      .then((r) => (r.ok ? r.json() : ({} as { connected?: boolean })))
+      .then((data) => {
+        setGoogleConnected(!!data?.connected)
+        if (data?.connected) {
+          return fetch('/api/integrations/google/calendars').then((r) => (r.ok ? r.json() : []))
+        }
+        return []
+      })
+      .then((list) => setCalendars(Array.isArray(list) ? list : []))
+      .catch(() => {})
+  }, [location?.id])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
     setSaving(true)
-    const body = {
+    const body: Record<string, unknown> = {
       name: form.name.trim(),
       address: form.address.trim() || null,
       lat: form.lat,
@@ -89,6 +115,7 @@ export function LocationForm({ location, orgTimezone = 'America/Toronto', onSucc
       is_active: form.is_active,
       booking_promo_code_prefix: null,
     }
+    if (location?.id) body.google_calendar_id = googleCalendarId.trim() || null
     try {
       if (location?.id) {
         const res = await fetch(`/api/locations/${location.id}`, {
@@ -293,6 +320,27 @@ export function LocationForm({ location, orgTimezone = 'America/Toronto', onSucc
         />
         <Label htmlFor="loc-active">Active (show in booking)</Label>
       </div>
+      {location?.id && googleConnected && (
+        <div>
+          <Label htmlFor="loc-google-calendar">Google Calendar (optional)</Label>
+          <select
+            id="loc-google-calendar"
+            value={googleCalendarId}
+            onChange={(e) => setGoogleCalendarId(e.target.value)}
+            className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg-card)] px-3 py-2 text-sm text-[var(--text)] mt-1"
+          >
+            <option value="">Use org default calendar</option>
+            {calendars.map((cal) => (
+              <option key={cal.id} value={cal.id}>
+                {cal.summary || cal.id}{cal.primary ? ' (primary)' : ''}
+              </option>
+            ))}
+          </select>
+          <p className="text-xs text-[var(--text-muted)] mt-1">
+            Jobs at this location will sync to this calendar when set; otherwise the org default is used.
+          </p>
+        </div>
+      )}
       {error && <p className="text-sm text-[var(--danger)]">{error}</p>}
       <div className="flex gap-2 pt-2">
         <Button type="submit" disabled={saving}>

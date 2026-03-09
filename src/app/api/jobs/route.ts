@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAuthClient } from '@/lib/supabase/server'
+import { getAuthAndPermissions } from '@/lib/permissions-server'
 
 const STARTER_JOBS_LIMIT = 60
 
 /**
  * POST: Create a job from the CRM (authenticated). Enforces Starter 60 jobs/month cap.
- * Body: { customer_id, vehicle_id?, service_id?, scheduled_at, address, notes?, base_price?, size_price_offset? }
+ * Body: { customer_id, vehicle_id?, service_id?, scheduled_at, address, notes?, base_price?, size_price_offset?, location_id? }
  */
 export async function POST(req: NextRequest) {
   const supabase = await createAuthClient()
@@ -14,11 +15,13 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
+  const auth = await getAuthAndPermissions()
   const { data: profile } = await supabase.from('profiles').select('org_id').eq('id', user.id).single()
   const orgId = profile?.org_id ?? null
   if (!orgId) {
     return NextResponse.json({ error: 'No organization' }, { status: 400 })
   }
+  const locationId = auth?.locationId ?? null
 
   let body: {
     customer_id?: string
@@ -80,20 +83,22 @@ export async function POST(req: NextRequest) {
   const base_price = typeof body.base_price === 'number' ? body.base_price : 0
   const size_price_offset = typeof body.size_price_offset === 'number' ? body.size_price_offset : 0
 
+  const insertPayload: Record<string, unknown> = {
+    customer_id,
+    vehicle_id,
+    service_id,
+    scheduled_at: scheduledDate.toISOString(),
+    address,
+    status: 'scheduled',
+    org_id: orgId,
+    notes,
+    base_price,
+    size_price_offset,
+  }
+  if (locationId) insertPayload.location_id = locationId
   const { data: newJob, error: jobError } = await supabase
     .from('jobs')
-    .insert({
-      customer_id,
-      vehicle_id,
-      service_id,
-      scheduled_at: scheduledDate.toISOString(),
-      address,
-      status: 'scheduled',
-      org_id: orgId,
-      notes,
-      base_price,
-      size_price_offset,
-    })
+    .insert(insertPayload)
     .select('id')
     .single()
 

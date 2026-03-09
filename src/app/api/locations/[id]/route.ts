@@ -94,6 +94,8 @@ export async function PATCH(
   if (typeof body.sort_order === 'number') upd.sort_order = body.sort_order
   if (typeof body.is_active === 'boolean') upd.is_active = body.is_active
   if (typeof body.booking_promo_code_prefix === 'string') upd.booking_promo_code_prefix = body.booking_promo_code_prefix.trim() || null
+  if (body.google_calendar_id === null || body.google_calendar_id === '') upd.google_calendar_id = null
+  else if (typeof body.google_calendar_id === 'string' && body.google_calendar_id.trim()) upd.google_calendar_id = body.google_calendar_id.trim()
 
   const { data, error } = await supabase
     .from('locations')

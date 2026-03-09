@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { createAuthClient } from '@/lib/supabase/server'
+import { getAuthAndPermissions } from '@/lib/permissions-server'
 import { crmPath } from '@/lib/crm-path'
 import { fromZonedTime } from 'date-fns-tz'
 import type { UserRole } from '@/types/database'
@@ -71,6 +72,7 @@ export default async function DashboardPage() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
+  const auth = await getAuthAndPermissions()
   const { data: profile } = await supabase
     .from('profiles')
     .select('org_id, display_name, role')
@@ -78,6 +80,7 @@ export default async function DashboardPage() {
     .single()
 
   const orgId = profile?.org_id ?? null
+  const locationId = auth?.locationId ?? null
   if (!orgId) {
     return (
       <div style={{ padding: 24, color: 'var(--text-2)' }}>
@@ -114,6 +117,8 @@ export default async function DashboardPage() {
   const chartStartStr = `${chartStartDate.getFullYear()}-${String(chartStartDate.getMonth() + 1).padStart(2, '0')}-${String(chartStartDate.getDate()).padStart(2, '0')}`
   const { start: chartRangeStart } = getDayRangeInUtc(chartStartStr, timeZone)
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const locFilter = (q: any) => (locationId ? q.eq('location_id', locationId) : q)
   const [
     { data: todayJobsData },
     { count: jobsTodayCount },
@@ -123,46 +128,56 @@ export default async function DashboardPage() {
     { data: monthJobsForCalendar },
     jobsThisMonthResult,
   ] = await Promise.all([
-    supabase
-      .from('jobs')
-      .select('id, scheduled_at, status, address, base_price, size_price_offset, clients(name), vehicles(year, make, model, color), services(name, base_price), job_upsells(price)')
-      .eq('org_id', orgId)
-      .gte('scheduled_at', todayStartStr)
-      .lt('scheduled_at', todayEndStr)
-      .order('scheduled_at', { ascending: true }),
-    supabase
-      .from('jobs')
-      .select('*', { count: 'exact', head: true })
-      .eq('org_id', orgId)
-      .gte('scheduled_at', todayStartStr)
-      .lt('scheduled_at', todayEndStr),
-    supabase.from('jobs').select('id').eq('org_id', orgId),
+    locFilter(
+      supabase
+        .from('jobs')
+        .select('id, scheduled_at, status, address, base_price, size_price_offset, clients(name), vehicles(year, make, model, color), services(name, base_price), job_upsells(price)')
+        .eq('org_id', orgId)
+        .gte('scheduled_at', todayStartStr)
+        .lt('scheduled_at', todayEndStr)
+        .order('scheduled_at', { ascending: true })
+    ),
+    locFilter(
+      supabase
+        .from('jobs')
+        .select('*', { count: 'exact', head: true })
+        .eq('org_id', orgId)
+        .gte('scheduled_at', todayStartStr)
+        .lt('scheduled_at', todayEndStr)
+    ),
+    locFilter(supabase.from('jobs').select('id').eq('org_id', orgId)),
     supabase
       .from('profiles')
       .select('id, display_name, role, avatar_url')
       .eq('org_id', orgId),
-    supabase
-      .from('jobs')
-      .select('id, status, updated_at, clients(name), services(name)')
-      .eq('org_id', orgId)
-      .order('updated_at', { ascending: false })
-      .limit(10),
-    supabase
-      .from('jobs')
-      .select('scheduled_at')
-      .eq('org_id', orgId)
-      .gte('scheduled_at', monthStartStr)
-      .lte('scheduled_at', monthEndStr),
+    locFilter(
+      supabase
+        .from('jobs')
+        .select('id, status, updated_at, clients(name), services(name)')
+        .eq('org_id', orgId)
+        .order('updated_at', { ascending: false })
+        .limit(10)
+    ),
+    locFilter(
+      supabase
+        .from('jobs')
+        .select('scheduled_at')
+        .eq('org_id', orgId)
+        .gte('scheduled_at', monthStartStr)
+        .lte('scheduled_at', monthEndStr)
+    ),
     subscriptionPlan === 'starter'
-      ? supabase
-          .from('jobs')
-          .select('*', { count: 'exact', head: true })
-          .eq('org_id', orgId)
-          .gte('created_at', utcMonthStartStr)
+      ? locFilter(
+          supabase
+            .from('jobs')
+            .select('*', { count: 'exact', head: true })
+            .eq('org_id', orgId)
+            .gte('created_at', utcMonthStartStr)
+        )
       : { count: null as number | null },
   ])
 
-  const jobIds = (orgJobIds ?? []).map((j) => j.id)
+  const jobIds = (orgJobIds ?? []).map((j: { id: string }) => j.id)
   if (jobIds.length === 0) {
     // No jobs in org — avoid .in('job_id', []) which can behave oddly
   }
@@ -263,13 +278,14 @@ export default async function DashboardPage() {
     }
   }
 
-  const jobDates = [...new Set((monthJobsForCalendar ?? []).map((j) => (j.scheduled_at as string).slice(0, 10)))]
+  const jobDates = [...new Set((monthJobsForCalendar ?? []).map((j: { scheduled_at: string | null }) => (j.scheduled_at as string).slice(0, 10)))] as string[]
 
   const jobsThisMonthCount = subscriptionPlan === 'starter' && jobsThisMonthResult && 'count' in jobsThisMonthResult
     ? (jobsThisMonthResult as { count: number | null }).count ?? 0
     : null
 
-  const activityItems = (recentJobs ?? []).map((j) => {
+  type RecentJobRow = { id: string; status: string; updated_at: string; clients: unknown; services: unknown }
+  const activityItems = (recentJobs ?? []).map((j: RecentJobRow) => {
     const clientsRaw = j.clients as { name?: string } | { name?: string }[] | null
     const servicesRaw = j.services as { name?: string } | { name?: string }[] | null
     const client = Array.isArray(clientsRaw) ? clientsRaw[0] : clientsRaw
@@ -284,7 +300,8 @@ export default async function DashboardPage() {
     }
   })
 
-  const crew = (crewProfiles ?? []).map((p) => ({
+  type CrewProfileRow = { id: string; display_name: string | null; role: string | null; avatar_url: string | null }
+  const crew = (crewProfiles ?? []).map((p: CrewProfileRow) => ({
     id: p.id,
     full_name: p.display_name,
     role: p.role ?? 'member',
