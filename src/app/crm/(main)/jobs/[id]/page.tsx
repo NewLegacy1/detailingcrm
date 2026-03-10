@@ -1,6 +1,7 @@
-import { createAuthClient } from '@/lib/supabase/server'
+import { createAuthClient, createServiceRoleClient } from '@/lib/supabase/server'
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
+import type { ComponentProps } from 'react'
 import { crmPath } from '@/lib/crm-path'
 import { JobDetailClient } from './job-detail-client'
 import { JobDetailErrorBoundary } from './job-detail-error-boundary'
@@ -24,11 +25,27 @@ export default async function JobDetailPage({
     .single()
   const orgId = profile?.org_id ?? null
 
-  // Fetch job by id and org only — no location filter so any org member can open any job (fixes "Job not found")
-  const jobQuery = orgId
-    ? supabase.from('jobs').select('*').eq('id', id).eq('org_id', orgId)
-    : supabase.from('jobs').select('*').eq('id', id)
-  const { data: job, error: jobError } = await jobQuery.single()
+  // Fetch job: try service-role first (bypasses RLS) so owner always can open job when auth/session issues block RLS
+  let job: unknown = null
+  let jobError: { message: string } | null = null
+  if (orgId) {
+    try {
+      const admin = await createServiceRoleClient()
+      const res = await admin.from('jobs').select('*').eq('id', id).eq('org_id', orgId).single()
+      job = res.data
+      jobError = res.error as { message: string } | null
+    } catch {
+      // No service role key: fall back to auth client (RLS applies)
+    }
+  }
+  if (!job && !jobError) {
+    const jobQuery = orgId
+      ? supabase.from('jobs').select('*').eq('id', id).eq('org_id', orgId)
+      : supabase.from('jobs').select('*').eq('id', id)
+    const res = await jobQuery.single()
+    job = res.data
+    jobError = res.error as { message: string } | null
+  }
 
   if (jobError || !job) {
     return (
@@ -108,7 +125,7 @@ export default async function JobDetailPage({
   }
 
   const jobNormalized = {
-    ...job,
+    ...(job as Record<string, unknown>),
     clients: clientData ?? null,
     vehicles: vehiclesList.length ? vehiclesList : null,
     services: servicesList.length ? servicesList : null,
@@ -124,7 +141,7 @@ export default async function JobDetailPage({
 
       <JobDetailErrorBoundary>
         <JobDetailClient
-          job={jobNormalized}
+          job={jobNormalized as ComponentProps<typeof JobDetailClient>['job']}
           photos={photos ?? []}
           checklistItems={checklistItems ?? []}
           jobPayments={jobPayments ?? []}

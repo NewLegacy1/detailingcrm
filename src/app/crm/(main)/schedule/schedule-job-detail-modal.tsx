@@ -159,7 +159,7 @@ export function ScheduleJobDetailModal({ open, jobId, initialScheduledAt, initia
           const vid = j.vehicle_id ?? null
           const vehicleIds = vid ? [vid] : []
           const vehicle_services: Record<string, string[]> = vid && j.service_id ? { [vid]: [j.service_id] } : {}
-          const vehicle_sizes: Record<string, number> = vid ? { [vid]: typeof (j as { size_price_offset?: number }).size_price_offset === 'number' ? (j as { size_price_offset: number }).size_price_offset : 0 } : {}
+          const vehicle_sizes: Record<string, number> = vid ? { [vid]: typeof (j as unknown as { size_price_offset?: number }).size_price_offset === 'number' ? (j as unknown as { size_price_offset: number }).size_price_offset : 0 } : {}
           setJob(j)
           const d = new Date(j.scheduled_at)
           const local = new Date(d.getTime() - d.getTimezoneOffset() * 60_000)
