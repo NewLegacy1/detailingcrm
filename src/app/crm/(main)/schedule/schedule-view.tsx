@@ -5,8 +5,9 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { crmPath } from '@/lib/crm-path'
 import { createClient } from '@/lib/supabase/client'
-import { Calendar, Search, Plus, GripVertical, ChevronLeft, ChevronRight, Pencil, MapPin, Clock } from 'lucide-react'
+import { Calendar, Search, Plus, GripVertical, ChevronLeft, ChevronRight } from 'lucide-react'
 import { ScheduleJobDetailModal } from './schedule-job-detail-modal'
+import { JobDetailPopup } from '@/components/job-detail-popup'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogClose } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
@@ -221,6 +222,7 @@ export function ScheduleView({ initialJobs, initialDate, timeZone, serviceHoursS
   const router = useRouter()
   const [editModalOpen, setEditModalOpen] = useState(false)
   const [editJobId, setEditJobId] = useState<string | null>(null)
+  const [editJobData, setEditJobData] = useState<unknown>(null)
 
   /** URL for this schedule view with optional job id (opens detail popup when present). */
   const getScheduleJobUrl = useCallback((jobId: string) => {
@@ -1631,83 +1633,39 @@ export function ScheduleView({ initialJobs, initialDate, timeZone, serviceHoursS
         </DialogContent>
       </Dialog>
 
-      {/* Schedule job detail: uses only schedule data (no fetch) so it always shows when a job is selected */}
-      {selectedJobId && (() => {
-        const row = filteredJobs.find((j) => j.id === selectedJobId)
-        return (
-          <Dialog open={!!selectedJobId} onOpenChange={(open) => { if (!open) { setSelectedJobId(null); router.replace(scheduleUrlWithoutJob); fetchJobs(); } }}>
-            <DialogContent className="max-md:max-w-none max-md:h-[90dvh] max-w-lg max-h-[90dvh] flex flex-col p-0 gap-0">
-              <DialogClose onClick={() => { setSelectedJobId(null); router.replace(scheduleUrlWithoutJob); fetchJobs(); }} />
-              <DialogHeader>
-                <div className="px-4 pt-4 pb-2 shrink-0 border-b border-[var(--border)] flex items-center gap-2">
-                  <DialogTitle className="text-lg font-semibold text-white truncate min-w-0">
-                    {row ? (Array.isArray(row.clients) ? row.clients[0]?.name : row.clients?.name) ?? 'Job' : 'Job'}
-                  </DialogTitle>
-                  {row && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="shrink-0"
-                      onClick={() => { setSelectedJobId(null); setEditJobId(selectedJobId); setEditModalOpen(true); }}
-                    >
-                      <Pencil className="h-3.5 w-3.5 mr-1" />
-                      Edit
-                    </Button>
-                  )}
-                </div>
-              </DialogHeader>
-              <div className="overflow-y-auto flex-1 px-4 pb-4 space-y-4">
-                {row ? (
-                  <>
-                    <section>
-                      <p className="text-xs text-[var(--text-muted)] mb-1">Customer</p>
-                      <p className="font-medium text-white">{Array.isArray(row.clients) ? row.clients[0]?.name : row.clients?.name ?? '—'}</p>
-                    </section>
-                    <section>
-                      <p className="text-xs text-[var(--text-muted)] mb-1 flex items-center gap-1"><Clock className="h-3.5 w-3.5" /> Time</p>
-                      <p className="text-sm text-[var(--text-secondary)]">
-                        {new Date(row.scheduled_at).toLocaleString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })}
-                      </p>
-                    </section>
-                    <section>
-                      <p className="text-xs text-[var(--text-muted)] mb-1 flex items-center gap-1"><MapPin className="h-3.5 w-3.5" /> Address</p>
-                      <p className="text-sm text-[var(--text-secondary)]">{row.address || '—'}</p>
-                    </section>
-                    <section>
-                      <p className="text-xs text-[var(--text-muted)] mb-1">Service</p>
-                      <p className="font-medium text-white">{Array.isArray(row.services) ? row.services[0]?.name : row.services?.name ?? '—'}</p>
-                      <p className="text-sm text-[var(--text-secondary)]">Status: {row.status}</p>
-                    </section>
-                    {row.notes && (
-                      <section>
-                        <p className="text-xs text-[var(--text-muted)] mb-1">Notes</p>
-                        <p className="text-sm text-[var(--text-secondary)] whitespace-pre-wrap">{row.notes}</p>
-                      </section>
-                    )}
-                  </>
-                ) : (
-                  <p className="py-8 text-center text-[var(--text-muted)]">Job not in this schedule.</p>
-                )}
-              </div>
-            </DialogContent>
-          </Dialog>
-        )
-      })()}
+      {/* Job detail: use same JobDetailPopup as job list page */}
+      <JobDetailPopup
+        open={!!selectedJobId}
+        jobId={selectedJobId}
+        onClose={() => { setSelectedJobId(null); router.replace(scheduleUrlWithoutJob); fetchJobs(); }}
+        onOpenEdit={(id, jobData) => {
+          setSelectedJobId(null)
+          router.replace(scheduleUrlWithoutJob)
+          setEditJobId(id)
+          setEditJobData(jobData ?? null)
+          setEditModalOpen(true)
+        }}
+        onDeleted={() => { setSelectedJobId(null); router.replace(scheduleUrlWithoutJob); fetchJobs(); }}
+        onUpdated={() => fetchJobs()}
+      />
 
       <ScheduleJobDetailModal
         open={createModalOpen || editModalOpen}
         jobId={createModalOpen ? null : editJobId}
         initialScheduledAt={createModalOpen ? date + 'T09:00' : undefined}
+        initialJobData={editJobData as import('./schedule-job-detail-modal').JobFull | null}
         onClose={() => {
           setCreateModalOpen(false)
           setEditModalOpen(false)
           setEditJobId(null)
+          setEditJobData(null)
         }}
         onSaved={() => {
           fetchJobs()
           setCreateModalOpen(false)
           setEditModalOpen(false)
           setEditJobId(null)
+          setEditJobData(null)
         }}
       />
     </div>

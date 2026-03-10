@@ -165,6 +165,23 @@ export function MainLayoutClient({
     return s as React.CSSProperties
   }, [crmStylePreset, crmColors])
 
+  // Apply CRM theme to document.documentElement so portaled content (e.g. job detail popup) gets the same colours
+  useEffect(() => {
+    if (typeof document === 'undefined') return
+    const html = document.documentElement
+    const vars = style as Record<string, string>
+    const keys: string[] = []
+    Object.keys(vars).forEach((key) => {
+      if (key.startsWith('--')) {
+        html.style.setProperty(key, vars[key])
+        keys.push(key)
+      }
+    })
+    return () => {
+      keys.forEach((key) => html.style.removeProperty(key))
+    }
+  }, [style])
+
   if (isMobile) {
     return (
       <>

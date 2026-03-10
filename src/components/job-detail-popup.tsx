@@ -81,7 +81,13 @@ type JobData = {
     model: string
     year: number | null
     color: string | null
-  } | null
+  } | {
+    id: string
+    make: string
+    model: string
+    year: number | null
+    color: string | null
+  }[] | null
   services: {
     id: string
     name: string
@@ -92,6 +98,8 @@ type JobData = {
   size_price_offset?: number | null
   discount_amount?: number | null
   job_upsells?: { price: number }[]
+  /** Popup-only: when we have job_services, summary for display (e.g. 2× same service) */
+  servicesSummary?: { name: string; count: number; duration_mins?: number }[]
 }
 
 export function JobDetailPopup({
@@ -151,24 +159,49 @@ export function JobDetailPopup({
 
     const vehicleId = (jobRow as { vehicle_id?: string | null }).vehicle_id
     const serviceId = (jobRow as { service_id?: string | null }).service_id
-    const [vehicleRes, serviceRes, photosRes, checklistRes, paymentsRes] = await Promise.all([
-      vehicleId ? supabase.from('vehicles').select('id, make, model, year, color').eq('id', vehicleId).maybeSingle() : { data: null },
-      serviceId ? supabase.from('services').select('id, name, duration_mins, base_price').eq('id', serviceId).maybeSingle() : { data: null },
+    const { data: jobVehiclesRows } = await supabase.from('job_vehicles').select('vehicle_id').eq('job_id', jobId)
+    const { data: jobServicesRows } = await supabase.from('job_services').select('service_id').eq('job_id', jobId)
+    const vehicleIds = (jobVehiclesRows ?? []).map((r: { vehicle_id: string }) => r.vehicle_id)
+    const idsToFetch = vehicleIds.length > 0 ? vehicleIds : (vehicleId ? [vehicleId] : [])
+    const serviceIdsFromJob = (jobServicesRows ?? []).map((r: { service_id: string }) => r.service_id)
+    const uniqueServiceIds = [...new Set(serviceIdsFromJob.length > 0 ? serviceIdsFromJob : (serviceId ? [serviceId] : []))]
+    const [vehicleRes, servicesListRes, photosRes, checklistRes, paymentsRes] = await Promise.all([
+      idsToFetch.length > 0
+        ? supabase.from('vehicles').select('id, make, model, year, color').in('id', idsToFetch)
+        : { data: null },
+      uniqueServiceIds.length > 0 ? supabase.from('services').select('id, name, duration_mins, base_price').in('id', uniqueServiceIds) : { data: [] },
       supabase.from('job_photos').select('*').eq('job_id', jobId).order('created_at', { ascending: true }),
       supabase.from('job_checklist_items').select('*').eq('job_id', jobId).order('sort_order'),
       supabase.from('job_payments').select('*').eq('job_id', jobId).order('created_at', { ascending: false }),
     ])
+    const vehicleList = vehicleRes?.data ?? []
+    const vehiclesNormalized =
+      vehicleList.length === 0
+        ? null
+        : vehicleList.length === 1
+          ? vehicleList[0]
+          : idsToFetch.map((id) => vehicleList.find((v) => v.id === id)).filter(Boolean) as typeof vehicleList
+
+    const servicesList = (servicesListRes?.data ?? []) as { id: string; name: string; duration_mins?: number; base_price?: number }[]
+    const serviceCountById: Record<string, number> = {}
+    serviceIdsFromJob.forEach((sid) => { serviceCountById[sid] = (serviceCountById[sid] ?? 0) + 1 })
+    const servicesSummary: { name: string; count: number; duration_mins?: number }[] =
+      servicesList.length > 0
+        ? servicesList.map((s) => ({ name: s.name, count: serviceCountById[s.id] ?? 1, duration_mins: s.duration_mins }))
+        : []
 
     const clientsNorm = Array.isArray(jobRow.clients) ? jobRow.clients[0] ?? null : jobRow.clients
     const upsellsNorm = Array.isArray((jobRow as { job_upsells?: unknown }).job_upsells)
       ? ((jobRow as { job_upsells: { price: number }[] }).job_upsells)
       : []
+    const singleService = servicesList.length === 1 && (serviceCountById[servicesList[0].id] ?? 0) <= 1 ? servicesList[0] : null
     const normalized: JobData = {
       ...jobRow,
       clients: clientsNorm as JobData['clients'],
-      vehicles: vehicleRes.data ?? null,
-      services: serviceRes.data ?? null,
+      vehicles: vehiclesNormalized,
+      services: singleService ?? (servicesList[0] ?? null),
       job_upsells: upsellsNorm,
+      servicesSummary: servicesSummary.length > 0 ? servicesSummary : undefined,
     }
 
     setJob(normalized)
@@ -209,7 +242,12 @@ export function JobDetailPopup({
   }, [fetchJob])
 
   const client = job?.clients ?? null
-  const vehicle = job?.vehicles ?? null
+  const vehiclesList = job?.vehicles
+    ? Array.isArray(job.vehicles)
+      ? job.vehicles
+      : [job.vehicles]
+    : []
+  const vehicle = vehiclesList[0] ?? null
   const service = job?.services ?? null
   const clientId = client?.id
   const serviceName = service?.name ?? '—'
@@ -394,12 +432,20 @@ export function JobDetailPopup({
 
                 {/* Vehicle */}
                 <section>
-                  <p className="section-label mb-2 text-xs text-[var(--text-muted)]">Vehicle</p>
-                  <p className="text-sm text-[var(--text-secondary)]">
-                    {vehicle
-                      ? `${vehicle.year ?? ''} ${vehicle.make} ${vehicle.model}${vehicle.color ? ` · ${vehicle.color}` : ''}`.trim() || '—'
-                      : '—'}
+                  <p className="section-label mb-2 text-xs text-[var(--text-muted)]">
+                    {vehiclesList.length > 1 ? `Vehicles (${vehiclesList.length})` : 'Vehicle'}
                   </p>
+                  {vehiclesList.length > 0 ? (
+                    <ul className="text-sm text-[var(--text-secondary)] space-y-1">
+                      {vehiclesList.map((v) => (
+                        <li key={v.id}>
+                          {`${v.year ?? ''} ${v.make} ${v.model}${v.color ? ` · ${v.color}` : ''}`.trim() || '—'}
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="text-sm text-[var(--text-secondary)]">—</p>
+                  )}
                 </section>
 
                 {/* Location */}
@@ -420,9 +466,29 @@ export function JobDetailPopup({
 
                 {/* Service */}
                 <section>
-                  <p className="section-label mb-2 text-xs text-[var(--text-muted)]">Service</p>
-                  <p className="font-medium text-white">{serviceName}</p>
-                  <p className="text-sm text-[var(--text-secondary)]">${servicePrice.toLocaleString()} · {serviceDuration} min</p>
+                  <p className="section-label mb-2 text-xs text-[var(--text-muted)]">
+                    {job.servicesSummary && (job.servicesSummary.length > 1 || job.servicesSummary.some((s) => s.count > 1)) ? 'Services' : 'Service'}
+                  </p>
+                  {job.servicesSummary && job.servicesSummary.length > 0 ? (
+                    <>
+                      <ul className="text-sm font-medium text-white space-y-1">
+                        {job.servicesSummary.map((s, i) => (
+                          <li key={i}>{s.count > 1 ? `${s.count}× ${s.name}` : s.name}</li>
+                        ))}
+                      </ul>
+                      <p className="text-sm text-[var(--text-secondary)] mt-1">
+                        Expected total: ${expectedPrice.toLocaleString()}
+                        {job.servicesSummary.some((s) => s.duration_mins != null) && (
+                          <> · {job.servicesSummary.reduce((sum, s) => sum + (s.duration_mins ?? 0) * (s.count ?? 1), 0)} min</>
+                        )}
+                      </p>
+                    </>
+                  ) : (
+                    <>
+                      <p className="font-medium text-white">{serviceName}</p>
+                      <p className="text-sm text-[var(--text-secondary)]">${servicePrice.toLocaleString()} · {serviceDuration} min</p>
+                    </>
+                  )}
                 </section>
 
                 {/* Notes */}

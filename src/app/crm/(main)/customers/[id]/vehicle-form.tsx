@@ -23,6 +23,7 @@ interface VehicleFormProps {
 export function VehicleForm({ customerId, vehicle, onSuccess, onCancel }: VehicleFormProps) {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
+  const [saved, setSaved] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [formData, setFormData] = useState({
     make: vehicle?.make ?? '',
@@ -61,16 +62,26 @@ export function VehicleForm({ customerId, vehicle, onSuccess, onCancel }: Vehicl
           setError(err.message)
           return
         }
-        if (onSuccess) onSuccess()
-        else { router.push(crmPath(`/customers/${customerId}`)); router.refresh() }
+        setSaved(true)
+        if (onSuccess) {
+          setTimeout(() => onSuccess(), 1200)
+        } else {
+          router.push(crmPath(`/customers/${customerId}`))
+          router.refresh()
+        }
       } else {
         const { error: err } = await supabase.from('vehicles').insert([payload])
         if (err) {
           setError(err.message)
           return
         }
-        if (onSuccess) onSuccess()
-        else { router.push(crmPath(`/customers/${customerId}`)); router.refresh() }
+        setSaved(true)
+        if (onSuccess) {
+          setTimeout(() => onSuccess(), 1200)
+        } else {
+          router.push(crmPath(`/customers/${customerId}`))
+          router.refresh()
+        }
       }
     } finally {
       setLoading(false)
@@ -79,6 +90,11 @@ export function VehicleForm({ customerId, vehicle, onSuccess, onCancel }: Vehicl
 
   return (
     <form onSubmit={handleSubmit} className="max-w-xl space-y-4 card p-6">
+      {saved && (
+        <div className="rounded-md bg-green-500/15 border border-green-500/40 text-green-600 dark:text-green-400 text-sm p-3 font-medium">
+          Vehicle {vehicle ? 'updated' : 'added'}. Closing…
+        </div>
+      )}
       {error && (
         <div className="rounded-md bg-red-500/10 border border-red-500/30 text-red-600 dark:text-red-400 text-sm p-3">
           {error}
@@ -153,8 +169,8 @@ export function VehicleForm({ customerId, vehicle, onSuccess, onCancel }: Vehicl
         />
       </div>
       <div className="flex gap-3 pt-4">
-        <Button type="submit" disabled={loading}>
-          {loading ? 'Saving...' : vehicle ? 'Update' : 'Add vehicle'}
+        <Button type="submit" disabled={loading || saved}>
+          {saved ? 'Saved!' : loading ? 'Saving…' : vehicle ? 'Update' : 'Add vehicle'}
         </Button>
         <Button type="button" variant="outline" onClick={() => (onCancel ? onCancel() : router.push(crmPath(`/customers/${customerId}`)))}>
           Cancel

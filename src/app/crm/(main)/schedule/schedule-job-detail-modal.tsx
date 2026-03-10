@@ -79,6 +79,44 @@ export function ScheduleJobDetailModal({ open, jobId, initialScheduledAt, initia
 
   const isCreate = open && !jobId
 
+  /** Build form state from job + job_vehicles + job_services (used by API and client-side fallback) */
+  function applyJobToForm(
+    jobData: JobFull,
+    jvRows: { vehicle_id: string; size_price_offset?: number }[],
+    jsRows: { service_id: string; vehicle_id: string | null }[],
+  ) {
+    const vehicleIds = jvRows.map((r) => r.vehicle_id)
+    const vehicle_sizes: Record<string, number> = {}
+    jvRows.forEach((r) => {
+      vehicle_sizes[r.vehicle_id] = typeof r.size_price_offset === 'number' ? r.size_price_offset : 0
+    })
+    const firstVid = vehicleIds[0] ?? (jobData.vehicle_id ?? null)
+    const vehicle_services: Record<string, string[]> = {}
+    vehicleIds.forEach((vid) => { vehicle_services[vid] = []; if (vehicle_sizes[vid] === undefined) vehicle_sizes[vid] = 0 })
+    jsRows.forEach((r) => {
+      const vid = r.vehicle_id ?? firstVid ?? '__job__'
+      if (!vehicle_services[vid]) vehicle_services[vid] = []
+      vehicle_services[vid].push(r.service_id)
+    })
+    if (firstVid && !vehicleIds.length) vehicle_services[firstVid] = vehicle_services['__job__'] ?? []
+    delete vehicle_services['__job__']
+    setJob(jobData)
+    const d = new Date(jobData.scheduled_at)
+    const local = new Date(d.getTime() - d.getTimezoneOffset() * 60_000)
+    setForm({
+      customer_id: jobData.customer_id,
+      vehicle_ids: vehicleIds.length > 0 ? vehicleIds : (jobData.vehicle_id ? [jobData.vehicle_id] : []),
+      vehicle_services: Object.keys(vehicle_services).length > 0 ? vehicle_services : (jobData.service_id && firstVid ? { [firstVid]: [jobData.service_id] } : {}),
+      vehicle_sizes,
+      scheduled_at: local.toISOString().slice(0, 16),
+      address: jobData.address,
+      status: jobData.status,
+      notes: jobData.notes ?? '',
+      send_confirmation_email: true,
+      location_id: (jobData as { location_id?: string | null }).location_id ?? '',
+    })
+  }
+
   useEffect(() => {
     if (!open) {
       setJob(null)
@@ -102,91 +140,68 @@ export function ScheduleJobDetailModal({ open, jobId, initialScheduledAt, initia
       setLoading(false)
       return
     }
-    // When editing, fetch via API (server uses createClient = service-role when key set)
+    // When editing: load job the same way as the popup (client-side Supabase only). If you can view the job, you can edit it.
     setLoading(true)
     let cancelled = false
-    fetch(`/api/jobs/${jobId}`, { credentials: 'include' })
-      .then((res) => {
-        if (cancelled) return null
-        if (!res.ok) return res.json().catch(() => null).then((body) => ({ error: body?.error ?? 'Job not found', status: res.status }))
-        return res.json()
-      })
-      .then((data: { job?: JobFull; job_vehicles?: { vehicle_id: string; size_price_offset?: number }[]; job_services?: { service_id: string; vehicle_id: string | null }[] } | { error?: string; status?: number } | null) => {
-        if (cancelled) {
-          setLoading(false)
-          return
-        }
-        if (data && 'job' in data && data.job) {
-          const jobData = data.job as JobFull
-          const jvRows = data.job_vehicles ?? []
-          const vehicleIds = jvRows.map((r) => r.vehicle_id)
-          const vehicle_sizes: Record<string, number> = {}
-          jvRows.forEach((r) => {
-            vehicle_sizes[r.vehicle_id] = typeof r.size_price_offset === 'number' ? r.size_price_offset : 0
-          })
-          const jsRows = data.job_services ?? []
-          const firstVid = vehicleIds[0] ?? (jobData.vehicle_id ?? null)
-          const vehicle_services: Record<string, string[]> = {}
-          vehicleIds.forEach((vid) => { vehicle_services[vid] = []; if (vehicle_sizes[vid] === undefined) vehicle_sizes[vid] = 0 })
-          jsRows.forEach((r) => {
-            const vid = r.vehicle_id ?? firstVid ?? '__job__'
-            if (!vehicle_services[vid]) vehicle_services[vid] = []
-            vehicle_services[vid].push(r.service_id)
-          })
-          if (firstVid && !vehicleIds.length) vehicle_services[firstVid] = vehicle_services['__job__'] ?? []
-          delete vehicle_services['__job__']
-          setJob(jobData)
-          const d = new Date(jobData.scheduled_at)
-          const local = new Date(d.getTime() - d.getTimezoneOffset() * 60_000)
-          setForm({
-            customer_id: jobData.customer_id,
-            vehicle_ids: vehicleIds.length > 0 ? vehicleIds : (jobData.vehicle_id ? [jobData.vehicle_id] : []),
-            vehicle_services: Object.keys(vehicle_services).length > 0 ? vehicle_services : (jobData.service_id && firstVid ? { [firstVid]: [jobData.service_id] } : {}),
-            vehicle_sizes,
-            scheduled_at: local.toISOString().slice(0, 16),
-            address: jobData.address,
-            status: jobData.status,
-            notes: jobData.notes ?? '',
-            send_confirmation_email: true,
-            location_id: (jobData as { location_id?: string | null }).location_id ?? '',
-          })
-          setLoading(false)
-          return
-        }
-        // API failed: fallback to initialJobData if we have it (e.g. from popup)
-        if (initialJobData && (initialJobData as { id?: string }).id === jobId) {
-          const j = initialJobData as JobFull
-          const vid = j.vehicle_id ?? null
-          const vehicleIds = vid ? [vid] : []
-          const vehicle_services: Record<string, string[]> = vid && j.service_id ? { [vid]: [j.service_id] } : {}
-          const vehicle_sizes: Record<string, number> = vid ? { [vid]: typeof (j as unknown as { size_price_offset?: number }).size_price_offset === 'number' ? (j as unknown as { size_price_offset: number }).size_price_offset : 0 } : {}
-          setJob(j)
-          const d = new Date(j.scheduled_at)
-          const local = new Date(d.getTime() - d.getTimezoneOffset() * 60_000)
-          setForm({
-            customer_id: j.customer_id,
-            vehicle_ids: vehicleIds,
-            vehicle_services: vehicle_services,
-            vehicle_sizes,
-            scheduled_at: local.toISOString().slice(0, 16),
-            address: j.address,
-            status: j.status,
-            notes: j.notes ?? '',
-            send_confirmation_email: true,
-            location_id: (j as { location_id?: string | null }).location_id ?? '',
-          })
-          setLoading(false)
-          return
-        }
+    const supabase = createClient()
+    Promise.all([
+      supabase.from('jobs').select(`
+        id, customer_id, vehicle_id, service_id, scheduled_at, address, status, notes, size_price_offset, location_id,
+        actual_started_at, actual_ended_at,
+        clients(id, name, email, phone, address),
+        vehicles(id, make, model, year, color),
+        services(id, name, duration_mins)
+      `).eq('id', jobId).single(),
+      supabase.from('job_vehicles').select('vehicle_id, size_price_offset').eq('job_id', jobId),
+      supabase.from('job_services').select('service_id, vehicle_id').eq('job_id', jobId),
+    ]).then(([jobRes, jvRes, jsRes]) => {
+      if (cancelled) {
+        setLoading(false)
+        return
+      }
+      if (jobRes.data && !jobRes.error) {
+        const jobData = jobRes.data as unknown as JobFull
+        applyJobToForm(jobData, (jvRes.data ?? []) as { vehicle_id: string; size_price_offset?: number }[], (jsRes.data ?? []) as { service_id: string; vehicle_id: string | null }[])
+        setLoading(false)
+        return
+      }
+      // Fallback: use initialJobData when opening from popup (e.g. fetch failed)
+      if (initialJobData && (initialJobData as { id?: string }).id === jobId) {
+        const j = initialJobData as JobFull
+        const vehiclesArray = Array.isArray(j.vehicles) ? j.vehicles : (j.vehicles ? [j.vehicles] : [])
+        const vehicleIds = vehiclesArray.length > 0 ? vehiclesArray.map((v) => v.id) : (j.vehicle_id ? [j.vehicle_id] : [])
+        const firstVid = vehicleIds[0] ?? null
+        const serviceId = j.service_id ?? (Array.isArray(j.services) ? j.services[0]?.id : (j.services as { id: string } | null)?.id) ?? null
+        const vehicle_services: Record<string, string[]> = {}
+        vehicleIds.forEach((vid) => { vehicle_services[vid] = serviceId ? [serviceId] : [] })
+        const vehicle_sizes: Record<string, number> = {}
+        vehicleIds.forEach((vid) => { vehicle_sizes[vid] = 0 })
+        setJob(j)
+        const d = new Date(j.scheduled_at)
+        const local = new Date(d.getTime() - d.getTimezoneOffset() * 60_000)
+        setForm({
+          customer_id: j.customer_id,
+          vehicle_ids: vehicleIds,
+          vehicle_services: Object.keys(vehicle_services).length > 0 ? vehicle_services : (firstVid && serviceId ? { [firstVid]: [serviceId] } : {}),
+          vehicle_sizes,
+          scheduled_at: local.toISOString().slice(0, 16),
+          address: j.address,
+          status: j.status,
+          notes: j.notes ?? '',
+          send_confirmation_email: true,
+          location_id: (j as { location_id?: string | null }).location_id ?? '',
+        })
+        setLoading(false)
+        return
+      }
+      setJob(null)
+      setLoading(false)
+    }).catch(() => {
+      if (!cancelled) {
         setJob(null)
         setLoading(false)
-      })
-      .catch(() => {
-        if (!cancelled) {
-          setJob(null)
-          setLoading(false)
-        }
-      })
+      }
+    })
     return () => { cancelled = true }
   }, [open, jobId, isCreate, initialScheduledAt, initialJobData])
 
@@ -264,16 +279,18 @@ export function ScheduleJobDetailModal({ open, jobId, initialScheduledAt, initia
       setForm((prev) => ({ ...prev, vehicle_ids: [] }))
       return
     }
+    const fetchedForCustomerId = form.customer_id
     const supabase = createClient()
     supabase
       .from('vehicles')
       .select('*')
-      .eq('customer_id', form.customer_id)
+      .eq('customer_id', fetchedForCustomerId)
       .order('created_at', { ascending: false })
       .then(({ data }) => {
         const list = data ?? []
         setVehicles(list)
         setForm((prev) => {
+          if (prev.customer_id !== fetchedForCustomerId) return prev
           const nextVs: Record<string, string[]> = {}
           const nextSizes: Record<string, number> = {}
           prev.vehicle_ids.forEach((vid) => {
@@ -345,6 +362,7 @@ export function ScheduleJobDetailModal({ open, jobId, initialScheduledAt, initia
     onClose()
   }
 
+  // Edit path: we do not send a notification email; only handleCreate (new job) can send the booking confirmation.
   async function handleSave(e: React.FormEvent) {
     e.preventDefault()
     if (isCreate) {
