@@ -1,5 +1,4 @@
 import { createAuthClient } from '@/lib/supabase/server'
-import { getAuthAndPermissions } from '@/lib/permissions-server'
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { crmPath } from '@/lib/crm-path'
@@ -18,20 +17,17 @@ export default async function JobDetailPage({
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const auth = await getAuthAndPermissions()
   const { data: profile } = await supabase
     .from('profiles')
     .select('org_id')
     .eq('id', user.id)
     .single()
   const orgId = profile?.org_id ?? null
-  const locationId = auth?.locationId ?? null
 
-  // Fetch job by id (and org when available) so we match dashboard context and avoid join/RLS issues
-  let jobQuery = orgId
+  // Fetch job by id and org only — no location filter so any org member can open any job (fixes "Job not found")
+  const jobQuery = orgId
     ? supabase.from('jobs').select('*').eq('id', id).eq('org_id', orgId)
     : supabase.from('jobs').select('*').eq('id', id)
-  if (locationId) jobQuery = jobQuery.eq('location_id', locationId)
   const { data: job, error: jobError } = await jobQuery.single()
 
   if (jobError || !job) {

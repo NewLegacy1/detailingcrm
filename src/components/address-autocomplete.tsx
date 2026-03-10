@@ -35,22 +35,31 @@ export const AddressAutocomplete = React.forwardRef<
   useEffect(() => {
     if (!ready || !inputRef.current || !window.google?.maps?.places) return
     const input = inputRef.current
-    const autocomplete = new window.google.maps.places.Autocomplete(input, {
-      types: ['address'],
-      fields: ['formatted_address', 'geometry'],
-    })
+    let autocomplete: google.maps.places.Autocomplete
+    try {
+      autocomplete = new window.google.maps.places.Autocomplete(input, {
+        types: ['address'],
+        fields: ['formatted_address', 'geometry'],
+      })
+    } catch (_) {
+      return
+    }
     autocomplete.addListener('place_changed', () => {
-      const place = autocomplete.getPlace()
-      const address = place.formatted_address ?? ''
-      if (address) {
-        onChange(address)
-        const loc = place.geometry?.location
-        if (onPlaceSelect)
-          onPlaceSelect({
-            address,
-            lat: loc ? loc.lat() : undefined,
-            lng: loc ? loc.lng() : undefined,
-          })
+      try {
+        const place = autocomplete.getPlace()
+        const address = (place && typeof place === 'object' && place.formatted_address) ? String(place.formatted_address).trim() : ''
+        if (address) {
+          onChange(address)
+          const loc = place.geometry?.location
+          if (onPlaceSelect && loc)
+            onPlaceSelect({
+              address,
+              lat: typeof loc.lat === 'function' ? loc.lat() : undefined,
+              lng: typeof loc.lng === 'function' ? loc.lng() : undefined,
+            })
+        }
+      } catch (_) {
+        // User can still type address manually
       }
     })
     autocompleteRef.current = autocomplete
@@ -65,20 +74,27 @@ export const AddressAutocomplete = React.forwardRef<
   }, [ready, onChange, onPlaceSelect])
 
   return (
-    <input
-      ref={setRefs}
-      type="text"
-      autoComplete="off"
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      placeholder={placeholder}
-      className={cn(
-        'flex h-10 w-full rounded-lg border border-[var(--border)] bg-[var(--bg-card)] px-3 py-2 text-sm text-[var(--text)] placeholder:text-[var(--text-muted)]',
-        'focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/40 focus:border-[var(--accent)]/60',
-        'disabled:cursor-not-allowed disabled:opacity-50',
-        className
+    <div className="space-y-1">
+      {!ready && (
+        <p className="text-xs text-[var(--text-muted)]">
+          Enter address manually. Address suggestions are unavailable (no Google Maps API key or billing not enabled).
+        </p>
       )}
-      {...props}
-    />
+      <input
+        ref={setRefs}
+        type="text"
+        autoComplete="off"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        className={cn(
+          'flex h-10 w-full rounded-lg border border-[var(--border)] bg-[var(--bg-card)] px-3 py-2 text-sm text-[var(--text)] placeholder:text-[var(--text-muted)]',
+          'focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/40 focus:border-[var(--accent)]/60',
+          'disabled:cursor-not-allowed disabled:opacity-50',
+          className
+        )}
+        {...props}
+      />
+    </div>
   )
 })

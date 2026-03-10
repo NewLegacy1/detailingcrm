@@ -52,14 +52,29 @@ export function ScheduleJobDetailModal({ open, jobId, initialScheduledAt, initia
   const [customers, setCustomers] = useState<Client[]>([])
   const [vehicles, setVehicles] = useState<Vehicle[]>([])
   const [services, setServices] = useState<Service[]>([])
+  const [locations, setLocations] = useState<{ id: string; name: string }[]>([])
+  const [suggestedLocation, setSuggestedLocation] = useState<{ location_id: string; location_name: string } | null>(null)
+  type SizeOption = { size_key: string; label: string; price_offset: number }
+  const DEFAULT_SIZES: SizeOption[] = [
+    { size_key: 'sedan', label: 'Sedan', price_offset: 0 },
+    { size_key: 'suv_5', label: 'SUV 5-seat', price_offset: 20 },
+    { size_key: 'suv_7', label: 'SUV 7-seat', price_offset: 30 },
+    { size_key: 'truck', label: 'Truck', price_offset: 40 },
+  ]
+  const [sizeOptions, setSizeOptions] = useState<SizeOption[]>(DEFAULT_SIZES)
+  /** Raw size rows keyed by service for per-vehicle options (from selected services) */
+  const [sizePriceRows, setSizePriceRows] = useState<{ service_id: string; size_key: string; label: string; price_offset: number }[]>([])
   const [form, setForm] = useState({
     customer_id: '',
     vehicle_ids: [] as string[],
-    service_ids: [] as string[],
+    vehicle_services: {} as Record<string, string[]>,
+    vehicle_sizes: {} as Record<string, number>,
     scheduled_at: '',
     address: '',
     status: 'scheduled',
     notes: '',
+    send_confirmation_email: true,
+    location_id: '',
   })
 
   const isCreate = open && !jobId
@@ -92,14 +107,14 @@ export function ScheduleJobDetailModal({ open, jobId, initialScheduledAt, initia
     const supabase = createClient()
     Promise.all([
       supabase.from('jobs').select(`
-        id, customer_id, vehicle_id, service_id, scheduled_at, address, status, notes,
+        id, customer_id, vehicle_id, service_id, scheduled_at, address, status, notes, size_price_offset, location_id,
         actual_started_at, actual_ended_at,
         clients(id, name, email, phone, address),
         vehicles(id, make, model, year, color),
         services(id, name, duration_mins)
       `).eq('id', jobId).single(),
-      supabase.from('job_vehicles').select('vehicle_id').eq('job_id', jobId),
-      supabase.from('job_services').select('service_id').eq('job_id', jobId),
+      supabase.from('job_vehicles').select('vehicle_id, size_price_offset').eq('job_id', jobId),
+      supabase.from('job_services').select('service_id, vehicle_id').eq('job_id', jobId),
     ]).then(([jobRes, jvRes, jsRes]) => {
       if (jobRes.error || !jobRes.data) {
         setJob(null)
@@ -107,19 +122,37 @@ export function ScheduleJobDetailModal({ open, jobId, initialScheduledAt, initia
         return
       }
       const jobData = jobRes.data as unknown as JobFull
-      const vehicleIds = (jvRes.data ?? []).map((r: { vehicle_id: string }) => r.vehicle_id)
-      const serviceIds = (jsRes.data ?? []).map((r: { service_id: string }) => r.service_id)
+      const jvRows = (jvRes.data ?? []) as { vehicle_id: string; size_price_offset?: number }[]
+      const vehicleIds = jvRows.map((r) => r.vehicle_id)
+      const vehicle_sizes: Record<string, number> = {}
+      jvRows.forEach((r) => {
+        vehicle_sizes[r.vehicle_id] = typeof r.size_price_offset === 'number' ? r.size_price_offset : 0
+      })
+      const jsRows = (jsRes.data ?? []) as { service_id: string; vehicle_id: string | null }[]
+      const firstVid = vehicleIds[0] ?? (jobData.vehicle_id ?? null)
+      const vehicle_services: Record<string, string[]> = {}
+      vehicleIds.forEach((vid) => { vehicle_services[vid] = []; if (vehicle_sizes[vid] === undefined) vehicle_sizes[vid] = 0 })
+      jsRows.forEach((r) => {
+        const vid = r.vehicle_id ?? firstVid ?? '__job__'
+        if (!vehicle_services[vid]) vehicle_services[vid] = []
+        vehicle_services[vid].push(r.service_id)
+      })
+      if (firstVid && !vehicleIds.length) vehicle_services[firstVid] = vehicle_services['__job__'] ?? []
+      delete vehicle_services['__job__']
       setJob(jobData)
       const d = new Date(jobData.scheduled_at)
       const local = new Date(d.getTime() - d.getTimezoneOffset() * 60_000)
       setForm({
         customer_id: jobData.customer_id,
         vehicle_ids: vehicleIds.length > 0 ? vehicleIds : (jobData.vehicle_id ? [jobData.vehicle_id] : []),
-        service_ids: serviceIds.length > 0 ? serviceIds : (jobData.service_id ? [jobData.service_id] : []),
+        vehicle_services: Object.keys(vehicle_services).length > 0 ? vehicle_services : (jobData.service_id && firstVid ? { [firstVid]: [jobData.service_id] } : {}),
+        vehicle_sizes,
         scheduled_at: local.toISOString().slice(0, 16),
         address: jobData.address,
         status: jobData.status,
         notes: jobData.notes ?? '',
+        send_confirmation_email: true,
+        location_id: (jobData as { location_id?: string | null }).location_id ?? '',
       })
       setLoading(false)
     })
@@ -135,14 +168,63 @@ export function ScheduleJobDetailModal({ open, jobId, initialScheduledAt, initia
         : null
       if (cancelled) return
       if (orgId) {
-        const { data: clientData } = await supabase.from('clients').select('*').eq('org_id', orgId).order('name')
-        if (!cancelled) setCustomers(clientData ?? [])
+        const [clientRes, serviceRes] = await Promise.all([
+          supabase.from('clients').select('*').eq('org_id', orgId).order('name'),
+          supabase.from('services').select('*').eq('org_id', orgId).order('name'),
+        ])
+        if (!cancelled) {
+          setCustomers(clientRes.data ?? [])
+          setServices(serviceRes.data ?? [])
+          const serviceIds = (serviceRes.data ?? []).map((s: { id: string }) => s.id)
+          if (serviceIds.length > 0) {
+            const { data: sizeRows } = await supabase.from('service_size_prices').select('service_id, size_key, label, price_offset').in('service_id', serviceIds)
+            if (!cancelled && sizeRows?.length) {
+              setSizePriceRows(sizeRows as { service_id: string; size_key: string; label: string; price_offset: number }[])
+              const byKey = new Map<string, SizeOption>()
+              ;(sizeRows as { size_key: string; label: string; price_offset: number }[]).forEach((r) => {
+                const offset = Number(r.price_offset) || 0
+                if (!byKey.has(r.size_key) || offset > (byKey.get(r.size_key)!.price_offset ?? 0))
+                  byKey.set(r.size_key, { size_key: r.size_key, label: r.label, price_offset: offset })
+              })
+              setSizeOptions([...byKey.values()].sort((a, b) => a.price_offset - b.price_offset))
+            }
+          }
+        }
+      } else {
+        setCustomers([])
+        setServices([])
       }
-      const { data: serviceData } = await supabase.from('services').select('*').order('name')
-      if (!cancelled) setServices(serviceData ?? [])
     })()
     return () => { cancelled = true }
   }, [])
+
+  useEffect(() => {
+    fetch('/api/locations')
+      .then((r) => (r.ok ? r.json() : []))
+      .then((data) => setLocations(Array.isArray(data) ? data.map((l: { id: string; name: string }) => ({ id: l.id, name: l.name })) : []))
+      .catch(() => setLocations([]))
+  }, [])
+
+  useEffect(() => {
+    const address = (form.address || '').trim()
+    if (!address || address.length < 5) {
+      setSuggestedLocation(null)
+      return
+    }
+    const t = setTimeout(() => {
+      fetch(`/api/jobs/suggest-location?address=${encodeURIComponent(address)}`)
+        .then((r) => r.json())
+        .then((data) => {
+          if (data.location_id && data.location_name) {
+            setSuggestedLocation({ location_id: data.location_id, location_name: data.location_name })
+          } else {
+            setSuggestedLocation(null)
+          }
+        })
+        .catch(() => setSuggestedLocation(null))
+    }, 600)
+    return () => clearTimeout(t)
+  }, [form.address])
 
   useEffect(() => {
     if (!form.customer_id) {
@@ -159,10 +241,22 @@ export function ScheduleJobDetailModal({ open, jobId, initialScheduledAt, initia
       .then(({ data }) => {
         const list = data ?? []
         setVehicles(list)
-        setForm((prev) => ({
-          ...prev,
-          vehicle_ids: prev.vehicle_ids.filter((vid) => list.some((v: { id: string }) => v.id === vid)),
-        }))
+        setForm((prev) => {
+          const nextVs: Record<string, string[]> = {}
+          const nextSizes: Record<string, number> = {}
+          prev.vehicle_ids.forEach((vid) => {
+            if (list.some((v: { id: string }) => v.id === vid)) {
+              nextVs[vid] = prev.vehicle_services[vid] ?? []
+              nextSizes[vid] = prev.vehicle_sizes[vid] ?? 0
+            }
+          })
+          return {
+            ...prev,
+            vehicle_ids: prev.vehicle_ids.filter((vid) => list.some((v: { id: string }) => v.id === vid)),
+            vehicle_services: nextVs,
+            vehicle_sizes: nextSizes,
+          }
+        })
       })
   }, [form.customer_id])
 
@@ -174,20 +268,32 @@ export function ScheduleJobDetailModal({ open, jobId, initialScheduledAt, initia
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault()
     setSaving(true)
-    const selectedServices = services.filter((s) => form.service_ids.includes(s.id))
-    const basePrice = selectedServices.reduce((sum, s) => sum + (s.base_price ?? 0), 0)
+    const vehicleServices: { vehicle_id: string | null; service_id: string }[] = []
+    form.vehicle_ids.forEach((vid) => {
+      (form.vehicle_services[vid] ?? []).forEach((sid) => vehicleServices.push({ vehicle_id: vid, service_id: sid }))
+    })
+    const basePrice = vehicleServices.reduce((sum, l) => {
+      const s = services.find((x) => x.id === l.service_id) as { base_price?: number } | undefined
+      return sum + (s?.base_price ?? 0)
+    }, 0)
+    const vehicle_sizes: Record<string, number> = {}
+    form.vehicle_ids.forEach((vid) => {
+      vehicle_sizes[vid] = typeof form.vehicle_sizes[vid] === 'number' ? form.vehicle_sizes[vid] : sizeOptions[0]?.price_offset ?? 0
+    })
+    const locationId = (form.location_id && form.location_id.trim()) || suggestedLocation?.location_id || undefined
     const res = await fetch('/api/jobs', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         customer_id: form.customer_id,
         vehicle_ids: form.vehicle_ids.length ? form.vehicle_ids : undefined,
-        service_ids: form.service_ids.length ? form.service_ids : undefined,
+        vehicle_services: vehicleServices.length > 0 ? vehicleServices : undefined,
+        vehicle_sizes: Object.keys(vehicle_sizes).length > 0 ? vehicle_sizes : undefined,
         scheduled_at: form.scheduled_at,
         address: form.address.trim(),
         notes: form.notes.trim() || null,
         base_price: basePrice,
-        size_price_offset: 0,
+        ...(locationId !== undefined && { location_id: locationId }),
       }),
     })
     const data = await res.json()
@@ -197,7 +303,11 @@ export function ScheduleJobDetailModal({ open, jobId, initialScheduledAt, initia
     }
     const newJobId = data.id
     fetch(`/api/integrations/google/sync/job/${newJobId}`, { method: 'POST' }).catch(() => {})
-    fetch('/api/jobs/notify-new-booking', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ jobId: newJobId }) }).catch(() => {})
+    fetch('/api/jobs/notify-new-booking', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ jobId: newJobId, sendClientEmail: form.send_confirmation_email }),
+    }).catch(() => {})
     setSaving(false)
     onSaved()
     onClose()
@@ -212,20 +322,32 @@ export function ScheduleJobDetailModal({ open, jobId, initialScheduledAt, initia
     if (!jobId || !job) return
     setSaving(true)
     const supabase = createClient()
+    const vehicleServices: { vehicle_id: string; service_id: string }[] = []
+    form.vehicle_ids.forEach((vid) => {
+      (form.vehicle_services[vid] ?? []).forEach((sid) => vehicleServices.push({ vehicle_id: vid, service_id: sid }))
+    })
+    const basePrice = vehicleServices.reduce((sum, l) => {
+      const s = services.find((x) => x.id === l.service_id) as { base_price?: number } | undefined
+      return sum + (s?.base_price ?? 0)
+    }, 0)
     const firstVehicleId = form.vehicle_ids[0] ?? null
-    const firstServiceId = form.service_ids[0] ?? null
-    const selectedServices = services.filter((s) => form.service_ids.includes(s.id))
-    const basePrice = selectedServices.reduce((sum, s) => sum + (s.base_price ?? 0), 0)
+    const firstServiceId = vehicleServices[0]?.service_id ?? null
+    const totalSizeOffset = form.vehicle_ids.reduce(
+      (sum, vid) => sum + (typeof form.vehicle_sizes[vid] === 'number' ? form.vehicle_sizes[vid] : 0),
+      0
+    )
     const updates: Record<string, unknown> = {
       customer_id: form.customer_id,
       vehicle_id: firstVehicleId,
       service_id: firstServiceId,
       base_price: basePrice,
+      size_price_offset: totalSizeOffset,
       scheduled_at: new Date(form.scheduled_at).toISOString(),
       address: form.address.trim(),
       status: form.status,
       notes: form.notes.trim() || null,
       updated_at: new Date().toISOString(),
+      location_id: form.location_id && form.location_id.trim() ? form.location_id.trim() : null,
     }
     if (form.status === 'in_progress') updates.actual_started_at = job.actual_started_at ?? new Date().toISOString()
     if (form.status === 'done') {
@@ -236,13 +358,19 @@ export function ScheduleJobDetailModal({ open, jobId, initialScheduledAt, initia
     await supabase.from('job_vehicles').delete().eq('job_id', jobId)
     if (form.vehicle_ids.length > 0) {
       await supabase.from('job_vehicles').insert(
-        form.vehicle_ids.map((vehicle_id) => ({ job_id: jobId, vehicle_id }))
+        form.vehicle_ids.map((vehicle_id) => {
+          const opts = getSizeOptionsForVehicle(vehicle_id)
+          const stored = form.vehicle_sizes[vehicle_id]
+          const valid = typeof stored === 'number' && opts.some((o) => o.price_offset === stored)
+          const size_price_offset = valid ? stored : (opts[0]?.price_offset ?? 0)
+          return { job_id: jobId, vehicle_id, size_price_offset }
+        })
       )
     }
     await supabase.from('job_services').delete().eq('job_id', jobId)
-    if (form.service_ids.length > 0) {
+    if (vehicleServices.length > 0) {
       await supabase.from('job_services').insert(
-        form.service_ids.map((service_id) => ({ job_id: jobId, service_id }))
+        vehicleServices.map((l) => ({ job_id: jobId, service_id: l.service_id, vehicle_id: l.vehicle_id }))
       )
     }
     fetch(`/api/integrations/google/sync/job/${jobId}`, { method: 'POST' }).catch(() => {})
@@ -263,6 +391,23 @@ export function ScheduleJobDetailModal({ open, jobId, initialScheduledAt, initia
     if (isCreate) return 'New job'
     if (job) return `Edit job · ${clientName} · ${serviceName}`
     return 'Job not found'
+  }
+
+  /** Size options for a vehicle based on its selected services; falls back to org-wide sizeOptions if none selected */
+  function getSizeOptionsForVehicle(vid: string): SizeOption[] {
+    const serviceIds = form.vehicle_services[vid] ?? []
+    if (serviceIds.length === 0) return sizeOptions
+    const byKey = new Map<string, SizeOption>()
+    sizePriceRows
+      .filter((r) => serviceIds.includes(r.service_id))
+      .forEach((r) => {
+        const offset = Number(r.price_offset) || 0
+        const existing = byKey.get(r.size_key)
+        if (!existing || offset > (existing.price_offset ?? 0))
+          byKey.set(r.size_key, { size_key: r.size_key, label: r.label, price_offset: offset })
+      })
+    const list = [...byKey.values()].sort((a, b) => a.price_offset - b.price_offset)
+    return list.length > 0 ? list : sizeOptions
   }
 
   return (
@@ -319,7 +464,7 @@ export function ScheduleJobDetailModal({ open, jobId, initialScheduledAt, initia
               </select>
             </div>
             <div>
-              <Label className="text-xs text-[var(--text-muted)]">Vehicle(s)</Label>
+              <Label className="text-xs text-[var(--text-muted)]">Vehicles</Label>
               <div className="mt-1 max-h-24 overflow-y-auto rounded-lg border border-[var(--border)] bg-[var(--bg)] p-2 space-y-1">
                 {vehicles.length === 0 ? (
                   <p className="text-xs text-[var(--text-muted)] py-0.5">No vehicles for this customer</p>
@@ -332,9 +477,9 @@ export function ScheduleJobDetailModal({ open, jobId, initialScheduledAt, initia
                         onChange={(e) => {
                           setForm((prev) => ({
                             ...prev,
-                            vehicle_ids: e.target.checked
-                              ? [...prev.vehicle_ids, v.id]
-                              : prev.vehicle_ids.filter((id) => id !== v.id),
+                            vehicle_ids: e.target.checked ? [...prev.vehicle_ids, v.id] : prev.vehicle_ids.filter((id) => id !== v.id),
+                            vehicle_services: e.target.checked ? { ...prev.vehicle_services, [v.id]: prev.vehicle_services[v.id] ?? [] } : (() => { const n = { ...prev.vehicle_services }; delete n[v.id]; return n })(),
+                            vehicle_sizes: e.target.checked ? { ...prev.vehicle_sizes, [v.id]: prev.vehicle_sizes[v.id] ?? sizeOptions[0]?.price_offset ?? 0 } : (() => { const n = { ...prev.vehicle_sizes }; delete n[v.id]; return n })(),
                           }))
                         }}
                         className="rounded border-[var(--border)] text-[var(--accent)]"
@@ -345,33 +490,89 @@ export function ScheduleJobDetailModal({ open, jobId, initialScheduledAt, initia
                 )}
               </div>
             </div>
-            <div>
-              <Label className="text-xs text-[var(--text-muted)]">Service(s)</Label>
-              <div className="mt-1 max-h-24 overflow-y-auto rounded-lg border border-[var(--border)] bg-[var(--bg)] p-2 space-y-1">
-                {services.length === 0 ? (
-                  <p className="text-xs text-[var(--text-muted)] py-0.5">No services</p>
-                ) : (
-                  services.map((s) => (
-                    <label key={s.id} className="flex items-center gap-2 cursor-pointer hover:bg-white/5 rounded px-2 py-1">
-                      <input
-                        type="checkbox"
-                        checked={form.service_ids.includes(s.id)}
-                        onChange={(e) => {
-                          setForm((prev) => ({
+            {form.vehicle_ids.length > 0 && services.length > 0 && (
+              <div className="space-y-3">
+                <Label className="text-xs text-[var(--text-muted)]">Services & size per vehicle</Label>
+                {form.vehicle_ids.map((vid) => {
+                  const v = vehicles.find((x) => x.id === vid)
+                  const svcIds = form.vehicle_services[vid] ?? []
+                  const vehicleSizeOptions = getSizeOptionsForVehicle(vid)
+                  const sizeOffset = form.vehicle_sizes[vid] ?? vehicleSizeOptions[0]?.price_offset ?? 0
+                  const sizeOffsetValid = vehicleSizeOptions.some((o) => o.price_offset === sizeOffset)
+                  const displayOffset = sizeOffsetValid ? sizeOffset : (vehicleSizeOptions[0]?.price_offset ?? 0)
+                  return (
+                    <div key={vid} className="rounded border border-[var(--border)] bg-[var(--bg)] p-2 space-y-2">
+                      <p className="text-xs font-medium text-[var(--text)]">{v ? `${v.year ? `${v.year} ` : ''}${v.make} ${v.model}` : 'Vehicle'}</p>
+                      <div>
+                        <Label className="text-xs text-[var(--text-muted)]">Add service</Label>
+                        <select
+                          value=""
+                          onChange={(e) => {
+                            const sid = e.target.value
+                            if (!sid) return
+                            setForm((prev) => ({
+                              ...prev,
+                              vehicle_services: {
+                                ...prev.vehicle_services,
+                                [vid]: [...(prev.vehicle_services[vid] ?? []), sid],
+                              },
+                            }))
+                            e.target.value = ''
+                          }}
+                          className="mt-1 flex h-9 w-full rounded-lg border border-[var(--border)] bg-[var(--bg)] px-2 py-1.5 text-sm text-[var(--text)]"
+                        >
+                          <option value="">Select service to add</option>
+                          {services.map((s) => (
+                            <option key={s.id} value={s.id}>{s.name}</option>
+                          ))}
+                        </select>
+                      </div>
+                      {svcIds.length > 0 && (
+                        <div className="flex flex-wrap gap-1.5">
+                          {svcIds.map((sid) => {
+                            const s = services.find((x) => x.id === sid)
+                            return (
+                              <span key={`${vid}-${sid}`} className="inline-flex items-center gap-1 rounded bg-[var(--bg-card)] border border-[var(--border)] pl-1.5 pr-1 py-0.5 text-xs">
+                                {s?.name ?? sid}
+                                <button
+                                  type="button"
+                                  onClick={() => setForm((prev) => ({
+                                    ...prev,
+                                    vehicle_services: {
+                                      ...prev.vehicle_services,
+                                      [vid]: (prev.vehicle_services[vid] ?? []).filter((id) => id !== sid),
+                                    },
+                                  }))}
+                                  className="rounded p-0.5 hover:bg-[var(--text-muted)]/20 text-[var(--text-muted)]"
+                                  aria-label="Remove"
+                                >
+                                  ×
+                                </button>
+                              </span>
+                            )
+                          })}
+                        </div>
+                      )}
+                        <div>
+                        <Label className="text-xs text-[var(--text-muted)]">Vehicle size</Label>
+                        <select
+                          value={displayOffset}
+                          onChange={(e) => setForm((prev) => ({
                             ...prev,
-                            service_ids: e.target.checked
-                              ? [...prev.service_ids, s.id]
-                              : prev.service_ids.filter((id) => id !== s.id),
-                          }))
-                        }}
-                        className="rounded border-[var(--border)] text-[var(--accent)]"
-                      />
-                      <span className="text-sm">{s.name}</span>
-                    </label>
-                  ))
-                )}
+                            vehicle_sizes: { ...prev.vehicle_sizes, [vid]: Number(e.target.value) },
+                          }))}
+                          className="mt-1 flex h-9 w-full rounded-lg border border-[var(--border)] bg-[var(--bg)] px-2 py-1.5 text-sm text-[var(--text)]"
+                        >
+                          {vehicleSizeOptions.map((opt) => (
+                            <option key={opt.size_key} value={opt.price_offset}>{opt.label}{opt.price_offset > 0 ? ` (+$${opt.price_offset})` : ''}</option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+                  )
+                })}
               </div>
-            </div>
+            )}
             <div>
               <Label className="text-xs text-[var(--text-muted)]">Date & time</Label>
               <DateTimeInput
@@ -391,6 +592,25 @@ export function ScheduleJobDetailModal({ open, jobId, initialScheduledAt, initia
                 className="mt-1"
               />
             </div>
+            {locations.length > 0 && (
+              <div>
+                <Label className="text-xs text-[var(--text-muted)]">Location</Label>
+                <p className="text-xs text-[var(--text-muted)] mt-0.5 mb-1">Auto from address or choose manually.</p>
+                <select
+                  value={form.location_id}
+                  onChange={(e) => setForm((prev) => ({ ...prev, location_id: e.target.value }))}
+                  className="mt-1 flex h-10 w-full rounded-lg border border-[var(--border)] bg-[var(--bg)] px-3 py-2 text-sm text-[var(--text)]"
+                >
+                  <option value="">Auto (from address)</option>
+                  {locations.map((loc) => (
+                    <option key={loc.id} value={loc.id}>{loc.name}</option>
+                  ))}
+                </select>
+                {form.location_id === '' && suggestedLocation && (
+                  <p className="text-xs text-[var(--text-muted)] mt-1.5">Suggested: <strong className="text-[var(--text)]">{suggestedLocation.location_name}</strong></p>
+                )}
+              </div>
+            )}
             {!isCreate && (
               <div>
                 <Label className="text-xs text-[var(--text-muted)]">Status</Label>
@@ -414,6 +634,25 @@ export function ScheduleJobDetailModal({ open, jobId, initialScheduledAt, initia
                 className="mt-1 min-h-[80px]"
               />
             </div>
+            {isCreate && (
+              <div className="flex items-center gap-3 rounded-lg border border-[var(--border)] bg-[var(--bg)] p-3">
+                <input
+                  type="checkbox"
+                  id="schedule_send_confirmation_email"
+                  checked={form.send_confirmation_email}
+                  onChange={(e) => setForm((prev) => ({ ...prev, send_confirmation_email: e.target.checked }))}
+                  className="rounded border-[var(--border)] text-[var(--accent)]"
+                />
+                <Label htmlFor="schedule_send_confirmation_email" className="cursor-pointer text-xs text-[var(--text)]">
+                  Send booking confirmation email to customer
+                </Label>
+                {(() => {
+                  const c = customers.find((x) => x.id === form.customer_id) as (Client & { email?: string }) | undefined
+                  if (c && !c?.email?.trim()) return <span className="text-xs text-[var(--text-muted)]">(No email on file)</span>
+                  return null
+                })()}
+              </div>
+            )}
             <div className="flex gap-2 pt-2">
               <Button type="submit" disabled={saving}>
                 {saving ? (isCreate ? 'Creating…' : 'Saving…') : (isCreate ? 'Create job' : 'Save changes')}

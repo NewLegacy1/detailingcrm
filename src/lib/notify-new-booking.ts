@@ -11,7 +11,11 @@ const CRM_BASE =
   process.env.NEXT_PUBLIC_APP_URL ||
   (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000')
 
-export async function notifyNewBooking(supabase: SupabaseClient, jobId: string): Promise<{ sent: number }> {
+export async function notifyNewBooking(
+  supabase: SupabaseClient,
+  jobId: string,
+  options?: { sendClientEmailOverride?: boolean }
+): Promise<{ sent: number }> {
   const { data: job, error: jobErr } = await supabase
     .from('jobs')
     .select('id, customer_id, scheduled_at, address, org_id, service_id, base_price, size_price_offset, discount_amount')
@@ -39,7 +43,9 @@ export async function notifyNewBooking(supabase: SupabaseClient, jobId: string):
     .eq('role', 'owner')
     .maybeSingle()
 
-  const clientEmailOn = org?.new_booking_client_email_on ?? org?.new_booking_email_on ?? true
+  const clientEmailOn = options?.sendClientEmailOverride !== undefined
+    ? options.sendClientEmailOverride
+    : (org?.new_booking_client_email_on ?? org?.new_booking_email_on ?? true)
   const clientSmsOn = org?.new_booking_client_sms_on ?? org?.new_booking_sms_on ?? true
   const userEmailOn = org?.new_booking_user_email_on ?? false
   const userSmsOn = org?.new_booking_user_sms_on ?? false

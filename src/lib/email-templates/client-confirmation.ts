@@ -26,8 +26,10 @@ export interface ClientConfirmationData {
   prepTips?: string
 }
 
-const GOOGLE_MAPS_API_KEY = 'AIzaSyAgxm86Lej6n8yvkCkpNQ55TYn8fTyembs'
 const DETAILOPS_LOGO_URL = 'https://detailops.vercel.app/detailopslogo.png'
+// Use env key for static map; many email clients block images. If unset, only directions link is shown.
+const getStaticMapKey = () =>
+  process.env.GOOGLE_MAPS_API_KEY ?? process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ?? ''
 
 export function buildClientConfirmationHtml(data: ClientConfirmationData): string {
   const {
@@ -59,20 +61,13 @@ export function buildClientConfirmationHtml(data: ClientConfirmationData): strin
   // For links/accents on white background, ensure accent isn't too light
   const accentForText = accent  // You can add logic here later to darken if needed (e.g., if hex is very light)
 
-  // Apple Maps directions — opens native Maps app on iOS
+  // Apple Maps directions — opens native Maps app on iOS; works without any API key
   const directionsUrl = `https://maps.apple.com/?daddr=${encodeURIComponent(address)}&dirflg=d`
-
-  // Google Static Maps — marker uses accent color (strip #)
+  const googleMapsKey = getStaticMapKey()
   const markerColor = accent.replace('#', '')
-  const staticMapUrl =
-    `https://maps.googleapis.com/maps/api/staticmap` +
-    `?center=${encodeURIComponent(address)}` +
-    `&zoom=14` +
-    `&size=520x180` +
-    `&scale=2` +
-    `&markers=color:0x${markerColor}%7C${encodeURIComponent(address)}` +
-    `&style=feature:poi|visibility:off` +
-    `&key=${GOOGLE_MAPS_API_KEY}`
+  const staticMapUrl = googleMapsKey
+    ? `https://maps.googleapis.com/maps/api/staticmap?center=${encodeURIComponent(address)}&zoom=14&size=520x180&scale=2&markers=color:0x${markerColor}%7C${encodeURIComponent(address)}&style=feature:poi|visibility:off&key=${encodeURIComponent(googleMapsKey)}`
+    : ''
 
   return `<!DOCTYPE html>
 <html>
@@ -148,10 +143,7 @@ export function buildClientConfirmationHtml(data: ClientConfirmationData): strin
                     <p style="margin: 4px 0 6px; font-size: 14px; font-weight: 600; color: #111827;">
                       <a href="${escapeHtml(directionsUrl)}" class="accent-text" style="color: ${escapeHtml(accentForText)}; text-decoration: none;">${escapeHtml(address)}</a>
                     </p>
-                    <!-- Static map — tap opens Apple Maps directions -->
-                    <a href="${escapeHtml(directionsUrl)}" style="display: block; border-radius: 8px; overflow: hidden; line-height: 0; border: 1px solid #e5e7eb;">
-                      <img src="${escapeHtml(staticMapUrl)}" alt="Map of ${escapeHtml(address)}" width="520" height="180" style="display: block; width: 100%; height: auto; border-radius: 7px;" />
-                    </a>
+                    ${staticMapUrl ? `<!-- Static map: set GOOGLE_MAPS_API_KEY or NEXT_PUBLIC_GOOGLE_MAPS_API_KEY and enable Static Maps API for the image to show --><a href="${escapeHtml(directionsUrl)}" style="display: block; border-radius: 8px; overflow: hidden; line-height: 0; border: 1px solid #e5e7eb;"><img src="${escapeHtml(staticMapUrl)}" alt="Map of ${escapeHtml(address)}" width="520" height="180" style="display: block; width: 100%; height: auto; border-radius: 7px;" /></a>` : ''}
                   </td>
                 </tr>
               </table>
