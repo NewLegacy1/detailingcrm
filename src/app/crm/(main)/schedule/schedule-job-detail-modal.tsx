@@ -102,54 +102,83 @@ export function ScheduleJobDetailModal({ open, jobId, initialScheduledAt, initia
       setLoading(false)
       return
     }
-    // When editing, fetch via API so server can use service-role and bypass RLS
+    // When editing, fetch via API (server uses createClient = service-role when key set)
     setLoading(true)
     let cancelled = false
-    fetch(`/api/jobs/${jobId}`)
+    fetch(`/api/jobs/${jobId}`, { credentials: 'include' })
       .then((res) => {
         if (cancelled) return null
-        if (!res.ok) return null
+        if (!res.ok) return res.json().catch(() => null).then((body) => ({ error: body?.error ?? 'Job not found', status: res.status }))
         return res.json()
       })
-      .then((data: { job?: JobFull; job_vehicles?: { vehicle_id: string; size_price_offset?: number }[]; job_services?: { service_id: string; vehicle_id: string | null }[] } | null) => {
-        if (cancelled || !data?.job) {
-          setJob(null)
+      .then((data: { job?: JobFull; job_vehicles?: { vehicle_id: string; size_price_offset?: number }[]; job_services?: { service_id: string; vehicle_id: string | null }[] } | { error?: string; status?: number } | null) => {
+        if (cancelled) {
           setLoading(false)
           return
         }
-        const jobData = data.job as JobFull
-        const jvRows = data.job_vehicles ?? []
-        const vehicleIds = jvRows.map((r) => r.vehicle_id)
-        const vehicle_sizes: Record<string, number> = {}
-        jvRows.forEach((r) => {
-          vehicle_sizes[r.vehicle_id] = typeof r.size_price_offset === 'number' ? r.size_price_offset : 0
-        })
-        const jsRows = data.job_services ?? []
-        const firstVid = vehicleIds[0] ?? (jobData.vehicle_id ?? null)
-        const vehicle_services: Record<string, string[]> = {}
-        vehicleIds.forEach((vid) => { vehicle_services[vid] = []; if (vehicle_sizes[vid] === undefined) vehicle_sizes[vid] = 0 })
-        jsRows.forEach((r) => {
-          const vid = r.vehicle_id ?? firstVid ?? '__job__'
-          if (!vehicle_services[vid]) vehicle_services[vid] = []
-          vehicle_services[vid].push(r.service_id)
-        })
-        if (firstVid && !vehicleIds.length) vehicle_services[firstVid] = vehicle_services['__job__'] ?? []
-        delete vehicle_services['__job__']
-        setJob(jobData)
-        const d = new Date(jobData.scheduled_at)
-        const local = new Date(d.getTime() - d.getTimezoneOffset() * 60_000)
-        setForm({
-          customer_id: jobData.customer_id,
-          vehicle_ids: vehicleIds.length > 0 ? vehicleIds : (jobData.vehicle_id ? [jobData.vehicle_id] : []),
-          vehicle_services: Object.keys(vehicle_services).length > 0 ? vehicle_services : (jobData.service_id && firstVid ? { [firstVid]: [jobData.service_id] } : {}),
-          vehicle_sizes,
-          scheduled_at: local.toISOString().slice(0, 16),
-          address: jobData.address,
-          status: jobData.status,
-          notes: jobData.notes ?? '',
-          send_confirmation_email: true,
-          location_id: (jobData as { location_id?: string | null }).location_id ?? '',
-        })
+        if (data && 'job' in data && data.job) {
+          const jobData = data.job as JobFull
+          const jvRows = data.job_vehicles ?? []
+          const vehicleIds = jvRows.map((r) => r.vehicle_id)
+          const vehicle_sizes: Record<string, number> = {}
+          jvRows.forEach((r) => {
+            vehicle_sizes[r.vehicle_id] = typeof r.size_price_offset === 'number' ? r.size_price_offset : 0
+          })
+          const jsRows = data.job_services ?? []
+          const firstVid = vehicleIds[0] ?? (jobData.vehicle_id ?? null)
+          const vehicle_services: Record<string, string[]> = {}
+          vehicleIds.forEach((vid) => { vehicle_services[vid] = []; if (vehicle_sizes[vid] === undefined) vehicle_sizes[vid] = 0 })
+          jsRows.forEach((r) => {
+            const vid = r.vehicle_id ?? firstVid ?? '__job__'
+            if (!vehicle_services[vid]) vehicle_services[vid] = []
+            vehicle_services[vid].push(r.service_id)
+          })
+          if (firstVid && !vehicleIds.length) vehicle_services[firstVid] = vehicle_services['__job__'] ?? []
+          delete vehicle_services['__job__']
+          setJob(jobData)
+          const d = new Date(jobData.scheduled_at)
+          const local = new Date(d.getTime() - d.getTimezoneOffset() * 60_000)
+          setForm({
+            customer_id: jobData.customer_id,
+            vehicle_ids: vehicleIds.length > 0 ? vehicleIds : (jobData.vehicle_id ? [jobData.vehicle_id] : []),
+            vehicle_services: Object.keys(vehicle_services).length > 0 ? vehicle_services : (jobData.service_id && firstVid ? { [firstVid]: [jobData.service_id] } : {}),
+            vehicle_sizes,
+            scheduled_at: local.toISOString().slice(0, 16),
+            address: jobData.address,
+            status: jobData.status,
+            notes: jobData.notes ?? '',
+            send_confirmation_email: true,
+            location_id: (jobData as { location_id?: string | null }).location_id ?? '',
+          })
+          setLoading(false)
+          return
+        }
+        // API failed: fallback to initialJobData if we have it (e.g. from popup)
+        if (initialJobData && (initialJobData as { id?: string }).id === jobId) {
+          const j = initialJobData as JobFull
+          const vid = j.vehicle_id ?? null
+          const vehicleIds = vid ? [vid] : []
+          const vehicle_services: Record<string, string[]> = vid && j.service_id ? { [vid]: [j.service_id] } : {}
+          const vehicle_sizes: Record<string, number> = vid ? { [vid]: typeof (j as { size_price_offset?: number }).size_price_offset === 'number' ? (j as { size_price_offset: number }).size_price_offset : 0 } : {}
+          setJob(j)
+          const d = new Date(j.scheduled_at)
+          const local = new Date(d.getTime() - d.getTimezoneOffset() * 60_000)
+          setForm({
+            customer_id: j.customer_id,
+            vehicle_ids: vehicleIds,
+            vehicle_services: vehicle_services,
+            vehicle_sizes,
+            scheduled_at: local.toISOString().slice(0, 16),
+            address: j.address,
+            status: j.status,
+            notes: j.notes ?? '',
+            send_confirmation_email: true,
+            location_id: (j as { location_id?: string | null }).location_id ?? '',
+          })
+          setLoading(false)
+          return
+        }
+        setJob(null)
         setLoading(false)
       })
       .catch(() => {

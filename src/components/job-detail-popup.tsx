@@ -128,19 +128,20 @@ export function JobDetailPopup({
   const fetchJob = useCallback(async () => {
     if (!open || !jobId) return
     setLoading(true)
-    const supabase = createClient()
-    // Do not join vehicles/services — schema may not have those FKs in cache; fetch by ID instead (same as jobs page).
-    const { data: jobRow, error: jobError } = await supabase
-      .from('jobs')
-      .select(`
-        *,
-        clients(id, name, email, phone, address, stripe_customer_id),
-        job_upsells(price)
-      `)
-      .eq('id', jobId)
-      .single()
-
-    if (jobError || !jobRow) {
+    // Use API so server can use service-role and bypass RLS (same as edit modal)
+    const res = await fetch(`/api/jobs/${jobId}`, { credentials: 'include' })
+    if (!res.ok) {
+      if (initialJobData && initialJobData.id === jobId) {
+        setJob(initialJobData as JobData)
+      } else {
+        setJob(null)
+      }
+      setLoading(false)
+      return
+    }
+    const data = await res.json().catch(() => null) as { job?: unknown; job_vehicles?: { vehicle_id: string }[]; job_services?: { service_id: string; vehicle_id: string | null }[] } | null
+    const jobRow = data?.job as (JobData & { org_id?: string }) | undefined
+    if (!jobRow) {
       if (initialJobData && initialJobData.id === jobId) {
         setJob(initialJobData as JobData)
       } else {
@@ -150,11 +151,13 @@ export function JobDetailPopup({
       return
     }
 
-    const vehicleId = (jobRow as { vehicle_id?: string | null }).vehicle_id
-    const serviceId = (jobRow as { service_id?: string | null }).service_id
+    // API returns nested clients, vehicles, services; use them when present to avoid extra RLS-guarded fetches
+    const vehicleId = jobRow.vehicle_id ?? (data?.job_vehicles?.[0]?.vehicle_id)
+    const serviceId = jobRow.service_id ?? (data?.job_services?.[0]?.service_id)
+    const supabase = createClient()
     const [vehicleRes, serviceRes, photosRes, checklistRes, paymentsRes] = await Promise.all([
-      vehicleId ? supabase.from('vehicles').select('id, make, model, year, color').eq('id', vehicleId).maybeSingle() : { data: null },
-      serviceId ? supabase.from('services').select('id, name, duration_mins, base_price').eq('id', serviceId).maybeSingle() : { data: null },
+      jobRow.vehicles ? { data: Array.isArray(jobRow.vehicles) ? jobRow.vehicles[0] ?? null : jobRow.vehicles } : (vehicleId ? supabase.from('vehicles').select('id, make, model, year, color').eq('id', vehicleId).maybeSingle() : { data: null }),
+      jobRow.services ? { data: Array.isArray(jobRow.services) ? jobRow.services[0] ?? null : jobRow.services } : (serviceId ? supabase.from('services').select('id, name, duration_mins, base_price').eq('id', serviceId).maybeSingle() : { data: null }),
       supabase.from('job_photos').select('*').eq('job_id', jobId).order('created_at', { ascending: true }),
       supabase.from('job_checklist_items').select('*').eq('job_id', jobId).order('sort_order'),
       supabase.from('job_payments').select('*').eq('job_id', jobId).order('created_at', { ascending: false }),
@@ -177,7 +180,7 @@ export function JobDetailPopup({
     setPhotos(photosRes.data ?? [])
     setChecklist(checklistRes.data ?? [])
     setPayments(paymentsRes.data ?? [])
-    const orgId = (jobRow as { org_id?: string }).org_id
+    const orgId = jobRow.org_id
     if (orgId) {
       const { data: org } = await supabase
         .from('organizations')
@@ -189,7 +192,7 @@ export function JobDetailPopup({
       setOrgPayment(null)
     }
     setLoading(false)
-  }, [open, jobId])
+  }, [open, jobId, initialJobData])
 
   useEffect(() => {
     if (open && jobId) {
