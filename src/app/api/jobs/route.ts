@@ -6,7 +6,8 @@ const STARTER_JOBS_LIMIT = 60
 
 /**
  * POST: Create a job from the CRM (authenticated). Enforces Starter 60 jobs/month cap.
- * Body: { customer_id, vehicle_id?, service_id?, scheduled_at, address, notes?, base_price?, size_price_offset?, location_id? }
+ * Body: { customer_id, vehicle_id?, vehicle_ids?, service_id?, service_ids?, scheduled_at, address, notes?, base_price?, size_price_offset?, location_id? }
+ * Use vehicle_ids[] and service_ids[] for multiple; single vehicle_id/service_id still supported.
  */
 export async function POST(req: NextRequest) {
   const supabase = await createAuthClient()
@@ -26,7 +27,9 @@ export async function POST(req: NextRequest) {
   let body: {
     customer_id?: string
     vehicle_id?: string | null
+    vehicle_ids?: string[]
     service_id?: string | null
+    service_ids?: string[]
     scheduled_at?: string
     address?: string
     notes?: string | null
@@ -49,6 +52,23 @@ export async function POST(req: NextRequest) {
   const scheduledDate = new Date(scheduled_at)
   if (Number.isNaN(scheduledDate.getTime())) {
     return NextResponse.json({ error: 'Invalid scheduled_at' }, { status: 400 })
+  }
+
+  const vehicleIds = Array.isArray(body.vehicle_ids)
+    ? body.vehicle_ids.filter((id): id is string => typeof id === 'string' && id.trim() !== '')
+    : (typeof body.vehicle_id === 'string' && body.vehicle_id.trim() ? [body.vehicle_id.trim()] : [])
+  const serviceIds = Array.isArray(body.service_ids)
+    ? body.service_ids.filter((id): id is string => typeof id === 'string' && id.trim() !== '')
+    : (typeof body.service_id === 'string' && body.service_id.trim() ? [body.service_id.trim()] : [])
+
+  let base_price = typeof body.base_price === 'number' ? body.base_price : 0
+  if (serviceIds.length > 0) {
+    const { data: servicesData } = await supabase
+      .from('services')
+      .select('base_price')
+      .in('id', serviceIds)
+    const sum = (servicesData ?? []).reduce((acc, s) => acc + (Number((s as { base_price?: number }).base_price) || 0), 0)
+    base_price = sum
   }
 
   const { data: org } = await supabase
@@ -77,10 +97,9 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  const vehicle_id = typeof body.vehicle_id === 'string' && body.vehicle_id.trim() ? body.vehicle_id.trim() : null
-  const service_id = typeof body.service_id === 'string' && body.service_id.trim() ? body.service_id.trim() : null
+  const vehicle_id = vehicleIds[0] ?? null
+  const service_id = serviceIds[0] ?? null
   const notes = typeof body.notes === 'string' ? body.notes.trim() || null : null
-  const base_price = typeof body.base_price === 'number' ? body.base_price : 0
   const size_price_offset = typeof body.size_price_offset === 'number' ? body.size_price_offset : 0
 
   const insertPayload: Record<string, unknown> = {
@@ -104,6 +123,17 @@ export async function POST(req: NextRequest) {
 
   if (jobError || !newJob?.id) {
     return NextResponse.json({ error: jobError?.message ?? 'Failed to create job' }, { status: 500 })
+  }
+
+  if (vehicleIds.length > 0) {
+    await supabase.from('job_vehicles').insert(
+      vehicleIds.map((vid) => ({ job_id: newJob.id, vehicle_id: vid }))
+    )
+  }
+  if (serviceIds.length > 0) {
+    await supabase.from('job_services').insert(
+      serviceIds.map((sid) => ({ job_id: newJob.id, service_id: sid }))
+    )
   }
 
   try {

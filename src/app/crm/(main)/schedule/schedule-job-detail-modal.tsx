@@ -28,8 +28,8 @@ export type JobFull = {
   actual_started_at?: string | null
   actual_ended_at?: string | null
   clients: { id: string; name: string; email: string | null; phone: string | null; address: string | null } | null
-  vehicles: { id: string; make: string; model: string; year: number | null; color: string | null } | null
-  services: { id: string; name: string; duration_mins: number } | null
+  vehicles: { id: string; make: string; model: string; year: number | null; color: string | null } | { id: string; make: string; model: string; year: number | null; color: string | null }[] | null
+  services: { id: string; name: string; duration_mins: number } | { id: string; name: string; duration_mins: number }[] | null
 }
 
 interface ScheduleJobDetailModalProps {
@@ -54,8 +54,8 @@ export function ScheduleJobDetailModal({ open, jobId, initialScheduledAt, initia
   const [services, setServices] = useState<Service[]>([])
   const [form, setForm] = useState({
     customer_id: '',
-    vehicle_id: '',
-    service_id: '',
+    vehicle_ids: [] as string[],
+    service_ids: [] as string[],
     scheduled_at: '',
     address: '',
     status: 'scheduled',
@@ -87,58 +87,42 @@ export function ScheduleJobDetailModal({ open, jobId, initialScheduledAt, initia
       setLoading(false)
       return
     }
-    // Use pre-fetched data when provided (from JobDetailPopup) to avoid re-fetch failures
-    if (initialJobData && initialJobData.id === jobId) {
-      const jobData = initialJobData
+    // When editing, always fetch job + job_vehicles + job_services so we get full vehicle/service lists
+    setLoading(true)
+    const supabase = createClient()
+    Promise.all([
+      supabase.from('jobs').select(`
+        id, customer_id, vehicle_id, service_id, scheduled_at, address, status, notes,
+        actual_started_at, actual_ended_at,
+        clients(id, name, email, phone, address),
+        vehicles(id, make, model, year, color),
+        services(id, name, duration_mins)
+      `).eq('id', jobId).single(),
+      supabase.from('job_vehicles').select('vehicle_id').eq('job_id', jobId),
+      supabase.from('job_services').select('service_id').eq('job_id', jobId),
+    ]).then(([jobRes, jvRes, jsRes]) => {
+      if (jobRes.error || !jobRes.data) {
+        setJob(null)
+        setLoading(false)
+        return
+      }
+      const jobData = jobRes.data as unknown as JobFull
+      const vehicleIds = (jvRes.data ?? []).map((r: { vehicle_id: string }) => r.vehicle_id)
+      const serviceIds = (jsRes.data ?? []).map((r: { service_id: string }) => r.service_id)
       setJob(jobData)
       const d = new Date(jobData.scheduled_at)
       const local = new Date(d.getTime() - d.getTimezoneOffset() * 60_000)
       setForm({
         customer_id: jobData.customer_id,
-        vehicle_id: jobData.vehicle_id ?? '',
-        service_id: jobData.service_id ?? '',
+        vehicle_ids: vehicleIds.length > 0 ? vehicleIds : (jobData.vehicle_id ? [jobData.vehicle_id] : []),
+        service_ids: serviceIds.length > 0 ? serviceIds : (jobData.service_id ? [jobData.service_id] : []),
         scheduled_at: local.toISOString().slice(0, 16),
         address: jobData.address,
         status: jobData.status,
         notes: jobData.notes ?? '',
       })
       setLoading(false)
-      return
-    }
-    setLoading(true)
-    const supabase = createClient()
-    supabase
-      .from('jobs')
-      .select(`
-        id, customer_id, vehicle_id, service_id, scheduled_at, address, status, notes,
-        actual_started_at, actual_ended_at,
-        clients(id, name, email, phone, address),
-        vehicles(id, make, model, year, color),
-        services(id, name, duration_mins)
-      `)
-      .eq('id', jobId)
-      .single()
-      .then(({ data, error }) => {
-        if (error || !data) {
-          setJob(null)
-          setLoading(false)
-          return
-        }
-        const jobData = data as unknown as JobFull
-        setJob(jobData)
-        const d = new Date(jobData.scheduled_at)
-        const local = new Date(d.getTime() - d.getTimezoneOffset() * 60_000)
-        setForm({
-          customer_id: jobData.customer_id,
-          vehicle_id: jobData.vehicle_id ?? '',
-          service_id: jobData.service_id ?? '',
-          scheduled_at: local.toISOString().slice(0, 16),
-          address: jobData.address,
-          status: jobData.status,
-          notes: jobData.notes ?? '',
-        })
-        setLoading(false)
-      })
+    })
   }, [open, jobId, isCreate, initialScheduledAt, initialJobData])
 
   useEffect(() => {
@@ -163,7 +147,7 @@ export function ScheduleJobDetailModal({ open, jobId, initialScheduledAt, initia
   useEffect(() => {
     if (!form.customer_id) {
       setVehicles([])
-      setForm((prev) => ({ ...prev, vehicle_id: '' }))
+      setForm((prev) => ({ ...prev, vehicle_ids: [] }))
       return
     }
     const supabase = createClient()
@@ -177,7 +161,7 @@ export function ScheduleJobDetailModal({ open, jobId, initialScheduledAt, initia
         setVehicles(list)
         setForm((prev) => ({
           ...prev,
-          vehicle_id: list.some((v) => v.id === prev.vehicle_id) ? prev.vehicle_id : '',
+          vehicle_ids: prev.vehicle_ids.filter((vid) => list.some((v: { id: string }) => v.id === vid)),
         }))
       })
   }, [form.customer_id])
@@ -190,48 +174,28 @@ export function ScheduleJobDetailModal({ open, jobId, initialScheduledAt, initia
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault()
     setSaving(true)
-    const supabase = createClient()
-    const { data: { user } } = await supabase.auth.getUser()
-    let orgId: string | null = null
-    if (user) {
-      const { data: profile } = await supabase.from('profiles').select('org_id').eq('id', user.id).single()
-      orgId = profile?.org_id ?? null
-    }
-    const svc = form.service_id ? services.find((s) => s.id === form.service_id) : null
-    const basePrice = svc?.base_price ?? 0
-    const { data, error } = await supabase
-      .from('jobs')
-      .insert([{
+    const selectedServices = services.filter((s) => form.service_ids.includes(s.id))
+    const basePrice = selectedServices.reduce((sum, s) => sum + (s.base_price ?? 0), 0)
+    const res = await fetch('/api/jobs', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
         customer_id: form.customer_id,
-        vehicle_id: form.vehicle_id || null,
-        service_id: form.service_id || null,
-        scheduled_at: new Date(form.scheduled_at).toISOString(),
+        vehicle_ids: form.vehicle_ids.length ? form.vehicle_ids : undefined,
+        service_ids: form.service_ids.length ? form.service_ids : undefined,
+        scheduled_at: form.scheduled_at,
         address: form.address.trim(),
-        status: 'scheduled',
         notes: form.notes.trim() || null,
-        org_id: orgId,
         base_price: basePrice,
         size_price_offset: 0,
-      }])
-      .select('id')
-      .single()
-    if (error || !data) {
+      }),
+    })
+    const data = await res.json()
+    if (!res.ok || !data.id) {
       setSaving(false)
       return
     }
     const newJobId = data.id
-    if (orgId) {
-      const { data: defaultItems } = await supabase
-        .from('organization_default_checklist')
-        .select('label, sort_order')
-        .eq('org_id', orgId)
-        .order('sort_order')
-      if (defaultItems?.length) {
-        await supabase.from('job_checklist_items').insert(
-          defaultItems.map((item) => ({ job_id: newJobId, label: item.label, sort_order: item.sort_order, checked: false }))
-        )
-      }
-    }
     fetch(`/api/integrations/google/sync/job/${newJobId}`, { method: 'POST' }).catch(() => {})
     fetch('/api/jobs/notify-new-booking', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ jobId: newJobId }) }).catch(() => {})
     setSaving(false)
@@ -248,10 +212,15 @@ export function ScheduleJobDetailModal({ open, jobId, initialScheduledAt, initia
     if (!jobId || !job) return
     setSaving(true)
     const supabase = createClient()
+    const firstVehicleId = form.vehicle_ids[0] ?? null
+    const firstServiceId = form.service_ids[0] ?? null
+    const selectedServices = services.filter((s) => form.service_ids.includes(s.id))
+    const basePrice = selectedServices.reduce((sum, s) => sum + (s.base_price ?? 0), 0)
     const updates: Record<string, unknown> = {
       customer_id: form.customer_id,
-      vehicle_id: form.vehicle_id || null,
-      service_id: form.service_id || null,
+      vehicle_id: firstVehicleId,
+      service_id: firstServiceId,
+      base_price: basePrice,
       scheduled_at: new Date(form.scheduled_at).toISOString(),
       address: form.address.trim(),
       status: form.status,
@@ -264,6 +233,18 @@ export function ScheduleJobDetailModal({ open, jobId, initialScheduledAt, initia
       if (!job.actual_started_at) updates.actual_started_at = new Date().toISOString()
     }
     await supabase.from('jobs').update(updates).eq('id', jobId)
+    await supabase.from('job_vehicles').delete().eq('job_id', jobId)
+    if (form.vehicle_ids.length > 0) {
+      await supabase.from('job_vehicles').insert(
+        form.vehicle_ids.map((vehicle_id) => ({ job_id: jobId, vehicle_id }))
+      )
+    }
+    await supabase.from('job_services').delete().eq('job_id', jobId)
+    if (form.service_ids.length > 0) {
+      await supabase.from('job_services').insert(
+        form.service_ids.map((service_id) => ({ job_id: jobId, service_id }))
+      )
+    }
     fetch(`/api/integrations/google/sync/job/${jobId}`, { method: 'POST' }).catch(() => {})
     setSaving(false)
     onSaved()
@@ -272,11 +253,10 @@ export function ScheduleJobDetailModal({ open, jobId, initialScheduledAt, initia
 
   const statusSteps = ['scheduled', 'en_route', 'in_progress', 'done', 'cancelled', 'no_show'] as const
   const client = job?.clients ? (Array.isArray(job.clients) ? job.clients[0] : job.clients) : null
-  const vehicle = job?.vehicles
-  const service = job?.services
+  const servicesList = job?.services ? (Array.isArray(job.services) ? job.services : [job.services]) : []
   const showForm = (isCreate && !loading) || (!!job && !loading)
   const clientName = (client as { name?: string } | null)?.name ?? 'Job'
-  const serviceName = (service as { name?: string } | null)?.name ?? '—'
+  const serviceName = servicesList.length === 0 ? '—' : servicesList.map((s: { name?: string }) => s.name).join(', ')
 
   function getTitle(): string {
     if (loading && !isCreate) return 'Loading…'
@@ -339,30 +319,58 @@ export function ScheduleJobDetailModal({ open, jobId, initialScheduledAt, initia
               </select>
             </div>
             <div>
-              <Label className="text-xs text-[var(--text-muted)]">Vehicle</Label>
-              <select
-                value={form.vehicle_id}
-                onChange={(e) => setForm((prev) => ({ ...prev, vehicle_id: e.target.value }))}
-                className="mt-1 flex h-10 w-full rounded-lg border border-[var(--border)] bg-[var(--bg)] px-3 py-2 text-sm text-[var(--text)]"
-              >
-                <option value="">Optional</option>
-                {vehicles.map((v) => (
-                  <option key={v.id} value={v.id}>{v.year ? `${v.year} ` : ''}{v.make} {v.model}</option>
-                ))}
-              </select>
+              <Label className="text-xs text-[var(--text-muted)]">Vehicle(s)</Label>
+              <div className="mt-1 max-h-24 overflow-y-auto rounded-lg border border-[var(--border)] bg-[var(--bg)] p-2 space-y-1">
+                {vehicles.length === 0 ? (
+                  <p className="text-xs text-[var(--text-muted)] py-0.5">No vehicles for this customer</p>
+                ) : (
+                  vehicles.map((v) => (
+                    <label key={v.id} className="flex items-center gap-2 cursor-pointer hover:bg-white/5 rounded px-2 py-1">
+                      <input
+                        type="checkbox"
+                        checked={form.vehicle_ids.includes(v.id)}
+                        onChange={(e) => {
+                          setForm((prev) => ({
+                            ...prev,
+                            vehicle_ids: e.target.checked
+                              ? [...prev.vehicle_ids, v.id]
+                              : prev.vehicle_ids.filter((id) => id !== v.id),
+                          }))
+                        }}
+                        className="rounded border-[var(--border)] text-[var(--accent)]"
+                      />
+                      <span className="text-sm">{v.year ? `${v.year} ` : ''}{v.make} {v.model}</span>
+                    </label>
+                  ))
+                )}
+              </div>
             </div>
             <div>
-              <Label className="text-xs text-[var(--text-muted)]">Service</Label>
-              <select
-                value={form.service_id}
-                onChange={(e) => setForm((prev) => ({ ...prev, service_id: e.target.value }))}
-                className="mt-1 flex h-10 w-full rounded-lg border border-[var(--border)] bg-[var(--bg)] px-3 py-2 text-sm text-[var(--text)]"
-              >
-                <option value="">Optional</option>
-                {services.map((s) => (
-                  <option key={s.id} value={s.id}>{s.name}</option>
-                ))}
-              </select>
+              <Label className="text-xs text-[var(--text-muted)]">Service(s)</Label>
+              <div className="mt-1 max-h-24 overflow-y-auto rounded-lg border border-[var(--border)] bg-[var(--bg)] p-2 space-y-1">
+                {services.length === 0 ? (
+                  <p className="text-xs text-[var(--text-muted)] py-0.5">No services</p>
+                ) : (
+                  services.map((s) => (
+                    <label key={s.id} className="flex items-center gap-2 cursor-pointer hover:bg-white/5 rounded px-2 py-1">
+                      <input
+                        type="checkbox"
+                        checked={form.service_ids.includes(s.id)}
+                        onChange={(e) => {
+                          setForm((prev) => ({
+                            ...prev,
+                            service_ids: e.target.checked
+                              ? [...prev.service_ids, s.id]
+                              : prev.service_ids.filter((id) => id !== s.id),
+                          }))
+                        }}
+                        className="rounded border-[var(--border)] text-[var(--accent)]"
+                      />
+                      <span className="text-sm">{s.name}</span>
+                    </label>
+                  ))
+                )}
+              </div>
             </div>
             <div>
               <Label className="text-xs text-[var(--text-muted)]">Date & time</Label>

@@ -72,13 +72,24 @@ interface JobDetailClientProps {
       model: string
       year: number | null
       color: string | null
-    } | null
+    } | {
+      id: string
+      make: string
+      model: string
+      year: number | null
+      color: string | null
+    }[] | null
     services: {
       id: string
       name: string
       duration_mins: number
       base_price?: number | null
-    } | null
+    } | {
+      id: string
+      name: string
+      duration_mins: number
+      base_price?: number | null
+    }[] | null
   }
   photos: JobPhoto[]
   checklistItems: ChecklistItemRow[]
@@ -124,12 +135,12 @@ export function JobDetailClient({
 
   const directionsUrl = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(job.address)}`
   const client = Array.isArray(job.clients) ? job.clients[0] ?? null : job.clients
-  const vehicle = Array.isArray(job.vehicles) ? job.vehicles[0] ?? null : job.vehicles
-  const service = Array.isArray(job.services) ? job.services[0] ?? null : job.services
+  const vehiclesList = Array.isArray(job.vehicles) ? job.vehicles : job.vehicles ? [job.vehicles] : []
+  const servicesList = Array.isArray(job.services) ? job.services : job.services ? [job.services] : []
   const clientId = client?.id
-  const serviceName = service?.name ?? 'Job'
-  const servicePrice = service?.base_price ?? 0
-  const serviceDuration = service?.duration_mins ?? 0
+  const serviceName = servicesList.length === 0 ? 'Job' : servicesList.map((s) => s.name).join(', ')
+  const servicePrice = servicesList.reduce((sum, s) => sum + (s.base_price ?? 0), 0)
+  const serviceDuration = servicesList.reduce((sum, s) => sum + (s.duration_mins ?? 0), 0)
 
   function triggerGoogleSync() {
     fetch(`/api/integrations/google/sync/job/${job.id}`, { method: 'POST' }).catch(
@@ -355,16 +366,20 @@ export function JobDetailClient({
           <CardHeader className="pb-2">
             <CardTitle className="flex items-center gap-2 text-sm font-semibold text-white">
               <Car className="h-4 w-4" />
-              Vehicle
+              Vehicle{vehiclesList.length !== 1 ? 's' : ''}
             </CardTitle>
           </CardHeader>
           <CardContent className="text-sm text-[var(--text-secondary)]">
-            {vehicle ? (
-              <p>
-                {vehicle.year ? `${vehicle.year} ` : ''}
-                {vehicle.make} {vehicle.model}
-                {vehicle.color ? ` · ${vehicle.color}` : ''}
-              </p>
+            {vehiclesList.length > 0 ? (
+              <ul className="space-y-1">
+                {vehiclesList.map((v) => (
+                  <li key={v.id}>
+                    {v.year ? `${v.year} ` : ''}
+                    {v.make} {v.model}
+                    {v.color ? ` · ${v.color}` : ''}
+                  </li>
+                ))}
+              </ul>
             ) : (
               <p>—</p>
             )}
@@ -395,7 +410,7 @@ export function JobDetailClient({
           <CardHeader className="pb-2">
             <CardTitle className="flex items-center gap-2 text-sm font-semibold text-white">
               <Clock className="h-4 w-4" />
-              Service
+              Service{servicesList.length !== 1 ? 's' : ''}
             </CardTitle>
           </CardHeader>
           <CardContent className="text-sm text-[var(--text-secondary)]">

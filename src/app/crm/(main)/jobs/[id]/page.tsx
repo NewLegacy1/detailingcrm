@@ -68,7 +68,16 @@ export default async function JobDetailPage({
   }
 
   const jobRow = job as { customer_id?: string; vehicle_id?: string | null; service_id?: string | null }
-  const [{ data: clientData }, { data: vehicleData }, { data: serviceData }, { data: photos }, { data: checklistItems }, { data: jobPayments }] = await Promise.all([
+  const [
+    { data: clientData },
+    { data: vehicleData },
+    { data: serviceData },
+    { data: jobVehiclesRows },
+    { data: jobServicesRows },
+    { data: photos },
+    { data: checklistItems },
+    { data: jobPayments },
+  ] = await Promise.all([
     jobRow.customer_id
       ? supabase.from('clients').select('id, name, email, phone, address').eq('id', jobRow.customer_id).maybeSingle()
       : { data: null },
@@ -78,16 +87,35 @@ export default async function JobDetailPage({
     jobRow.service_id
       ? supabase.from('services').select('id, name, duration_mins, base_price').eq('id', jobRow.service_id).maybeSingle()
       : { data: null },
+    supabase.from('job_vehicles').select('vehicle_id').eq('job_id', id),
+    supabase.from('job_services').select('service_id').eq('job_id', id),
     supabase.from('job_photos').select('*').eq('job_id', id).order('created_at', { ascending: true }),
     supabase.from('job_checklist_items').select('*').eq('job_id', id).order('sort_order'),
     supabase.from('job_payments').select('*').eq('job_id', id).order('created_at', { ascending: false }),
   ])
 
+  let vehiclesList: { id: string; make: string; model: string; year: number | null; color: string | null }[] = []
+  let servicesList: { id: string; name: string; duration_mins: number; base_price?: number | null }[] = []
+  if (jobVehiclesRows?.length) {
+    const vIds = jobVehiclesRows.map((r: { vehicle_id: string }) => r.vehicle_id)
+    const { data: vList } = await supabase.from('vehicles').select('id, make, model, year, color').in('id', vIds)
+    vehiclesList = (vList ?? []).sort((a, b) => vIds.indexOf(a.id) - vIds.indexOf(b.id))
+  } else if (vehicleData) {
+    vehiclesList = [vehicleData]
+  }
+  if (jobServicesRows?.length) {
+    const sIds = jobServicesRows.map((r: { service_id: string }) => r.service_id)
+    const { data: sList } = await supabase.from('services').select('id, name, duration_mins, base_price').in('id', sIds)
+    servicesList = (sList ?? []).sort((a, b) => sIds.indexOf(a.id) - sIds.indexOf(b.id))
+  } else if (serviceData) {
+    servicesList = [serviceData]
+  }
+
   const jobNormalized = {
     ...job,
     clients: clientData ?? null,
-    vehicles: vehicleData ?? null,
-    services: serviceData ?? null,
+    vehicles: vehiclesList.length ? vehiclesList : null,
+    services: servicesList.length ? servicesList : null,
   }
 
   return (

@@ -33,8 +33,8 @@ export function NewJobForm() {
   const [submitUpgradeUrl, setSubmitUpgradeUrl] = useState<string | null>(null)
   const [formData, setFormData] = useState({
     customer_id: preselectedCustomer,
-    vehicle_id: '',
-    service_id: '',
+    vehicle_ids: [] as string[],
+    service_ids: [] as string[],
     scheduled_at: scheduledAtInitial,
     address: '',
     notes: '',
@@ -64,7 +64,7 @@ export function NewJobForm() {
   useEffect(() => {
     if (!formData.customer_id) {
       setVehicles([])
-      setFormData((prev) => ({ ...prev, vehicle_id: '', address: '' }))
+      setFormData((prev) => ({ ...prev, vehicle_ids: [], address: '' }))
       return
     }
     const selected = customers.find((c) => c.id === formData.customer_id)
@@ -79,7 +79,7 @@ export function NewJobForm() {
         setVehicles(data ?? [])
         setFormData((prev) => ({
           ...prev,
-          vehicle_id: '',
+          vehicle_ids: prev.vehicle_ids.filter((vid) => (data ?? []).some((v) => v.id === vid)),
           address: customerAddress || prev.address,
         }))
       })
@@ -90,8 +90,10 @@ export function NewJobForm() {
     setLoading(true)
     setSubmitError(null)
     setSubmitUpgradeUrl(null)
-    const svc = formData.service_id ? services.find((s) => s.id === formData.service_id) : null
-    const basePrice = (svc as { base_price?: number } | undefined)?.base_price ?? 0
+    const selectedServices = formData.service_ids.length
+      ? services.filter((s) => formData.service_ids.includes(s.id))
+      : []
+    const basePrice = selectedServices.reduce((sum, s) => sum + ((s as { base_price?: number }).base_price ?? 0), 0)
     if (!formData.customer_id?.trim()) {
       setSubmitError('Please select a customer.')
       setLoading(false)
@@ -113,8 +115,8 @@ export function NewJobForm() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         customer_id: formData.customer_id,
-        vehicle_id: formData.vehicle_id || null,
-        service_id: formData.service_id || null,
+        vehicle_ids: formData.vehicle_ids.length ? formData.vehicle_ids : undefined,
+        service_ids: formData.service_ids.length ? formData.service_ids : undefined,
         scheduled_at: formData.scheduled_at,
         address: effectiveAddress,
         notes: formData.notes.trim() || null,
@@ -175,34 +177,70 @@ export function NewJobForm() {
         </select>
       </div>
       <div>
-        <Label htmlFor="vehicle_id">Vehicle</Label>
-        <select
-          id="vehicle_id"
-          value={formData.vehicle_id}
-          onChange={(e) => setFormData((prev) => ({ ...prev, vehicle_id: e.target.value }))}
-          className="flex h-10 w-full rounded-lg border border-[var(--border)] bg-[var(--bg-card)] px-3 py-2 text-sm text-[var(--text)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/30 focus:border-[var(--accent)]"
-        >
-          <option value="">Select vehicle (optional)</option>
-          {vehicles.map((v) => (
-            <option key={v.id} value={v.id}>
-              {v.year ? `${v.year} ` : ''}{v.make} {v.model}
-            </option>
-          ))}
-        </select>
+        <Label>Vehicles</Label>
+        <p className="text-xs text-[var(--text-muted)] mt-0.5 mb-2">Select one or more (optional)</p>
+        <div className="max-h-32 overflow-y-auto rounded-lg border border-[var(--border)] bg-[var(--bg-card)] p-2 space-y-1.5">
+          {vehicles.length === 0 ? (
+            <p className="text-sm text-[var(--text-muted)] py-1">No vehicles for this customer. Add vehicles in the customer profile.</p>
+          ) : (
+            vehicles.map((v) => (
+              <label key={v.id} className="flex items-center gap-2 cursor-pointer hover:bg-white/5 rounded px-2 py-1.5">
+                <input
+                  type="checkbox"
+                  checked={formData.vehicle_ids.includes(v.id)}
+                  onChange={(e) => {
+                    setFormData((prev) => ({
+                      ...prev,
+                      vehicle_ids: e.target.checked
+                        ? [...prev.vehicle_ids, v.id]
+                        : prev.vehicle_ids.filter((id) => id !== v.id),
+                    }))
+                  }}
+                  className="rounded border-[var(--border)] bg-[var(--bg-card)] text-[var(--accent)]"
+                />
+                <span className="text-sm text-[var(--text)]">
+                  {v.year ? `${v.year} ` : ''}{v.make} {v.model}
+                  {v.color ? ` · ${v.color}` : ''}
+                </span>
+              </label>
+            ))
+          )}
+        </div>
       </div>
       <div>
-        <Label htmlFor="service_id">Service</Label>
-        <select
-          id="service_id"
-          value={formData.service_id}
-          onChange={(e) => setFormData((prev) => ({ ...prev, service_id: e.target.value }))}
-          className="flex h-10 w-full rounded-lg border border-[var(--border)] bg-[var(--bg-card)] px-3 py-2 text-sm text-[var(--text)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/30 focus:border-[var(--accent)]"
-        >
-          <option value="">Select service (optional)</option>
-          {services.map((s) => (
-            <option key={s.id} value={s.id}>{s.name}</option>
-          ))}
-        </select>
+        <Label>Services</Label>
+        <p className="text-xs text-[var(--text-muted)] mt-0.5 mb-2">Select one or more (optional)</p>
+        <div className="max-h-32 overflow-y-auto rounded-lg border border-[var(--border)] bg-[var(--bg-card)] p-2 space-y-1.5">
+          {services.length === 0 ? (
+            <p className="text-sm text-[var(--text-muted)] py-1">No services. Add services in Settings → Services.</p>
+          ) : (
+            services.map((s) => (
+              <label key={s.id} className="flex items-center gap-2 cursor-pointer hover:bg-white/5 rounded px-2 py-1.5">
+                <input
+                  type="checkbox"
+                  checked={formData.service_ids.includes(s.id)}
+                  onChange={(e) => {
+                    setFormData((prev) => ({
+                      ...prev,
+                      service_ids: e.target.checked
+                        ? [...prev.service_ids, s.id]
+                        : prev.service_ids.filter((id) => id !== s.id),
+                    }))
+                  }}
+                  className="rounded border-[var(--border)] bg-[var(--bg-card)] text-[var(--accent)]"
+                />
+                <span className="text-sm text-[var(--text)]">
+                  {s.name}
+                  {(s as { base_price?: number }).base_price != null && (
+                    <span className="text-[var(--text-muted)] ml-1">
+                      ${Number((s as { base_price?: number }).base_price).toLocaleString()}
+                    </span>
+                  )}
+                </span>
+              </label>
+            ))
+          )}
+        </div>
       </div>
       <div>
         <Label htmlFor="scheduled_at">Date & time *</Label>
