@@ -102,60 +102,63 @@ export function ScheduleJobDetailModal({ open, jobId, initialScheduledAt, initia
       setLoading(false)
       return
     }
-    // When editing, always fetch job + job_vehicles + job_services so we get full vehicle/service lists
+    // When editing, fetch via API so server can use service-role and bypass RLS
     setLoading(true)
-    const supabase = createClient()
-    Promise.all([
-      supabase.from('jobs').select(`
-        id, customer_id, vehicle_id, service_id, scheduled_at, address, status, notes, size_price_offset, location_id,
-        actual_started_at, actual_ended_at,
-        clients(id, name, email, phone, address),
-        vehicles(id, make, model, year, color),
-        services(id, name, duration_mins)
-      `).eq('id', jobId).single(),
-      supabase.from('job_vehicles').select('vehicle_id, size_price_offset').eq('job_id', jobId),
-      supabase.from('job_services').select('service_id, vehicle_id').eq('job_id', jobId),
-    ]).then(([jobRes, jvRes, jsRes]) => {
-      if (jobRes.error || !jobRes.data) {
-        setJob(null)
+    let cancelled = false
+    fetch(`/api/jobs/${jobId}`)
+      .then((res) => {
+        if (cancelled) return null
+        if (!res.ok) return null
+        return res.json()
+      })
+      .then((data: { job?: JobFull; job_vehicles?: { vehicle_id: string; size_price_offset?: number }[]; job_services?: { service_id: string; vehicle_id: string | null }[] } | null) => {
+        if (cancelled || !data?.job) {
+          setJob(null)
+          setLoading(false)
+          return
+        }
+        const jobData = data.job as JobFull
+        const jvRows = data.job_vehicles ?? []
+        const vehicleIds = jvRows.map((r) => r.vehicle_id)
+        const vehicle_sizes: Record<string, number> = {}
+        jvRows.forEach((r) => {
+          vehicle_sizes[r.vehicle_id] = typeof r.size_price_offset === 'number' ? r.size_price_offset : 0
+        })
+        const jsRows = data.job_services ?? []
+        const firstVid = vehicleIds[0] ?? (jobData.vehicle_id ?? null)
+        const vehicle_services: Record<string, string[]> = {}
+        vehicleIds.forEach((vid) => { vehicle_services[vid] = []; if (vehicle_sizes[vid] === undefined) vehicle_sizes[vid] = 0 })
+        jsRows.forEach((r) => {
+          const vid = r.vehicle_id ?? firstVid ?? '__job__'
+          if (!vehicle_services[vid]) vehicle_services[vid] = []
+          vehicle_services[vid].push(r.service_id)
+        })
+        if (firstVid && !vehicleIds.length) vehicle_services[firstVid] = vehicle_services['__job__'] ?? []
+        delete vehicle_services['__job__']
+        setJob(jobData)
+        const d = new Date(jobData.scheduled_at)
+        const local = new Date(d.getTime() - d.getTimezoneOffset() * 60_000)
+        setForm({
+          customer_id: jobData.customer_id,
+          vehicle_ids: vehicleIds.length > 0 ? vehicleIds : (jobData.vehicle_id ? [jobData.vehicle_id] : []),
+          vehicle_services: Object.keys(vehicle_services).length > 0 ? vehicle_services : (jobData.service_id && firstVid ? { [firstVid]: [jobData.service_id] } : {}),
+          vehicle_sizes,
+          scheduled_at: local.toISOString().slice(0, 16),
+          address: jobData.address,
+          status: jobData.status,
+          notes: jobData.notes ?? '',
+          send_confirmation_email: true,
+          location_id: (jobData as { location_id?: string | null }).location_id ?? '',
+        })
         setLoading(false)
-        return
-      }
-      const jobData = jobRes.data as unknown as JobFull
-      const jvRows = (jvRes.data ?? []) as { vehicle_id: string; size_price_offset?: number }[]
-      const vehicleIds = jvRows.map((r) => r.vehicle_id)
-      const vehicle_sizes: Record<string, number> = {}
-      jvRows.forEach((r) => {
-        vehicle_sizes[r.vehicle_id] = typeof r.size_price_offset === 'number' ? r.size_price_offset : 0
       })
-      const jsRows = (jsRes.data ?? []) as { service_id: string; vehicle_id: string | null }[]
-      const firstVid = vehicleIds[0] ?? (jobData.vehicle_id ?? null)
-      const vehicle_services: Record<string, string[]> = {}
-      vehicleIds.forEach((vid) => { vehicle_services[vid] = []; if (vehicle_sizes[vid] === undefined) vehicle_sizes[vid] = 0 })
-      jsRows.forEach((r) => {
-        const vid = r.vehicle_id ?? firstVid ?? '__job__'
-        if (!vehicle_services[vid]) vehicle_services[vid] = []
-        vehicle_services[vid].push(r.service_id)
+      .catch(() => {
+        if (!cancelled) {
+          setJob(null)
+          setLoading(false)
+        }
       })
-      if (firstVid && !vehicleIds.length) vehicle_services[firstVid] = vehicle_services['__job__'] ?? []
-      delete vehicle_services['__job__']
-      setJob(jobData)
-      const d = new Date(jobData.scheduled_at)
-      const local = new Date(d.getTime() - d.getTimezoneOffset() * 60_000)
-      setForm({
-        customer_id: jobData.customer_id,
-        vehicle_ids: vehicleIds.length > 0 ? vehicleIds : (jobData.vehicle_id ? [jobData.vehicle_id] : []),
-        vehicle_services: Object.keys(vehicle_services).length > 0 ? vehicle_services : (jobData.service_id && firstVid ? { [firstVid]: [jobData.service_id] } : {}),
-        vehicle_sizes,
-        scheduled_at: local.toISOString().slice(0, 16),
-        address: jobData.address,
-        status: jobData.status,
-        notes: jobData.notes ?? '',
-        send_confirmation_email: true,
-        location_id: (jobData as { location_id?: string | null }).location_id ?? '',
-      })
-      setLoading(false)
-    })
+    return () => { cancelled = true }
   }, [open, jobId, isCreate, initialScheduledAt, initialJobData])
 
   useEffect(() => {
