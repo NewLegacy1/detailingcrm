@@ -80,6 +80,49 @@ export async function syncJobToGoogle(
     if (serviceRow) service = serviceRow
   }
 
+  const { data: jvRows } = await supabase.from('job_vehicles').select('vehicle_id').eq('job_id', jobId)
+  const { data: jsRows } = await supabase.from('job_services').select('service_id, vehicle_id').eq('job_id', jobId)
+  const vehicleIds = (jvRows ?? []).map((r: { vehicle_id: string }) => r.vehicle_id)
+  const hasJobServices = (jsRows ?? []).length > 0
+  const useMulti = vehicleIds.length > 0 || hasJobServices
+
+  let vehiclesWithServices: { vehicleSummary: string; serviceNames: string[] }[] | undefined
+  let totalDurationMins = service?.duration_mins ?? 60
+  let serviceNameForTitle = service?.name ?? 'Job'
+
+  if (useMulti) {
+    let vidList = vehicleIds.length > 0 ? vehicleIds : [...new Set((jsRows ?? []).map((r: { vehicle_id: string | null }) => r.vehicle_id).filter(Boolean))] as string[]
+    if (vidList.length === 0 && jobRow.vehicle_id) vidList = [jobRow.vehicle_id]
+    const serviceIds = [...new Set((jsRows ?? []).map((r: { service_id: string }) => r.service_id))]
+    const [vehicleRows, serviceRows] = await Promise.all([
+      vidList.length > 0 ? supabase.from('vehicles').select('id, make, model, year').in('id', vidList) : { data: [] },
+      serviceIds.length > 0 ? supabase.from('services').select('id, name, duration_mins').in('id', serviceIds) : { data: [] },
+    ])
+    const vehiclesById = (vehicleRows?.data ?? []).reduce((acc: Record<string, { make: string; model: string; year: number | null }>, r: { id: string; make: string; model: string; year: number | null }) => {
+      acc[r.id] = r
+      return acc
+    }, {})
+    const servicesById = (serviceRows?.data ?? []).reduce((acc: Record<string, { name: string; duration_mins: number }>, r: { id: string; name: string; duration_mins: number }) => {
+      acc[r.id] = r
+      return acc
+    }, {})
+    totalDurationMins = 0
+    const firstServiceNames: string[] = []
+    vehiclesWithServices = vidList.map((vid) => {
+      const v = vehiclesById[vid]
+      const summary = v ? [v.year, v.make, v.model].filter(Boolean).join(' ').trim() || 'Vehicle' : 'Vehicle'
+      const serviceIdsForV = (jsRows ?? [])
+        .filter((r: { vehicle_id: string | null }) => (r.vehicle_id ?? vid) === vid)
+        .map((r: { service_id: string }) => r.service_id)
+      const names = serviceIdsForV.map((sid) => servicesById[sid]?.name ?? '').filter(Boolean)
+      serviceIdsForV.forEach((sid) => { totalDurationMins += servicesById[sid]?.duration_mins ?? 0 })
+      if (firstServiceNames.length === 0 && names.length > 0) firstServiceNames.push(...names)
+      return { vehicleSummary: summary, serviceNames: names.length > 0 ? names : ['Detailing'] }
+    })
+    if (firstServiceNames.length > 0) serviceNameForTitle = firstServiceNames.length > 1 ? firstServiceNames.join(' + ') : firstServiceNames[0]
+    if (totalDurationMins <= 0) totalDurationMins = service?.duration_mins ?? 60
+  }
+
   const vehicleSummary = vehicle ? [vehicle.year, vehicle.make, vehicle.model].filter(Boolean).join(' ') : ''
 
   const jobForEvent: JobForEvent = {
@@ -89,10 +132,11 @@ export async function syncJobToGoogle(
     notes: job.notes,
     clientName: client?.name ?? 'Customer',
     vehicleSummary,
-    serviceName: service?.name ?? 'Job',
-    durationMins: service?.duration_mins ?? 60,
+    serviceName: serviceNameForTitle,
+    durationMins: totalDurationMins,
     assigned_tech_id: job.assigned_tech_id,
     locationName: locationName ?? undefined,
+    vehiclesWithServices,
   }
 
   const calendarId = locationCalendarId ?? org.google_company_calendar_id

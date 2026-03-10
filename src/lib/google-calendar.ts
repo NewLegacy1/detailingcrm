@@ -161,19 +161,35 @@ export interface JobForEvent {
   assigned_tech_id: string | null
   /** Location name for multi-location; shown in calendar event title so it's not confusing. */
   locationName?: string | null
+  /** When set, event description lists each vehicle and its services (mobile-friendly). Event title does not include vehicle. */
+  vehiclesWithServices?: { vehicleSummary: string; serviceNames: string[] }[]
 }
 
 export function buildEventBody(job: JobForEvent, options: { calendarId: string }): { summary: string; description: string; location: string; start: { dateTime: string; timeZone: string }; end: { dateTime: string; timeZone: string } } {
   const start = new Date(job.scheduled_at)
   const end = new Date(start.getTime() + job.durationMins * 60 * 1000)
   const timeZone = 'UTC'
-  const baseSummary = `${job.serviceName} – ${job.clientName}${job.vehicleSummary ? ` (${job.vehicleSummary})` : ''}`
+  // Title: service + client only (no vehicle in name for cleaner mobile view)
+  const baseSummary = `${job.serviceName} – ${job.clientName}`
   const summary = job.locationName?.trim() ? `[${job.locationName.trim()}] ${baseSummary}` : baseSummary
-  const description = [
-    job.serviceName,
-    job.notes || '',
-    `Job #${job.id}`,
-  ].filter(Boolean).join('\n')
+
+  let description: string
+  if (job.vehiclesWithServices && job.vehiclesWithServices.length > 0) {
+    const lines: string[] = []
+    job.vehiclesWithServices.forEach((v) => {
+      lines.push(v.vehicleSummary || 'Vehicle')
+      v.serviceNames.forEach((name) => lines.push(`• ${name}`))
+      lines.push('')
+    })
+    if (job.notes?.trim()) lines.push(job.notes.trim())
+    description = lines.join('\n').trim()
+  } else {
+    description = [
+      job.serviceName,
+      job.notes || '',
+      `Job #${job.id}`,
+    ].filter(Boolean).join('\n')
+  }
 
   return {
     summary,
