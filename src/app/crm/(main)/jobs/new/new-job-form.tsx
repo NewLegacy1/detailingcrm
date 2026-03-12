@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { crmPath } from '@/lib/crm-path'
 import { createClient } from '@/lib/supabase/client'
@@ -11,7 +11,7 @@ import { DateTimeInput } from '@/components/ui/date-picker'
 import { Textarea } from '@/components/ui/textarea'
 import { AddressAutocomplete } from '@/components/address-autocomplete'
 import Link from 'next/link'
-import { Plus } from 'lucide-react'
+import { Plus, Search, ChevronDown, X } from 'lucide-react'
 import type { Client } from '@/types/database'
 import type { Vehicle } from '@/types/database'
 import type { Service } from '@/types/database'
@@ -33,6 +33,9 @@ export function NewJobForm() {
   const [loading, setLoading] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [submitUpgradeUrl, setSubmitUpgradeUrl] = useState<string | null>(null)
+  const [customerSearchQuery, setCustomerSearchQuery] = useState('')
+  const [customerDropdownOpen, setCustomerDropdownOpen] = useState(false)
+  const customerPickerRef = useRef<HTMLDivElement>(null)
   type SizeOption = { size_key: string; label: string; price_offset: number }
   const DEFAULT_SIZES: SizeOption[] = [
     { size_key: 'sedan', label: 'Sedan', price_offset: 0 },
@@ -102,6 +105,18 @@ export function NewJobForm() {
       .then((data) => setLocations(Array.isArray(data) ? data.map((l: { id: string; name: string }) => ({ id: l.id, name: l.name })) : []))
       .catch(() => setLocations([]))
   }, [])
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (customerPickerRef.current && !customerPickerRef.current.contains(e.target as Node)) {
+        setCustomerDropdownOpen(false)
+      }
+    }
+    if (customerDropdownOpen) {
+      document.addEventListener('mousedown', handleClickOutside)
+      return () => document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [customerDropdownOpen])
 
   useEffect(() => {
     const address = (formData.address || '').trim()
@@ -244,6 +259,10 @@ export function NewJobForm() {
 
   const selectedCustomer = customers.find((c) => c.id === formData.customer_id)
   const addressFromCustomer = (selectedCustomer as Client & { address?: string })?.address ?? ''
+  const customerSearchLower = customerSearchQuery.trim().toLowerCase()
+  const filteredCustomers = customerSearchLower
+    ? customers.filter((c) => c.name.toLowerCase().includes(customerSearchLower))
+    : customers
 
   /** Size options for a vehicle based on its selected services; falls back to org-wide sizeOptions if none selected */
   function getSizeOptionsForVehicle(vid: string): SizeOption[] {
@@ -265,9 +284,9 @@ export function NewJobForm() {
   return (
     <>
     <form onSubmit={handleSubmit} className="max-w-xl space-y-4 card p-6">
-      <div>
+      <div ref={customerPickerRef} className="relative">
         <div className="flex items-center justify-between gap-2 mb-1">
-          <Label htmlFor="customer_id">Customer *</Label>
+          <Label htmlFor="customer-picker">Customer *</Label>
           <Button variant="outline" size="sm" className="shrink-0" asChild>
             <Link href={crmPath('/customers?add=1')}>
               <Plus className="h-3.5 w-3.5 mr-1" />
@@ -275,18 +294,73 @@ export function NewJobForm() {
             </Link>
           </Button>
         </div>
-        <select
-          id="customer_id"
-          required
-          value={formData.customer_id}
-          onChange={(e) => setFormData((prev) => ({ ...prev, customer_id: e.target.value }))}
-          className="flex h-10 w-full rounded-lg border border-[var(--border)] bg-[var(--bg-card)] px-3 py-2 text-sm text-[var(--text)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/30 focus:border-[var(--accent)]"
-        >
-          <option value="">Select customer</option>
-          {customers.map((c) => (
-            <option key={c.id} value={c.id}>{c.name}</option>
-          ))}
-        </select>
+        <div className="flex rounded-lg border border-[var(--border)] bg-[var(--bg-card)] focus-within:ring-2 focus-within:ring-[var(--accent)]/30 focus-within:border-[var(--accent)]">
+          <Search className="h-4 w-4 shrink-0 self-center ml-3 text-[var(--text-muted)]" aria-hidden />
+          <input
+            id="customer-picker"
+            type="text"
+            value={customerDropdownOpen ? customerSearchQuery : (selectedCustomer?.name ?? '')}
+            onChange={(e) => {
+              setCustomerSearchQuery(e.target.value)
+              setCustomerDropdownOpen(true)
+              if (formData.customer_id) setFormData((prev) => ({ ...prev, customer_id: '' }))
+            }}
+            onFocus={() => setCustomerDropdownOpen(true)}
+            placeholder="Search customers..."
+            className="flex-1 min-w-0 h-10 bg-transparent px-2 py-2 text-sm text-[var(--text)] placeholder:text-[var(--text-muted)] focus:outline-none"
+            autoComplete="off"
+          />
+          {formData.customer_id ? (
+            <button
+              type="button"
+              onClick={() => {
+                setFormData((prev) => ({ ...prev, customer_id: '' }))
+                setCustomerSearchQuery('')
+                setCustomerDropdownOpen(true)
+              }}
+              className="shrink-0 p-2 text-[var(--text-muted)] hover:text-[var(--text)]"
+              aria-label="Clear customer"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setCustomerDropdownOpen((o) => !o)}
+              className="shrink-0 p-2 text-[var(--text-muted)] hover:text-[var(--text)]"
+              aria-label="Open customer list"
+            >
+              <ChevronDown className="h-4 w-4" />
+            </button>
+          )}
+        </div>
+        <input type="hidden" name="customer_id" value={formData.customer_id} />
+        {customerDropdownOpen && (
+          <ul
+            className="absolute z-10 mt-1 w-full max-h-56 overflow-auto rounded-lg border border-[var(--border)] bg-[var(--bg-card)] shadow-lg py-1"
+            role="listbox"
+          >
+            {filteredCustomers.length === 0 ? (
+              <li className="px-3 py-2 text-sm text-[var(--text-muted)]">No customers match your search.</li>
+            ) : (
+              filteredCustomers.map((c) => (
+                <li
+                  key={c.id}
+                  role="option"
+                  aria-selected={formData.customer_id === c.id}
+                  className="px-3 py-2.5 text-sm text-[var(--text)] cursor-pointer hover:bg-[var(--accent)]/10 focus:bg-[var(--accent)]/10 focus:outline-none"
+                  onClick={() => {
+                    setFormData((prev) => ({ ...prev, customer_id: c.id }))
+                    setCustomerSearchQuery('')
+                    setCustomerDropdownOpen(false)
+                  }}
+                >
+                  {c.name}
+                </li>
+              ))
+            )}
+          </ul>
+        )}
       </div>
       <div>
         <Label>Vehicles</Label>

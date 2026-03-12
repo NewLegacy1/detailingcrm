@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAuthClient } from '@/lib/supabase/server'
 import { getAuthAndPermissions } from '@/lib/permissions-server'
+import { parseScheduledAtInTimezone } from '@/lib/parse-scheduled-at'
 
 const STARTER_JOBS_LIMIT = 60
+const DEFAULT_TIMEZONE = 'America/Toronto'
 
 type VehicleServiceLine = { vehicle_id?: string | null; service_id: string }
 
@@ -70,8 +72,15 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'customer_id, scheduled_at, and address are required' }, { status: 400 })
   }
 
-  const scheduledDate = new Date(scheduled_at)
-  if (Number.isNaN(scheduledDate.getTime())) {
+  // Fetch org timezone so we can parse datetime-local (e.g. from mobile) as org local time, not server UTC
+  const { data: orgForTz } = await supabase
+    .from('organizations')
+    .select('timezone, subscription_plan')
+    .eq('id', orgId)
+    .single()
+  const orgTimezone = (orgForTz?.timezone as string) || DEFAULT_TIMEZONE
+  const scheduledDate = parseScheduledAtInTimezone(scheduled_at, orgTimezone)
+  if (!scheduledDate || Number.isNaN(scheduledDate.getTime())) {
     return NextResponse.json({ error: 'Invalid scheduled_at' }, { status: 400 })
   }
 
@@ -112,13 +121,7 @@ export async function POST(req: NextRequest) {
     base_price = vehicleServices.reduce((acc, l) => acc + (priceMap.get(l.service_id) ?? 0), 0)
   }
 
-  const { data: org } = await supabase
-    .from('organizations')
-    .select('subscription_plan')
-    .eq('id', orgId)
-    .single()
-
-  if (org?.subscription_plan === 'starter') {
+  if (orgForTz?.subscription_plan === 'starter') {
     const now = new Date()
     const startOfMonth = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)).toISOString()
     const { count } = await supabase

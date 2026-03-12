@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { crmPath } from '@/lib/crm-path'
 import { createClient } from '@/lib/supabase/client'
@@ -11,7 +11,7 @@ import { DateTimeInput } from '@/components/ui/date-picker'
 import { Textarea } from '@/components/ui/textarea'
 import { AddressAutocomplete } from '@/components/address-autocomplete'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogClose } from '@/components/ui/dialog'
-import { MapPin, Loader2 } from 'lucide-react'
+import { MapPin, Loader2, Search, ChevronDown, X } from 'lucide-react'
 import type { Client } from '@/types/database'
 import type { Vehicle } from '@/types/database'
 import type { Service } from '@/types/database'
@@ -54,6 +54,9 @@ export function ScheduleJobDetailModal({ open, jobId, initialScheduledAt, initia
   const [services, setServices] = useState<Service[]>([])
   const [locations, setLocations] = useState<{ id: string; name: string }[]>([])
   const [suggestedLocation, setSuggestedLocation] = useState<{ location_id: string; location_name: string } | null>(null)
+  const [customerSearchQuery, setCustomerSearchQuery] = useState('')
+  const [customerDropdownOpen, setCustomerDropdownOpen] = useState(false)
+  const customerPickerRef = useRef<HTMLDivElement>(null)
   type SizeOption = { size_key: string; label: string; price_offset: number }
   const DEFAULT_SIZES: SizeOption[] = [
     { size_key: 'sedan', label: 'Sedan', price_offset: 0 },
@@ -274,6 +277,18 @@ export function ScheduleJobDetailModal({ open, jobId, initialScheduledAt, initia
   }, [form.address])
 
   useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (customerPickerRef.current && !customerPickerRef.current.contains(e.target as Node)) {
+        setCustomerDropdownOpen(false)
+      }
+    }
+    if (customerDropdownOpen) {
+      document.addEventListener('mousedown', handleClickOutside)
+      return () => document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [customerDropdownOpen])
+
+  useEffect(() => {
     if (!form.customer_id) {
       setVehicles([])
       setForm((prev) => ({ ...prev, vehicle_ids: [] }))
@@ -362,7 +377,7 @@ export function ScheduleJobDetailModal({ open, jobId, initialScheduledAt, initia
     onClose()
   }
 
-  // Edit path: we do not send a notification email; only handleCreate (new job) can send the booking confirmation.
+  // Edit path: use PATCH API so scheduled_at is parsed in org timezone (fixes mobile timezone shift).
   async function handleSave(e: React.FormEvent) {
     e.preventDefault()
     if (isCreate) {
@@ -371,57 +386,27 @@ export function ScheduleJobDetailModal({ open, jobId, initialScheduledAt, initia
     }
     if (!jobId || !job) return
     setSaving(true)
-    const supabase = createClient()
-    const vehicleServices: { vehicle_id: string; service_id: string }[] = []
-    form.vehicle_ids.forEach((vid) => {
-      (form.vehicle_services[vid] ?? []).forEach((sid) => vehicleServices.push({ vehicle_id: vid, service_id: sid }))
+    const locationId = (form.location_id && form.location_id.trim()) || suggestedLocation?.location_id || undefined
+    const res = await fetch(`/api/jobs/${jobId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        customer_id: form.customer_id,
+        vehicle_ids: form.vehicle_ids,
+        vehicle_services: form.vehicle_services,
+        vehicle_sizes: form.vehicle_sizes,
+        scheduled_at: form.scheduled_at,
+        address: form.address.trim(),
+        status: form.status,
+        notes: form.notes.trim() || null,
+        location_id: locationId !== undefined ? locationId : null,
+        actual_started_at: form.status === 'in_progress' ? (job.actual_started_at ?? null) : undefined,
+        actual_ended_at: form.status === 'done' ? (job.actual_ended_at ?? null) : undefined,
+      }),
     })
-    const basePrice = vehicleServices.reduce((sum, l) => {
-      const s = services.find((x) => x.id === l.service_id) as { base_price?: number } | undefined
-      return sum + (s?.base_price ?? 0)
-    }, 0)
-    const firstVehicleId = form.vehicle_ids[0] ?? null
-    const firstServiceId = vehicleServices[0]?.service_id ?? null
-    const totalSizeOffset = form.vehicle_ids.reduce(
-      (sum, vid) => sum + (typeof form.vehicle_sizes[vid] === 'number' ? form.vehicle_sizes[vid] : 0),
-      0
-    )
-    const updates: Record<string, unknown> = {
-      customer_id: form.customer_id,
-      vehicle_id: firstVehicleId,
-      service_id: firstServiceId,
-      base_price: basePrice,
-      size_price_offset: totalSizeOffset,
-      scheduled_at: new Date(form.scheduled_at).toISOString(),
-      address: form.address.trim(),
-      status: form.status,
-      notes: form.notes.trim() || null,
-      updated_at: new Date().toISOString(),
-      location_id: form.location_id && form.location_id.trim() ? form.location_id.trim() : null,
-    }
-    if (form.status === 'in_progress') updates.actual_started_at = job.actual_started_at ?? new Date().toISOString()
-    if (form.status === 'done') {
-      updates.actual_ended_at = job.actual_ended_at ?? new Date().toISOString()
-      if (!job.actual_started_at) updates.actual_started_at = new Date().toISOString()
-    }
-    await supabase.from('jobs').update(updates).eq('id', jobId)
-    await supabase.from('job_vehicles').delete().eq('job_id', jobId)
-    if (form.vehicle_ids.length > 0) {
-      await supabase.from('job_vehicles').insert(
-        form.vehicle_ids.map((vehicle_id) => {
-          const opts = getSizeOptionsForVehicle(vehicle_id)
-          const stored = form.vehicle_sizes[vehicle_id]
-          const valid = typeof stored === 'number' && opts.some((o) => o.price_offset === stored)
-          const size_price_offset = valid ? stored : (opts[0]?.price_offset ?? 0)
-          return { job_id: jobId, vehicle_id, size_price_offset }
-        })
-      )
-    }
-    await supabase.from('job_services').delete().eq('job_id', jobId)
-    if (vehicleServices.length > 0) {
-      await supabase.from('job_services').insert(
-        vehicleServices.map((l) => ({ job_id: jobId, service_id: l.service_id, vehicle_id: l.vehicle_id }))
-      )
+    if (!res.ok) {
+      setSaving(false)
+      return
     }
     fetch(`/api/integrations/google/sync/job/${jobId}`, { method: 'POST' }).catch(() => {})
     setSaving(false)
@@ -459,6 +444,12 @@ export function ScheduleJobDetailModal({ open, jobId, initialScheduledAt, initia
     const list = [...byKey.values()].sort((a, b) => a.price_offset - b.price_offset)
     return list.length > 0 ? list : sizeOptions
   }
+
+  const selectedCustomer = customers.find((c) => c.id === form.customer_id)
+  const customerSearchLower = customerSearchQuery.trim().toLowerCase()
+  const filteredCustomers = customerSearchLower
+    ? customers.filter((c) => c.name.toLowerCase().includes(customerSearchLower))
+    : customers
 
   return (
     <Dialog open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
@@ -499,19 +490,74 @@ export function ScheduleJobDetailModal({ open, jobId, initialScheduledAt, initia
                 </Button>
               )}
             </div>
-            <div>
+            <div ref={customerPickerRef} className="relative">
               <Label className="text-xs text-[var(--text-muted)]">Customer</Label>
-              <select
-                required
-                value={form.customer_id}
-                onChange={(e) => setForm((prev) => ({ ...prev, customer_id: e.target.value }))}
-                className="mt-1 flex h-10 w-full rounded-lg border border-[var(--border)] bg-[var(--bg)] px-3 py-2 text-sm text-[var(--text)]"
-              >
-                <option value="">Select customer</option>
-                {customers.map((c) => (
-                  <option key={c.id} value={c.id}>{c.name}</option>
-                ))}
-              </select>
+              <div className="mt-1 flex rounded-lg border border-[var(--border)] bg-[var(--bg)] focus-within:ring-2 focus-within:ring-[var(--accent)]/30 focus-within:border-[var(--accent)]">
+                <Search className="h-4 w-4 shrink-0 self-center ml-3 text-[var(--text-muted)]" aria-hidden />
+                <input
+                  type="text"
+                  required={!form.customer_id}
+                  value={customerDropdownOpen ? customerSearchQuery : (selectedCustomer?.name ?? '')}
+                  onChange={(e) => {
+                    setCustomerSearchQuery(e.target.value)
+                    setCustomerDropdownOpen(true)
+                    if (form.customer_id) setForm((prev) => ({ ...prev, customer_id: '' }))
+                  }}
+                  onFocus={() => setCustomerDropdownOpen(true)}
+                  placeholder="Search customers..."
+                  className="flex-1 min-w-0 h-10 bg-transparent px-2 py-2 text-sm text-[var(--text)] placeholder:text-[var(--text-muted)] focus:outline-none"
+                  autoComplete="off"
+                />
+                {form.customer_id ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setForm((prev) => ({ ...prev, customer_id: '' }))
+                      setCustomerSearchQuery('')
+                      setCustomerDropdownOpen(true)
+                    }}
+                    className="shrink-0 p-2 text-[var(--text-muted)] hover:text-[var(--text)]"
+                    aria-label="Clear customer"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setCustomerDropdownOpen((o) => !o)}
+                    className="shrink-0 p-2 text-[var(--text-muted)] hover:text-[var(--text)]"
+                    aria-label="Open customer list"
+                  >
+                    <ChevronDown className="h-4 w-4" />
+                  </button>
+                )}
+              </div>
+              {customerDropdownOpen && (
+                <ul
+                  className="absolute z-10 mt-1 w-full max-h-48 overflow-auto rounded-lg border border-[var(--border)] bg-[var(--bg)] shadow-lg py-1"
+                  role="listbox"
+                >
+                  {filteredCustomers.length === 0 ? (
+                    <li className="px-3 py-2 text-sm text-[var(--text-muted)]">No customers match your search.</li>
+                  ) : (
+                    filteredCustomers.map((c) => (
+                      <li
+                        key={c.id}
+                        role="option"
+                        aria-selected={form.customer_id === c.id}
+                        className="px-3 py-2.5 text-sm text-[var(--text)] cursor-pointer hover:bg-[var(--accent)]/10 focus:bg-[var(--accent)]/10 focus:outline-none"
+                        onClick={() => {
+                          setForm((prev) => ({ ...prev, customer_id: c.id }))
+                          setCustomerSearchQuery('')
+                          setCustomerDropdownOpen(false)
+                        }}
+                      >
+                        {c.name}
+                      </li>
+                    ))
+                  )}
+                </ul>
+              )}
             </div>
             <div>
               <Label className="text-xs text-[var(--text-muted)]">Vehicles</Label>
