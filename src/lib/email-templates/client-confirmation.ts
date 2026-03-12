@@ -29,7 +29,7 @@ export interface ClientConfirmationData {
 const DETAILOPS_LOGO_URL = 'https://detailops.vercel.app/detailopslogo.png'
 // Use env key for static map; many email clients block images. If unset, only directions link is shown.
 const getStaticMapKey = () =>
-  process.env.GOOGLE_MAPS_API_KEY ?? process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ?? ''
+  process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ?? process.env.GOOGLE_MAPS_API_KEY ?? ''
 
 export function buildClientConfirmationHtml(data: ClientConfirmationData): string {
   const {

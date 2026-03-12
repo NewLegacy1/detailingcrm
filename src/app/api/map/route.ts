@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 
 const key =
-  process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ||
-  process.env.GOOGLE_MAPS_API_KEY
+  process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY?.trim() ||
+  process.env.GOOGLE_MAPS_API_KEY?.trim()
 
 /**
  * GET /api/map?address=... OR ?lat=...&lng=... → static map image with a pin.

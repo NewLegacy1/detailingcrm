@@ -348,10 +348,10 @@ export function JobDetailPopup({
   async function handleDelete() {
     if (!job) return
     setDeleting(true)
-    const supabase = createClient()
-    await supabase.from('jobs').delete().eq('id', job.id)
+    const res = await fetch(`/api/jobs/${job.id}`, { method: 'DELETE' })
     setDeleting(false)
     setDeleteConfirmOpen(false)
+    if (!res.ok) return
     onDeleted?.()
     onClose()
   }

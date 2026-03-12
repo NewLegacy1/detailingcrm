@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAuthClient, createClient, createServiceRoleClient } from '@/lib/supabase/server'
 import { parseScheduledAtInTimezone } from '@/lib/parse-scheduled-at'
+import { deleteJobEventFromGoogle } from '@/lib/google-calendar-sync'
 
 const DEFAULT_TIMEZONE = 'America/Toronto'
 
@@ -270,6 +271,79 @@ export async function PATCH(
     await client.from('job_services').insert(
       vehicleServicesList.map((l) => ({ job_id: jobId, service_id: l.service_id, vehicle_id: l.vehicle_id }))
     )
+  }
+
+  return NextResponse.json({ ok: true })
+}
+
+/**
+ * DELETE /api/jobs/[id] — delete job and remove it from Google Calendar if synced.
+ */
+export async function DELETE(
+  _req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const authClient = await createAuthClient()
+  const { data: { user } } = await authClient.auth.getUser()
+  if (!user) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
+  const { data: profile } = await authClient.from('profiles').select('org_id').eq('id', user.id).single()
+  const orgId = profile?.org_id ?? null
+  if (!orgId) {
+    return NextResponse.json({ error: 'No organization' }, { status: 400 })
+  }
+
+  const { id: jobId } = await params
+  if (!jobId) {
+    return NextResponse.json({ error: 'Job ID required' }, { status: 400 })
+  }
+
+  let client = await createClient()
+  try {
+    client = await createServiceRoleClient()
+  } catch {
+    // use auth client
+  }
+
+  const jobRes = await client
+    .from('jobs')
+    .select('id, org_id, customer_id')
+    .eq('id', jobId)
+    .single()
+
+  if (jobRes.error || !jobRes.data) {
+    return NextResponse.json({ error: 'Job not found' }, { status: 404 })
+  }
+
+  const job = jobRes.data as { org_id?: string | null; customer_id?: string }
+  const jobOrgId = job.org_id ?? null
+  if (jobOrgId !== null && jobOrgId !== orgId) {
+    return NextResponse.json({ error: 'Job not found' }, { status: 404 })
+  }
+  if (jobOrgId === null && job.customer_id) {
+    const { data: clientRow } = await client
+      .from('clients')
+      .select('org_id')
+      .eq('id', job.customer_id)
+      .single()
+    if (clientRow?.org_id !== orgId) {
+      return NextResponse.json({ error: 'Job not found' }, { status: 404 })
+    }
+  }
+
+  // Remove from Google Calendar first (while we still have the job row with google_company_event_id)
+  await deleteJobEventFromGoogle(client, orgId, jobId)
+
+  await client.from('job_vehicles').delete().eq('job_id', jobId)
+  await client.from('job_services').delete().eq('job_id', jobId)
+  await client.from('job_checklist_items').delete().eq('job_id', jobId)
+  await client.from('job_upsells').delete().eq('job_id', jobId)
+  const { error: deleteError } = await client.from('jobs').delete().eq('id', jobId)
+
+  if (deleteError) {
+    return NextResponse.json({ error: deleteError.message ?? 'Failed to delete job' }, { status: 500 })
   }
 
   return NextResponse.json({ ok: true })

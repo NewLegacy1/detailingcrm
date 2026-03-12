@@ -3,8 +3,8 @@ import { createAuthClient } from '@/lib/supabase/server'
 import { haversineDistanceKm } from '@/lib/utils'
 
 const GEOCODE_KEY =
-  (typeof process.env.GOOGLE_MAPS_API_KEY === 'string' && process.env.GOOGLE_MAPS_API_KEY.trim()) ||
   (typeof process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY === 'string' && process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY.trim()) ||
+  (typeof process.env.GOOGLE_MAPS_API_KEY === 'string' && process.env.GOOGLE_MAPS_API_KEY.trim()) ||
   ''
 
 /**

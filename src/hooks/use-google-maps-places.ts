@@ -3,8 +3,8 @@
 import { useState, useEffect } from 'react'
 
 const MAPS_SCRIPT_ID = 'data-crm-maps'
-// Only load Maps/Places when a key is set. Key must have billing enabled for Places to work.
-const MAPS_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY?.trim() || ''
+// Browser only sees NEXT_PUBLIC_* vars. Use that so one env var works for both server and client.
+const MAPS_KEY = (typeof process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY === 'string' && process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY.trim()) || ''
 
 declare global {
   interface Window {
@@ -14,7 +14,7 @@ declare global {
 }
 
 /** Loads Google Maps JS with Places once. Reuses script if already loaded (booking/branding). */
-export function useGoogleMapsPlaces(): { ready: boolean } {
+export function useGoogleMapsPlaces(): { ready: boolean; hasKey: boolean } {
   const [ready, setReady] = useState(false)
 
   useEffect(() => {
@@ -57,5 +57,5 @@ export function useGoogleMapsPlaces(): { ready: boolean } {
     }
   }, [])
 
-  return { ready }
+  return { ready, hasKey: !!MAPS_KEY }
 }

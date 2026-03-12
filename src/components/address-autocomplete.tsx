@@ -21,7 +21,7 @@ export const AddressAutocomplete = React.forwardRef<
 ) {
   const inputRef = useRef<HTMLInputElement>(null)
   const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null)
-  const { ready } = useGoogleMapsPlaces()
+  const { ready, hasKey } = useGoogleMapsPlaces()
 
   const setRefs = useCallback(
     (el: HTMLInputElement | null) => {
@@ -75,9 +75,14 @@ export const AddressAutocomplete = React.forwardRef<
 
   return (
     <div className="space-y-1">
-      {!ready && (
+      {!ready && hasKey && (
         <p className="text-xs text-[var(--text-muted)]">
-          Enter address manually. Address suggestions are unavailable (no Google Maps API key or billing not enabled).
+          Loading address suggestions…
+        </p>
+      )}
+      {!ready && !hasKey && (
+        <p className="text-xs text-[var(--text-muted)]">
+          Enter address manually. Set NEXT_PUBLIC_GOOGLE_MAPS_API_KEY and enable billing for address suggestions.
         </p>
       )}
       <input

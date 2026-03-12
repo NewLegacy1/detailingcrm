@@ -8,8 +8,8 @@ import { Label } from '@/components/ui/label'
 import { BOOKING_DARK_MAP_STYLES } from '@/components/booking/BOOKING_MAP_STYLES'
 
 const MAPS_KEY =
-  process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ||
-  process.env.GOOGLE_MAPS_API_KEY ||
+  process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY?.trim() ||
+  process.env.GOOGLE_MAPS_API_KEY?.trim() ||
   'AIzaSyAgxm86Lej6n8yvkCkpNQ55TYn8fTyembs'
 
 const DEFAULT_CENTER = { lat: 43.6532, lng: -79.3832 }

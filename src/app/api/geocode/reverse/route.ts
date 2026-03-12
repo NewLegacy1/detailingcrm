@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 
 const key =
-  process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ||
-  process.env.GOOGLE_MAPS_API_KEY ||
+  process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY?.trim() ||
+  process.env.GOOGLE_MAPS_API_KEY?.trim() ||
   'AIzaSyAgxm86Lej6n8yvkCkpNQ55TYn8fTyembs'
 
 /** GET /api/geocode/reverse?lat=43.2557&lng=-79.8711 → { formatted_address } */

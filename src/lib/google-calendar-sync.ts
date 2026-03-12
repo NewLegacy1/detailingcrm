@@ -201,3 +201,60 @@ export async function syncJobToGoogle(
     return { synced: false, error: message }
   }
 }
+
+/**
+ * Remove the job's event from Google Calendar (when deleting the job).
+ * Call before deleting the job row so we have google_company_event_id and can resolve calendar.
+ */
+export async function deleteJobEventFromGoogle(
+  supabase: SupabaseClient,
+  orgId: string,
+  jobId: string
+): Promise<{ deleted: boolean; error?: string }> {
+  const { data: org } = await supabase
+    .from('organizations')
+    .select('google_tokens_encrypted, google_company_calendar_id, google_sync_to_company')
+    .eq('id', orgId)
+    .single()
+
+  if (!org?.google_tokens_encrypted || !org.google_company_calendar_id || !org.google_sync_to_company) {
+    return { deleted: false }
+  }
+
+  const { data: job, error: jobError } = await supabase
+    .from('jobs')
+    .select('google_company_event_id, location_id')
+    .eq('id', jobId)
+    .single()
+
+  if (jobError || !job || !(job as { google_company_event_id?: string | null }).google_company_event_id) {
+    return { deleted: false }
+  }
+
+  const eventId = (job as { google_company_event_id: string }).google_company_event_id
+  let calendarId = org.google_company_calendar_id
+  const locationId = (job as { location_id?: string | null }).location_id
+  if (locationId) {
+    const { data: loc } = await supabase
+      .from('locations')
+      .select('google_calendar_id')
+      .eq('id', locationId)
+      .single()
+    if (loc?.google_calendar_id) calendarId = loc.google_calendar_id
+  }
+
+  const onTokensRefreshed: OnTokensRefreshed = async (newEncrypted) => {
+    await supabase
+      .from('organizations')
+      .update({ google_tokens_encrypted: newEncrypted, updated_at: new Date().toISOString() })
+      .eq('id', orgId)
+  }
+
+  try {
+    await deleteEvent(org.google_tokens_encrypted, calendarId, eventId, onTokensRefreshed)
+    return { deleted: true }
+  } catch (e) {
+    const message = e instanceof Error ? e.message : 'Delete event failed'
+    return { deleted: false, error: message }
+  }
+}
