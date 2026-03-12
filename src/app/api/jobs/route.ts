@@ -72,7 +72,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'customer_id, scheduled_at, and address are required' }, { status: 400 })
   }
 
-  // Fetch org timezone so we can parse datetime-local (e.g. from mobile) as org local time, not server UTC
+  // Fetch org timezone so we can parse datetime-local (e.g. from mobile) as org local time, not server UTC.
+  // Form sends "YYYY-MM-DDTHH:mm" with no timezone; without this, server would treat it as UTC and times would shift.
   const { data: orgForTz } = await supabase
     .from('organizations')
     .select('timezone, subscription_plan')

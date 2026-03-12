@@ -46,7 +46,7 @@ export default async function SettingsBookingsPage() {
       <section>
         <h2 className="section-title text-[var(--text)] mb-1">Timezone</h2>
         <p className="text-sm text-[var(--text-muted)] mb-4">
-          Your business timezone. Used for &quot;today&quot; on the dashboard and jobs day view.
+          Your business timezone. Used for &quot;today&quot; on the dashboard and jobs day view, and when creating or editing jobs so the time you pick (e.g. 11:30 AM) is saved and displayed correctly on the schedule.
         </p>
         <TimezoneForm />
       </section>
