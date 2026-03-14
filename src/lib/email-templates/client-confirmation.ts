@@ -27,7 +27,7 @@ export interface ClientConfirmationData {
 }
 
 const DETAILOPS_LOGO_URL = 'https://detailops.vercel.app/detailopslogo.png'
-// Use env key for static map; many email clients block images. If unset, only directions link is shown.
+// Use env key for static map; many email clients block images. If unset, map is not shown.
 const getStaticMapKey = () =>
   process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ?? process.env.GOOGLE_MAPS_API_KEY ?? ''
 
@@ -61,8 +61,6 @@ export function buildClientConfirmationHtml(data: ClientConfirmationData): strin
   // For links/accents on white background, ensure accent isn't too light
   const accentForText = accent  // You can add logic here later to darken if needed (e.g., if hex is very light)
 
-  // Apple Maps directions — opens native Maps app on iOS; works without any API key
-  const directionsUrl = `https://maps.apple.com/?daddr=${encodeURIComponent(address)}&dirflg=d`
   const googleMapsKey = getStaticMapKey()
   const markerColor = accent.replace('#', '')
   const staticMapUrl = googleMapsKey
@@ -140,10 +138,8 @@ export function buildClientConfirmationHtml(data: ClientConfirmationData): strin
                 <tr>
                   <td style="padding: 12px 0; vertical-align: top;">
                     <p style="margin: 0; font-size: 11px; font-weight: 600; color: #9ca3af; text-transform: uppercase; letter-spacing: 0.8px;">Where</p>
-                    <p style="margin: 4px 0 6px; font-size: 14px; font-weight: 600; color: #111827;">
-                      <a href="${escapeHtml(directionsUrl)}" class="accent-text" style="color: ${escapeHtml(accentForText)}; text-decoration: none;">${escapeHtml(address)}</a>
-                    </p>
-                    ${staticMapUrl ? `<!-- Static map: set GOOGLE_MAPS_API_KEY or NEXT_PUBLIC_GOOGLE_MAPS_API_KEY and enable Static Maps API for the image to show --><a href="${escapeHtml(directionsUrl)}" style="display: block; border-radius: 8px; overflow: hidden; line-height: 0; border: 1px solid #e5e7eb;"><img src="${escapeHtml(staticMapUrl)}" alt="Map of ${escapeHtml(address)}" width="520" height="180" style="display: block; width: 100%; height: auto; border-radius: 7px;" /></a>` : ''}
+                    <p style="margin: 4px 0 6px; font-size: 14px; font-weight: 600; color: #111827;">${escapeHtml(address)}</p>
+                    ${staticMapUrl ? `<!-- Static map: set GOOGLE_MAPS_API_KEY or NEXT_PUBLIC_GOOGLE_MAPS_API_KEY and enable Static Maps API for the image to show --><img src="${escapeHtml(staticMapUrl)}" alt="Map of ${escapeHtml(address)}" width="520" height="180" style="display: block; width: 100%; height: auto; border-radius: 7px; border: 1px solid #e5e7eb;" />` : ''}
                   </td>
                 </tr>
               </table>
@@ -158,22 +154,12 @@ export function buildClientConfirmationHtml(data: ClientConfirmationData): strin
               </table>
               <!-- Contact -->
               <p style="margin: 0 0 6px; font-size: 11px; font-weight: 700; color: #9ca3af; letter-spacing: 1.2px; text-transform: uppercase;">Questions? Contact Us</p>
-              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" class="subtle-bg" style="margin-bottom: 28px; background: #f9fafb; border-radius: 8px; overflow: hidden;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" class="subtle-bg" style="background: #f9fafb; border-radius: 8px; overflow: hidden;">
                 <tr>
                   <td style="padding: 14px;">
                     <p style="margin: 0 0 2px; font-size: 14px; font-weight: 700; color: #111827;">${escapeHtml(businessName)}</p>
                     ${businessPhone ? `<p style="margin: 0 0 2px; font-size: 13px; color: #6b7280;"><a href="tel:${escapeHtml(businessPhone)}" class="accent-text" style="color: ${escapeHtml(accentForText)}; text-decoration: none;">${escapeHtml(businessPhone)}</a></p>` : ''}
                     ${businessEmail ? `<p style="margin: 0; font-size: 13px; color: #6b7280;"><a href="mailto:${escapeHtml(businessEmail)}" class="accent-text" style="color: ${escapeHtml(accentForText)}; text-decoration: none;">${escapeHtml(businessEmail)}</a></p>` : ''}
-                  </td>
-                </tr>
-              </table>
-              <!-- Get Directions CTA — org accent color -->
-              <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
-                <tr>
-                  <td align="center">
-                    <a href="${escapeHtml(directionsUrl)}" class="cta-button" style="display: inline-flex; align-items: center; gap: 8px; background-color: ${escapeHtml(accent)}; color: ${escapeHtml(headerText)}; text-decoration: none; font-weight: 700; font-size: 14px; padding: 13px 28px; border-radius: 8px;">
-                      📍 &nbsp;Get Directions
-                    </a>
                   </td>
                 </tr>
               </table>
