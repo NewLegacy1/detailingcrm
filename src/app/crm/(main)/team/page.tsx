@@ -1,4 +1,5 @@
 import { createAuthClient } from '@/lib/supabase/server'
+import { getAuthAndPermissions } from '@/lib/permissions-server'
 import { TeamTable } from './team-table'
 import Link from 'next/link'
 import { UserCog } from 'lucide-react'
@@ -7,6 +8,7 @@ import { PLAN_PAGE_PATH } from '@/components/settings/plan-page-actions'
 
 export default async function TeamPage() {
   const supabase = await createAuthClient()
+  const auth = await getAuthAndPermissions()
   const { data: { user } } = await supabase.auth.getUser()
   const { data: myProfile } = user
     ? await supabase.from('profiles').select('org_id').eq('id', user.id).single()
@@ -48,14 +50,26 @@ export default async function TeamPage() {
     )
   }
 
-  const { data: profiles } = myProfile?.org_id
-    ? await supabase.from('profiles').select('*').eq('org_id', myProfile.org_id).order('created_at', { ascending: false })
-    : { data: [] }
+  let profiles: { id: string; role: string; display_name: string | null; created_at: string; updated_at: string; location_id?: string | null }[] = []
+  if (myProfile?.org_id) {
+    const { data } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('org_id', myProfile.org_id)
+      .order('created_at', { ascending: false })
+    const raw = data ?? []
+    const viewerLocationId = auth?.locationId ?? null
+    if (viewerLocationId) {
+      profiles = raw.filter((p) => p.role === 'owner' || p.location_id === viewerLocationId)
+    } else {
+      profiles = raw
+    }
+  }
 
   return (
     <div className="space-y-6 p-6 lg:p-8" style={{ background: 'var(--bg)' }}>
       <h1 className="page-title hidden md:block" style={{ color: 'var(--text-1)' }}>Team</h1>
-      <TeamTable initialProfiles={profiles ?? []} />
+      <TeamTable initialProfiles={profiles} />
     </div>
   )
 }

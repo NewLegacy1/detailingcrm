@@ -146,10 +146,16 @@ export default async function DashboardPage() {
         .lt('scheduled_at', todayEndStr)
     ),
     locFilter(supabase.from('jobs').select('id').eq('org_id', orgId)),
-    supabase
-      .from('profiles')
-      .select('id, display_name, role, avatar_url')
-      .eq('org_id', orgId),
+    locationId
+      ? supabase
+          .from('profiles')
+          .select('id, display_name, role, avatar_url')
+          .eq('org_id', orgId)
+          .or(`location_id.eq.${locationId},role.eq.owner`)
+      : supabase
+          .from('profiles')
+          .select('id, display_name, role, avatar_url')
+          .eq('org_id', orgId),
     locFilter(
       supabase
         .from('jobs')

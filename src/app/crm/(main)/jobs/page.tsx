@@ -199,15 +199,19 @@ export default async function JobsPage({
   if (techIds.length > 0) {
     const { data: profiles } = await supabase
       .from('profiles')
-      .select('id, display_name')
+      .select('id, display_name, role, location_id')
       .in('id', techIds)
+    let list = profiles ?? []
+    if (locationId) {
+      list = list.filter((p) => p.role === 'owner' || p.location_id === locationId)
+    }
     const countByTech: Record<string, number> = {}
     jobs.forEach((j) => {
       if (j.assigned_tech_id) {
         countByTech[j.assigned_tech_id] = (countByTech[j.assigned_tech_id] ?? 0) + 1
       }
     })
-    crew = (profiles ?? []).map((p) => ({
+    crew = list.map((p) => ({
       id: p.id,
       display_name: p.display_name ?? null,
       jobCount: countByTech[p.id] ?? 0,

@@ -32,7 +32,7 @@ export const navItems: NavItem[] = [
   { label: 'Schedule', href: crmPath('/schedule'), icon: Calendar, roles: ['owner', 'admin', 'manager', 'technician'] },
   { label: 'Services', href: crmPath('/services'), icon: Wrench, roles: ['owner', 'admin'] },
   { label: 'Invoices', href: crmPath('/invoices'), icon: FileText, roles: ['owner', 'admin', 'manager'] },
-  { label: 'Automations', href: crmPath('/automations'), icon: Zap, roles: ['owner', 'admin', 'manager'] },
+  { label: 'Automations', href: crmPath('/automations'), icon: Zap, roles: ['owner', 'admin'] },
   { label: 'Drip Marketing', href: crmPath('/drip-marketing'), icon: Droplet, roles: ['owner', 'admin', 'manager'] },
   { label: 'Promo codes', href: crmPath('/promo-codes'), icon: Tag, roles: ['owner', 'admin', 'manager'] },
   { label: 'Campaigns', href: crmPath('/campaigns'), icon: Megaphone, roles: ['owner', 'admin', 'manager'], comingSoon: true },
