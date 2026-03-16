@@ -14,7 +14,7 @@ function redirectAuthRecovery(request: NextRequest): NextResponse | null {
   if ((isLandingOrLogin || isAuthReset) && hasRecoveryParams) {
     const url = request.nextUrl.clone()
     url.pathname = '/auth/callback'
-    if (isAuthReset && !url.searchParams.has('flow')) url.searchParams.set('flow', 'recovery')
+    if (!url.searchParams.has('flow')) url.searchParams.set('flow', 'recovery')
     return NextResponse.redirect(url)
   }
   return null
