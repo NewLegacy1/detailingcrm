@@ -32,14 +32,19 @@ function ForgotPasswordContent() {
     setError(null)
     setLoading(true)
     try {
+      const baseUrl = typeof window !== 'undefined' ? window.location.origin : ''
       if (typeof document !== 'undefined') {
         document.cookie = `password_reset_next=${encodeURIComponent(next && next.startsWith('/') && !next.startsWith('//') ? next : '/crm/dashboard')}; path=/; max-age=3600; samesite=lax`
       }
       const supabase = createClient()
-      // Omit redirectTo so Supabase uses Site URL (avoids strict redirect validation that can trigger "Error sending recovery email")
-      const { error: err } = await supabase.auth.resetPasswordForEmail(email.trim(), {})
+      const redirectTo = baseUrl ? `${baseUrl}/auth/reset` : undefined
+      const { error: err } = await supabase.auth.resetPasswordForEmail(email.trim(), { redirectTo })
       if (err) {
-        setError(err.message || 'Failed to send reset email. Check Supabase Auth logs or try again in a few minutes.')
+        const msg = err.message || 'Failed to send reset email.'
+        setError(
+          msg +
+            ' Supabase built-in email has strict limits—try again in 15 minutes or set up custom SMTP in Project Settings → Auth → SMTP.'
+        )
         return
       }
       setSuccess(true)
