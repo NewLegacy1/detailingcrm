@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { UserCog } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { PLAN_PAGE_PATH } from '@/components/settings/plan-page-actions'
+import type { Profile } from '@/types/database'
 
 export default async function TeamPage() {
   const supabase = await createAuthClient()
@@ -50,14 +51,14 @@ export default async function TeamPage() {
     )
   }
 
-  let profiles: { id: string; role: string; display_name: string | null; created_at: string; updated_at: string; location_id?: string | null }[] = []
+  let profiles: Profile[] = []
   if (myProfile?.org_id) {
     const { data } = await supabase
       .from('profiles')
       .select('*')
       .eq('org_id', myProfile.org_id)
       .order('created_at', { ascending: false })
-    const raw = data ?? []
+    const raw = (data ?? []) as Profile[]
     const viewerLocationId = auth?.locationId ?? null
     if (viewerLocationId) {
       profiles = raw.filter((p) => p.role === 'owner' || p.location_id === viewerLocationId)
