@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+  <!-- sand base -->
+  <path d="M4 18h16v2H4z" fill="#E8D5B7"/>
+  <path d="M5 16h14v2H5z" fill="#D4C4A8"/>
+  <!-- castle tower left -->
+  <path d="M6 14V8h2v6H6z" fill="#E8D5B7"/>
+  <path d="M6 8l1-2h0l1 2H6z" fill="#C9B896"/>
+  <!-- castle tower middle -->
+  <path d="M10 12V6h4v6h-4z" fill="#E8D5B7"/>
+  <path d="M11 6l1.5-2 1.5 2H11z" fill="#C9B896"/>
+  <rect x="11" y="10" width="2" height="2" fill="#C9B896" rx="0.5"/>
+  <!-- castle tower right -->
+  <path d="M16 14V8h2v6h-2z" fill="#E8D5B7"/>
+  <path d="M16 8l1-2 1 2h-2z" fill="#C9B896"/>
+  <!-- small mounds -->
+  <ellipse cx="5" cy="15" rx="1.5" ry="0.8" fill="#D4C4A8"/>
+  <ellipse cx="12" cy="15.5" rx="2" ry="0.8" fill="#D4C4A8"/>
+  <ellipse cx="19" cy="15" rx="1.5" ry="0.8" fill="#D4C4A8"/>
+</svg>

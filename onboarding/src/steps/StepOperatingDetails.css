@@ -1,0 +1,40 @@
+.service-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 12px;
+}
+
+.service-card {
+  text-align: left;
+  padding: 16px;
+  background: var(--right-bg);
+  border: 1px solid var(--right-border);
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s, box-shadow 0.15s;
+}
+
+.service-card:hover {
+  border-color: var(--accent);
+  background: var(--right-surface);
+}
+
+.service-card__name {
+  display: block;
+  font-weight: 600;
+  font-size: 0.9375rem;
+  margin-bottom: 4px;
+}
+
+.service-card__meta {
+  display: block;
+  font-size: 0.8125rem;
+  color: var(--right-text-muted);
+}
+
+.service-card__desc {
+  display: block;
+  font-size: 0.75rem;
+  color: var(--right-text-muted);
+  margin-top: 4px;
+}

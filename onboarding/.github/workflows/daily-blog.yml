@@ -1,0 +1,47 @@
+name: Generate Daily Blog Post
+
+on:
+  # 1 PM UTC = 8 AM Eastern / 7 AM Central / 5 AM Pacific
+  # Adjust the hour to match your timezone:
+  #   ET  → 13   CT → 14   MT → 15   PT → 16
+  schedule:
+    - cron: '0 13 * * *'
+
+  # Also allows you to trigger a post manually from the GitHub Actions tab
+  workflow_dispatch:
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+
+    # Needed so the job can push the commit back to the repo
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate blog post
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          SITE_URL: ${{ secrets.SITE_URL }}
+        run: node scripts/generate-post.mjs
+
+      - name: Commit and push new post
+        run: |
+          git config user.name "DetailOps Bot"
+          git config user.email "bot@detailops.io"
+          git add posts.json posts/ sitemap.xml
+          # Only commit if something actually changed
+          git diff --staged --quiet && echo "Nothing to commit." || \
+            git commit -m "blog: daily post $(date +'%Y-%m-%d')" && git push

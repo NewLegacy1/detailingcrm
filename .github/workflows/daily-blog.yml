@@ -1,0 +1,51 @@
+# Generate a daily blog post via OpenAI and commit to the repo.
+# Triggered by cron-job.org hitting GET /api/cron/blog (or manually via workflow_dispatch).
+# In GitHub repo → Settings → Secrets and variables → Actions, add:
+#   - OPENAI_API_KEY (your OpenAI API key; without it the job will fail)
+#   - SITE_URL (optional, e.g. https://detailops.io)
+name: Generate Daily Blog Post
+
+on:
+  workflow_dispatch:
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: onboarding/package-lock.json
+
+      - name: Install dependencies
+        working-directory: onboarding
+        run: npm ci
+
+      - name: Generate blog post
+        working-directory: onboarding
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          SITE_URL: ${{ secrets.SITE_URL }}
+        run: node scripts/generate-post.mjs
+
+      - name: Copy posts to public (for Next.js app)
+        run: |
+          cp onboarding/posts.json public/posts.json
+          mkdir -p public/posts
+          cp onboarding/posts/*.html public/posts/ 2>/dev/null || true
+
+      - name: Commit and push new post
+        run: |
+          git config user.name "DetailOps Bot"
+          git config user.email "bot@detailops.io"
+          git add onboarding/posts.json onboarding/posts/ onboarding/sitemap.xml public/posts.json public/posts/
+          git diff --staged --quiet && echo "Nothing to commit." || \
+            git commit -m "blog: daily post $(date +'%Y-%m-%d')" && git push

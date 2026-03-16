@@ -1,0 +1,13 @@
+{
+  "name": "DetailOps",
+  "short_name": "DetailOps",
+  "description": "CRM for mobile auto detailers — customers, jobs, vehicles, scheduling",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#ffffff",
+  "icons": [
+    { "src": "/android-icon-192x192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/apple-icon-180x180.png", "sizes": "180x180", "type": "image/png" }
+  ]
+}
