@@ -33,13 +33,8 @@ function ForgotPasswordContent() {
     setLoading(true)
     try {
       const baseUrl = typeof window !== 'undefined' ? window.location.origin : ''
-      // Use /auth/reset so the email link lands on a dedicated path. Supabase will append &code=...
-      // Middleware then redirects /auth/reset?code=... to /auth/callback. Include flow and next for callback.
-      const params = new URLSearchParams()
-      params.set('flow', 'recovery')
-      if (next && next.startsWith('/') && !next.startsWith('//')) params.set('next', next)
-      const resetPath = `/auth/reset?${params.toString()}`
-      const redirectTo = baseUrl ? `${baseUrl}${resetPath}` : undefined
+      // Use the base path only so Supabase redirect allowlist can use e.g. https://yoursite.com/auth/reset
+      const redirectTo = baseUrl ? `${baseUrl}/auth/reset` : undefined
       if (typeof document !== 'undefined') {
         document.cookie = `password_reset_next=${encodeURIComponent(next && next.startsWith('/') && !next.startsWith('//') ? next : '/crm/dashboard')}; path=/; max-age=3600; samesite=lax`
       }
@@ -48,7 +43,15 @@ function ForgotPasswordContent() {
         redirectTo,
       })
       if (err) {
-        setError(err.message)
+        const msg = err.message || 'Failed to send reset email.'
+        const lower = msg.toLowerCase()
+        let hint = ''
+        if (lower.includes('redirect') || lower.includes('url')) {
+          hint = 'Add this URL in Supabase: Authentication → URL Configuration → Redirect URLs: ' + (baseUrl || 'https://yoursite.com') + '/auth/reset'
+        } else if (lower.includes('recovery email') || lower.includes('sending')) {
+          hint = 'Ensure ' + (baseUrl || 'https://yoursite.com') + '/auth/reset is in Supabase Redirect URLs. If it is, check Auth logs or try again in a few minutes (rate limits).'
+        }
+        setError(hint ? `${msg} ${hint}` : msg)
         return
       }
       setSuccess(true)
