@@ -22,12 +22,14 @@ export async function GET() {
     return NextResponse.json({ error: 'Pro plan required' }, { status: 403 })
   }
 
-  const { data, error } = await supabase
+  let query = supabase
     .from('locations')
     .select('*')
     .eq('org_id', orgId)
     .order('sort_order', { ascending: true })
     .order('name', { ascending: true })
+  if (auth.locationId) query = query.eq('id', auth.locationId)
+  const { data, error } = await query
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   return NextResponse.json(data ?? [])

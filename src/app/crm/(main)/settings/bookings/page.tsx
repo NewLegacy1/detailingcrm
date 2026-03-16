@@ -51,6 +51,8 @@ export default async function SettingsBookingsPage() {
 
       <GoogleCalendarCard />
 
+      <PerLocationScheduleSection />
+
       {!isLocationManager && (
         <>
           <section>
@@ -68,8 +70,6 @@ export default async function SettingsBookingsPage() {
             </p>
             <ScheduleHoursForm />
           </section>
-
-          <PerLocationScheduleSection />
 
           <ShopLocationSettings isPro={isPro} />
         </>

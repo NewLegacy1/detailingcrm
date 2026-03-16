@@ -29,13 +29,18 @@ export function PerLocationScheduleSection() {
       .finally(() => setLoading(false))
   }, [])
 
-  if (loading || locations.length < 2) return null
+  if (loading || locations.length < 1) return null
 
+  const singleLocation = locations.length === 1
   return (
     <section>
-      <h2 className="section-title text-[var(--text)] mb-1">Per-location schedule</h2>
+      <h2 className="section-title text-[var(--text)] mb-1">
+        {singleLocation ? 'Business hours' : 'Per-location schedule'}
+      </h2>
       <p className="text-sm text-[var(--text-muted)] mb-4">
-        When you have multiple locations, each has its own service hours and booking slot interval. Edit below or in Settings → Locations.
+        {singleLocation
+          ? 'Set your location’s service hours and booking slot interval. These control when clients can book and how slots are generated.'
+          : 'When you have multiple locations, each has its own service hours and booking slot interval. Edit below or in Settings → Locations.'}
       </p>
       <div className="space-y-6">
         {locations.map((loc) => (

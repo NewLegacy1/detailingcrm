@@ -90,6 +90,23 @@ function AuthCallbackContent() {
         const { error: codeError } = await supabase.auth.exchangeCodeForSession(code)
         if (!mounted) return
         if (codeError) {
+          const { data: { session } } = await supabase.auth.getSession()
+          if (session && mounted) {
+            didRedirect.current = true
+            setStatus('redirecting')
+            const hadResetCookie = !!cookieNext
+            const isRecovery = codeType === 'recovery' || flow === 'recovery' || hadResetCookie
+            const isBookingReturn = /^\/book\/[^/]+$/.test(redirectTo)
+            if (isRecovery) {
+              if (isBookingReturn) doRedirect(`${redirectTo}/update-password`)
+              else doRedirect(`/login/update-password?next=${encodeURIComponent(redirectTo)}`)
+            } else if (isBookingReturn) {
+              doRedirect(`${redirectTo}/update-password`)
+            } else {
+              doRedirect(redirectTo.startsWith('/') ? redirectTo : '/crm/dashboard')
+            }
+            return
+          }
           setStatus('error')
           return
         }
@@ -166,9 +183,14 @@ function AuthCallbackContent() {
 
   if (status === 'error') {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#080c14]">
-        <div className="text-center">
-          <p className="text-red-400 mb-4">This link has expired or is invalid.</p>
+      <div className="min-h-screen flex items-center justify-center bg-[#080c14] p-4">
+        <div className="text-center max-w-sm">
+          <p className="text-red-400 mb-2">This link has expired or is invalid.</p>
+          <p className="text-[#7e8da8] text-sm mb-4">
+            Some email clients open links in the background; if you just opened this link, request a new one below.
+          </p>
+          <a href="/login/forgot-password" className="text-[#00b8f5] underline">Request a new reset link</a>
+          <span className="text-[#5a6a80] mx-2">·</span>
           <a href="/login" className="text-[#00b8f5] underline">Back to sign in</a>
         </div>
       </div>
