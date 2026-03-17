@@ -9,14 +9,10 @@ export async function POST() {
   if ('error' in result) return result.error
 
   const { auth } = result
+  const orgId = auth.orgId
+  if (!orgId) return NextResponse.json({ error: 'No organization' }, { status: 400 })
+
   const supabase = await createAuthClient()
-
-  let orgId = auth.orgId
-  if (!orgId) {
-    const { data: org } = await supabase.from('organizations').select('id').limit(1).single()
-    orgId = org?.id ?? null
-  }
-
   const { data: org } = await supabase
     .from('organizations')
     .select('stripe_account_id')

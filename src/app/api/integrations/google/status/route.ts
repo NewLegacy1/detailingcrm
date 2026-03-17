@@ -9,13 +9,10 @@ export async function GET() {
   if ('error' in result) return result.error
 
   const { auth } = result
-  const supabase = await createClient()
-  let orgId = auth.orgId
-  if (!orgId) {
-    const { data: org } = await supabase.from('organizations').select('id').limit(1).single()
-    orgId = org?.id ?? null
-  }
+  const orgId = auth.orgId
   if (!orgId) return NextResponse.json({ connected: false, calendarId: null, calendarName: null, options: {} })
+
+  const supabase = await createClient()
 
   const locationId = auth.locationId ?? null
   if (locationId) {

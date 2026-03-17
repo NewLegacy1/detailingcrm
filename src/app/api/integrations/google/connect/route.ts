@@ -10,13 +10,10 @@ export async function POST() {
   const result = await requirePermission(PERMISSIONS.GOOGLE_CONNECT)
   if ('error' in result) return result.error
 
-  const supabase = await createClient()
-  let orgId = result.auth.orgId
-  if (!orgId) {
-    const { data: org } = await supabase.from('organizations').select('id').limit(1).single()
-    orgId = org?.id ?? null
-  }
+  const orgId = result.auth.orgId
   if (!orgId) return NextResponse.json({ error: 'No organization' }, { status: 400 })
+
+  const supabase = await createClient()
 
   const state = crypto.randomBytes(24).toString('base64url')
   const cookieStore = await cookies()

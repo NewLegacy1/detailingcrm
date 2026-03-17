@@ -16,14 +16,10 @@ export async function POST(
   }
 
   const { id: jobId } = await params
-  const supabase = await createClient()
-
-  let orgId = auth.orgId
-  if (!orgId) {
-    const { data: org } = await supabase.from('organizations').select('id').limit(1).single()
-    orgId = org?.id ?? null
-  }
+  const orgId = auth.orgId
   if (!orgId) return NextResponse.json({ error: 'No organization' }, { status: 400 })
+
+  const supabase = await createClient()
 
   const { synced, error } = await syncJobToGoogle(supabase, orgId, jobId)
   if (error) return NextResponse.json({ ok: false, error }, { status: 200 })

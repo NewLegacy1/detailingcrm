@@ -22,11 +22,10 @@ export async function PATCH(
     return NextResponse.json({ error: 'start and end required (ISO date-time strings)' }, { status: 400 })
   }
 
-  const supabase = await createClient()
   const orgId = result.auth.orgId
-    ? result.auth.orgId
-    : (await supabase.from('organizations').select('id').limit(1).single()).data?.id ?? null
   if (!orgId) return NextResponse.json({ error: 'No organization' }, { status: 400 })
+
+  const supabase = await createClient()
 
   const { data: org } = await supabase
     .from('organizations')

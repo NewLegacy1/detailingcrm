@@ -10,19 +10,15 @@ export async function POST() {
   if ('error' in result) return result.error
 
   const { auth } = result
-  const supabase = await createAuthClient()
-
-  let orgId = auth.orgId
-  if (!orgId) {
-    const { data: org } = await supabase.from('organizations').select('id').limit(1).single()
-    orgId = org?.id ?? null
-  }
+  const orgId = auth.orgId
   if (!orgId) {
     return NextResponse.json(
       { error: 'No organization found. Ensure you have an organization (run Supabase migrations if needed) and your profile has an organization assigned.' },
       { status: 400 }
     )
   }
+
+  const supabase = await createAuthClient()
 
   const { baseUrl, error: urlError } = getStripeRedirectBaseUrl()
   if (urlError) {

@@ -11,21 +11,17 @@ export async function POST(request: NextRequest) {
     if ('error' in result) return result.error
     const { auth } = result
 
+    const orgId = auth.orgId
+    if (!orgId) return NextResponse.json({ error: 'No organization' }, { status: 400 })
+
     const supabase = await createClient()
-    let orgId = auth.orgId
-    if (!orgId) {
-      const { data: org } = await supabase.from('organizations').select('id').limit(1).single()
-      orgId = org?.id ?? null
-    }
     let stripeAccountId: string | null = null
-    if (orgId) {
-      const res = await supabase
-        .from('organizations')
-        .select('stripe_account_id')
-        .eq('id', orgId)
-        .single()
-      stripeAccountId = res.data?.stripe_account_id ?? null
-    }
+    const res = await supabase
+      .from('organizations')
+      .select('stripe_account_id')
+      .eq('id', orgId)
+      .single()
+    stripeAccountId = res.data?.stripe_account_id ?? null
 
     const body = await request.json()
     const { clientId, jobId, currency = 'usd', dueDate, memo, footer, lineItems } = body

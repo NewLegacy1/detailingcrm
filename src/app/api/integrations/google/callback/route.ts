@@ -38,15 +38,12 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(`${redirectTo}?google_error=unauthorized`)
   }
 
-  const supabase = await createClient()
-  let orgId = auth.orgId
-  if (!orgId) {
-    const { data: org } = await supabase.from('organizations').select('id').limit(1).single()
-    orgId = org?.id ?? null
-  }
+  const orgId = auth.orgId
   if (!orgId) {
     return NextResponse.redirect(`${redirectTo}?google_error=no_org`)
   }
+
+  const supabase = await createClient()
 
   try {
     const tokens = await exchangeCodeForTokens(code)

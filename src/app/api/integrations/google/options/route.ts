@@ -12,13 +12,10 @@ export async function PATCH(request: NextRequest) {
   const syncToEmployee = body.syncToEmployee as boolean | undefined
   const moveOnReassign = body.moveOnReassign as boolean | undefined
 
-  const supabase = await createClient()
-  let orgId = result.auth.orgId
-  if (!orgId) {
-    const { data: org } = await supabase.from('organizations').select('id').limit(1).single()
-    orgId = org?.id ?? null
-  }
+  const orgId = result.auth.orgId
   if (!orgId) return NextResponse.json({ error: 'No organization' }, { status: 400 })
+
+  const supabase = await createClient()
 
   const updates: Record<string, unknown> = { updated_at: new Date().toISOString() }
   if (typeof syncToCompany === 'boolean') updates.google_sync_to_company = syncToCompany

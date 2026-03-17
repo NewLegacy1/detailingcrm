@@ -2,8 +2,11 @@ import { NextResponse } from 'next/server'
 import { createAuthClient } from '@/lib/supabase/server'
 import { createServiceRoleClient } from '@/lib/supabase/server'
 
-/** Grant Pro subscription and mark onboarding complete so the CRM layout lets you in. Allowed in all environments for testing (e.g. on Vercel). */
+/** Grant Pro subscription and mark onboarding complete so the CRM layout lets you in. Only available outside production. */
 export async function POST() {
+  if (process.env.NODE_ENV === 'production') {
+    return NextResponse.json({ error: 'Not available in production' }, { status: 403 })
+  }
   const authClient = await createAuthClient()
   const { data: { user } } = await authClient.auth.getUser()
   if (!user) {

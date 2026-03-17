@@ -8,12 +8,10 @@ export async function GET() {
   const result = await requirePermission(PERMISSIONS.GOOGLE_CONNECT)
   if ('error' in result) return result.error
 
+  const orgId = result.auth.orgId
+  if (!orgId) return NextResponse.json({ error: 'No organization' }, { status: 400 })
+
   const supabase = await createClient()
-  let orgId = result.auth.orgId
-  if (!orgId) {
-    const { data: org } = await supabase.from('organizations').select('id').limit(1).single()
-    orgId = org?.id ?? null
-  }
   const { data: org } = await supabase
     .from('organizations')
     .select('google_tokens_encrypted')
@@ -40,15 +38,13 @@ export async function POST(request: NextRequest) {
   const result = await requirePermission(PERMISSIONS.GOOGLE_CONNECT)
   if ('error' in result) return result.error
 
+  const orgId = result.auth.orgId
+  if (!orgId) return NextResponse.json({ error: 'No organization' }, { status: 400 })
+
   const body = await request.json().catch(() => ({}))
   const summary = (body.summary as string) || 'Detailing Jobs'
 
   const supabase = await createClient()
-  let orgId = result.auth.orgId
-  if (!orgId) {
-    const { data: org } = await supabase.from('organizations').select('id').limit(1).single()
-    orgId = org?.id ?? null
-  }
   const { data: org } = await supabase
     .from('organizations')
     .select('google_tokens_encrypted')

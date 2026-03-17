@@ -8,14 +8,10 @@ export async function GET() {
   if ('error' in result) return result.error
 
   const { auth } = result
-  const supabase = await createClient()
-  let orgId = auth.orgId
-  if (!orgId) {
-    const { data: org } = await supabase.from('organizations').select('id').limit(1).single()
-    orgId = org?.id ?? null
-  }
+  const orgId = auth.orgId
   if (!orgId) return NextResponse.json({ error: 'No organization' }, { status: 400 })
 
+  const supabase = await createClient()
   const { data, error } = await supabase
     .from('organizations')
     .select('*')
@@ -31,14 +27,10 @@ export async function PATCH(request: NextRequest) {
   if ('error' in result) return result.error
 
   const { auth } = result
-  const supabase = await createClient()
-  let orgId = auth.orgId
-  if (!orgId) {
-    const { data: org } = await supabase.from('organizations').select('id').limit(1).single()
-    orgId = org?.id ?? null
-  }
+  const orgId = auth.orgId
   if (!orgId) return NextResponse.json({ error: 'No organization' }, { status: 400 })
 
+  const supabase = await createClient()
   const body = await request.json()
   const upd: Record<string, unknown> = {
     updated_at: new Date().toISOString(),

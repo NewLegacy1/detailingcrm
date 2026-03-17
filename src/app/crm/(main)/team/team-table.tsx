@@ -1,7 +1,6 @@
 'use client'
 
-import { useState } from 'react'
-import { createClient } from '@/lib/supabase/client'
+import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogClose } from '@/components/ui/dialog'
@@ -22,49 +21,93 @@ interface TeamTableProps {
   initialProfiles: Profile[]
 }
 
+interface Location {
+  id: string
+  name: string
+}
+
 const ROLES = [
   { value: 'owner', label: 'Owner' },
   { value: 'admin', label: 'Admin' },
+  { value: 'manager', label: 'Manager' },
   { value: 'technician', label: 'Technician' },
   { value: 'pending', label: 'Pending' },
 ]
+
+const ROLES_NEEDING_LOCATION = ['manager', 'technician']
 
 export function TeamTable({ initialProfiles }: TeamTableProps) {
   const [profiles, setProfiles] = useState<Profile[]>(initialProfiles)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [editingProfile, setEditingProfile] = useState<Profile | null>(null)
   const [selectedRole, setSelectedRole] = useState('')
+  const [selectedLocationId, setSelectedLocationId] = useState<string>('')
+  const [saveError, setSaveError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [inviteOpen, setInviteOpen] = useState(false)
   const [inviteEmail, setInviteEmail] = useState('')
   const [inviteRole, setInviteRole] = useState('technician')
+  const [inviteLocationId, setInviteLocationId] = useState<string>('')
   const [inviteSending, setInviteSending] = useState(false)
   const [inviteError, setInviteError] = useState<string | null>(null)
+  const [locations, setLocations] = useState<Location[]>([])
+  const [multiLocationEnabled, setMultiLocationEnabled] = useState(false)
+
+  useEffect(() => {
+    async function loadLocations() {
+      try {
+        const res = await fetch('/api/locations')
+        if (res.ok) {
+          const data: Location[] = await res.json()
+          setLocations(data)
+          setMultiLocationEnabled(data.length > 0)
+        }
+      } catch {
+        // non-fatal: location selector just won't show
+      }
+    }
+    loadLocations()
+  }, [])
 
   function openEditDialog(profile: Profile) {
     setEditingProfile(profile)
     setSelectedRole(profile.role)
+    setSelectedLocationId(profile.location_id ?? '')
+    setSaveError(null)
     setIsDialogOpen(true)
   }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!editingProfile) return
+    setSaveError(null)
     setLoading(true)
-    const supabase = createClient()
 
-    const { data, error } = await supabase
-      .from('profiles')
-      .update({ role: selectedRole })
-      .eq('id', editingProfile.id)
-      .select()
-      .single()
+    const body: Record<string, unknown> = { role: selectedRole }
+    if (multiLocationEnabled && ROLES_NEEDING_LOCATION.includes(selectedRole)) {
+      body.location_id = selectedLocationId || null
+    } else {
+      body.location_id = null
+    }
 
-    if (!error && data) {
+    const res = await fetch(`/api/settings/team/${editingProfile.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    })
+    const data = await res.json()
+
+    if (res.ok) {
       setProfiles((prev) =>
-        prev.map((p) => (p.id === data.id ? data : p))
+        prev.map((p) =>
+          p.id === editingProfile.id
+            ? { ...p, role: selectedRole as Profile['role'], location_id: (body.location_id as string | null) ?? null }
+            : p
+        )
       )
       setIsDialogOpen(false)
+    } else {
+      setSaveError(data.error ?? 'Failed to update role')
     }
     setLoading(false)
   }
@@ -76,16 +119,21 @@ export function TeamTable({ initialProfiles }: TeamTableProps) {
     setInviteError(null)
     setInviteSending(true)
     try {
+      const body: Record<string, unknown> = { email, role: inviteRole }
+      if (multiLocationEnabled && ROLES_NEEDING_LOCATION.includes(inviteRole)) {
+        body.location_id = inviteLocationId || null
+      }
       const res = await fetch('/api/settings/team/invite', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, role: inviteRole }),
+        body: JSON.stringify(body),
       })
       const data = await res.json()
       if (res.ok) {
         setInviteOpen(false)
         setInviteEmail('')
         setInviteRole('technician')
+        setInviteLocationId('')
       } else {
         setInviteError(data.error || 'Failed to send invite')
       }
@@ -176,7 +224,12 @@ export function TeamTable({ initialProfiles }: TeamTableProps) {
               <select
                 id="role"
                 value={selectedRole}
-                onChange={(e) => setSelectedRole(e.target.value)}
+                onChange={(e) => {
+                  setSelectedRole(e.target.value)
+                  if (!ROLES_NEEDING_LOCATION.includes(e.target.value)) {
+                    setSelectedLocationId('')
+                  }
+                }}
                 className="mt-2 flex h-10 w-full rounded-lg border border-[var(--border)] bg-[var(--bg-card)] px-3 py-2 text-sm focus:border-[var(--accent)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/30"
               >
                 {ROLES.map((role) => (
@@ -186,6 +239,27 @@ export function TeamTable({ initialProfiles }: TeamTableProps) {
                 ))}
               </select>
             </div>
+            {multiLocationEnabled && ROLES_NEEDING_LOCATION.includes(selectedRole) && (
+              <div>
+                <Label htmlFor="edit-location">Location</Label>
+                <select
+                  id="edit-location"
+                  value={selectedLocationId}
+                  onChange={(e) => setSelectedLocationId(e.target.value)}
+                  className="mt-2 flex h-10 w-full rounded-lg border border-[var(--border)] bg-[var(--bg-card)] px-3 py-2 text-sm focus:border-[var(--accent)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/30"
+                >
+                  <option value="">— No location —</option>
+                  {locations.map((loc) => (
+                    <option key={loc.id} value={loc.id}>
+                      {loc.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+            {saveError && (
+              <p className="text-sm text-red-500">{saveError}</p>
+            )}
             <div className="flex justify-end gap-2 pt-4">
               <Button
                 type="button"
@@ -229,7 +303,12 @@ export function TeamTable({ initialProfiles }: TeamTableProps) {
               <select
                 id="invite-role"
                 value={inviteRole}
-                onChange={(e) => setInviteRole(e.target.value)}
+                onChange={(e) => {
+                  setInviteRole(e.target.value)
+                  if (!ROLES_NEEDING_LOCATION.includes(e.target.value)) {
+                    setInviteLocationId('')
+                  }
+                }}
                 className="mt-2 flex h-10 w-full rounded-lg border border-[var(--border)] bg-[var(--bg-card)] px-3 py-2 text-sm text-[var(--text)]"
               >
                 {INVITE_ROLES.map((opt) => (
@@ -239,6 +318,24 @@ export function TeamTable({ initialProfiles }: TeamTableProps) {
                 ))}
               </select>
             </div>
+            {multiLocationEnabled && ROLES_NEEDING_LOCATION.includes(inviteRole) && (
+              <div>
+                <Label htmlFor="invite-location">Location</Label>
+                <select
+                  id="invite-location"
+                  value={inviteLocationId}
+                  onChange={(e) => setInviteLocationId(e.target.value)}
+                  className="mt-2 flex h-10 w-full rounded-lg border border-[var(--border)] bg-[var(--bg-card)] px-3 py-2 text-sm text-[var(--text)]"
+                >
+                  <option value="">— No location —</option>
+                  {locations.map((loc) => (
+                    <option key={loc.id} value={loc.id}>
+                      {loc.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
             {inviteError && (
               <p className="text-sm text-red-500">{inviteError}</p>
             )}

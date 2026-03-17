@@ -15,11 +15,10 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'timeMin and timeMax required (ISO date-time)' }, { status: 400 })
   }
 
-  const supabase = await createClient()
   const orgId = result.auth.orgId
-    ? result.auth.orgId
-    : (await supabase.from('organizations').select('id').limit(1).single()).data?.id ?? null
   if (!orgId) return NextResponse.json({ events: [] })
+
+  const supabase = await createClient()
 
   const { data: org } = await supabase
     .from('organizations')

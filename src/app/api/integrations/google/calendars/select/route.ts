@@ -13,13 +13,10 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'calendarId required' }, { status: 400 })
   }
 
-  const supabase = await createClient()
-  let orgId = result.auth.orgId
-  if (!orgId) {
-    const { data: org } = await supabase.from('organizations').select('id').limit(1).single()
-    orgId = org?.id ?? null
-  }
+  const orgId = result.auth.orgId
   if (!orgId) return NextResponse.json({ error: 'No organization' }, { status: 400 })
+
+  const supabase = await createClient()
 
   const locationId = result.auth.locationId ?? null
   if (locationId) {

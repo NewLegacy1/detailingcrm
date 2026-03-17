@@ -20,7 +20,7 @@ function redirectAuthRecovery(request: NextRequest): NextResponse | null {
   return null
 }
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const authRedirect = redirectAuthRecovery(request)
   if (authRedirect) return authRedirect
   return await updateSession(request)

@@ -14,13 +14,10 @@ export async function GET() {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
-  const supabase = await createAuthClient()
-  let orgId = auth.orgId
-  if (!orgId) {
-    const { data: org } = await supabase.from('organizations').select('id').limit(1).single()
-    orgId = org?.id ?? null
-  }
+  const orgId = auth.orgId
+  if (!orgId) return NextResponse.json({ connected: false, accountId: null, email: null })
 
+  const supabase = await createAuthClient()
   const { data: org } = await supabase
     .from('organizations')
     .select('stripe_account_id, stripe_email')
