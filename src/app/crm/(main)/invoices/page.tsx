@@ -29,7 +29,11 @@ export default async function InvoicesPage({
     invoicesQuery,
     clientsQuery,
     initialJobId
-      ? supabase.from('jobs').select('id, services(name, base_price)').eq('id', initialJobId).single()
+      ? supabase
+          .from('jobs')
+          .select('id, base_price, size_price_offset, discount_amount, services(name), job_upsells(price)')
+          .eq('id', initialJobId)
+          .single()
       : { data: null },
   ])
   let invoices = invoicesRaw ?? []
@@ -40,12 +44,30 @@ export default async function InvoicesPage({
     })
   }
 
-  const service = initialJob?.services
-    ? (Array.isArray(initialJob.services) ? initialJob.services[0] : initialJob.services) as { name: string; base_price: number } | undefined
-    : undefined
-  const initialLineFromJob = service
-    ? [{ description: service.name, quantity: 1, unit_amount: Number(service.base_price ?? 0), amount: Number(service.base_price ?? 0) }]
-    : undefined
+  type JobPreload = {
+    services?: { name: string } | { name: string }[] | null
+    base_price?: number | null
+    size_price_offset?: number | null
+    discount_amount?: number | null
+    job_upsells?: { price: number }[] | null
+  }
+  const j = initialJob as JobPreload | null
+  const serviceNames = j?.services
+    ? Array.isArray(j.services)
+      ? j.services.map((s) => s.name).filter(Boolean).join(', ')
+      : j.services.name
+    : null
+  const jobBase = Number(j?.base_price ?? 0)
+  const jobSize = Number(j?.size_price_offset ?? 0)
+  const jobDisc = Number(j?.discount_amount ?? 0)
+  const upsellSum = Array.isArray(j?.job_upsells)
+    ? j.job_upsells.reduce((s, u) => s + Number(u.price ?? 0), 0)
+    : 0
+  const jobTotalDue = Math.max(0, jobBase + jobSize - jobDisc + upsellSum)
+  const initialLineFromJob =
+    j && serviceNames && jobTotalDue >= 0
+      ? [{ description: serviceNames, quantity: 1, unit_amount: jobTotalDue, amount: jobTotalDue }]
+      : undefined
 
   return (
     <div className="space-y-6 p-6 lg:p-8" style={{ background: 'var(--bg)' }}>

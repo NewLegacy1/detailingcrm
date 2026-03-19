@@ -13,8 +13,9 @@ export async function POST(req: NextRequest) {
   if (!jobId || typeof jobId !== 'string') return NextResponse.json({ error: 'jobId required' }, { status: 400 })
 
   const sendClientEmailOverride = typeof body.sendClientEmail === 'boolean' ? body.sendClientEmail : undefined
+  const forceBusinessEmail = body.forceBusinessEmail === true
 
   const supabase = await createClient()
-  const { sent } = await notifyNewBooking(supabase, jobId, { sendClientEmailOverride })
+  const { sent } = await notifyNewBooking(supabase, jobId, { sendClientEmailOverride, forceBusinessEmail })
   return NextResponse.json({ ok: true, sent })
 }

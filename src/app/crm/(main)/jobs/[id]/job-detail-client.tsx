@@ -90,6 +90,11 @@ interface JobDetailClientProps {
       duration_mins: number
       base_price?: number | null
     }[] | null
+    /** Stored job line items (used for payment / custom pricing). */
+    base_price?: number | null
+    size_price_offset?: number | null
+    discount_amount?: number | null
+    job_upsells?: { price: number }[]
   }
   photos: JobPhoto[]
   checklistItems: ChecklistItemRow[]
@@ -139,8 +144,16 @@ export function JobDetailClient({
   const servicesList = Array.isArray(job.services) ? job.services : job.services ? [job.services] : []
   const clientId = client?.id
   const serviceName = servicesList.length === 0 ? 'Job' : servicesList.map((s) => s.name).join(', ')
-  const servicePrice = servicesList.reduce((sum, s) => sum + (s.base_price ?? 0), 0)
+  const catalogServiceTotal = servicesList.reduce((sum, s) => sum + (s.base_price ?? 0), 0)
   const serviceDuration = servicesList.reduce((sum, s) => sum + (s.duration_mins ?? 0), 0)
+  const jobBaseStored = Number(job.base_price ?? 0)
+  const sizeOffStored = Number(job.size_price_offset ?? 0)
+  const discStored = Number(job.discount_amount ?? 0)
+  const upsellRows = job.job_upsells ?? []
+  const upsellTotal = upsellRows.reduce((s, u) => s + Number(u.price ?? 0), 0)
+  const amountDue = Math.max(0, jobBaseStored + sizeOffStored - discStored + upsellTotal)
+  const usesCustomBase =
+    servicesList.length > 0 && Math.abs(jobBaseStored - catalogServiceTotal) > 0.005
 
   function triggerGoogleSync() {
     fetch(`/api/integrations/google/sync/job/${job.id}`, { method: 'POST' }).catch(
@@ -415,8 +428,39 @@ export function JobDetailClient({
           </CardHeader>
           <CardContent className="text-sm text-[var(--text-secondary)]">
             <p className="font-medium text-white">{serviceName}</p>
-            <p>${servicePrice.toLocaleString()}</p>
-            <p>{serviceDuration} min</p>
+            {usesCustomBase && (
+              <p className="text-xs text-[var(--text-muted)] mt-1">
+                Catalog services: ${catalogServiceTotal.toLocaleString()}
+              </p>
+            )}
+            <dl className="mt-2 space-y-0.5 text-xs">
+              <div className="flex justify-between gap-2">
+                <dt>Job base</dt>
+                <dd className="text-[var(--text)]">${jobBaseStored.toLocaleString()}</dd>
+              </div>
+              {sizeOffStored > 0 && (
+                <div className="flex justify-between gap-2">
+                  <dt>Size add-on</dt>
+                  <dd className="text-[var(--text)]">${sizeOffStored.toLocaleString()}</dd>
+                </div>
+              )}
+              {discStored > 0 && (
+                <div className="flex justify-between gap-2">
+                  <dt>Discount</dt>
+                  <dd className="text-emerald-400">−${discStored.toLocaleString()}</dd>
+                </div>
+              )}
+              {upsellTotal > 0 && (
+                <div className="flex justify-between gap-2">
+                  <dt>Add-ons</dt>
+                  <dd className="text-[var(--text)]">${upsellTotal.toLocaleString()}</dd>
+                </div>
+              )}
+            </dl>
+            <p className="mt-2 font-semibold text-white">
+              Total due: ${amountDue.toLocaleString()}
+            </p>
+            <p className="mt-1 text-[var(--text-muted)]">{serviceDuration} min</p>
           </CardContent>
         </Card>
       </div>
@@ -434,7 +478,10 @@ export function JobDetailClient({
             onRequestComplete={() => setChecklistModalOpen(true)}
             checklistOpen={checklistModalOpen}
             onPaymentClick={() => {
-              if (payments.length === 0 && !job.paid_at) setPaymentModalOpen(true)
+              if (payments.length === 0 && !job.paid_at) {
+                setRecordAmount(amountDue > 0 ? String(amountDue) : '')
+                setPaymentModalOpen(true)
+              }
             }}
             isPaid={payments.length > 0 || !!job.paid_at}
           />
@@ -784,6 +831,7 @@ export function JobDetailClient({
                 size="lg"
                 onClick={() => {
                   setRecordMethod('cheque')
+                  setRecordAmount(amountDue > 0 ? String(amountDue) : '')
                   setPaymentStep('record')
                 }}
               >

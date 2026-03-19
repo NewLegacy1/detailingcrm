@@ -90,6 +90,7 @@ export default async function JobDetailPage({
     { data: photos },
     { data: checklistItems },
     { data: jobPayments },
+    { data: jobUpsells },
   ] = await Promise.all([
     jobRow.customer_id
       ? supabase.from('clients').select('id, name, email, phone, address').eq('id', jobRow.customer_id).maybeSingle()
@@ -105,6 +106,7 @@ export default async function JobDetailPage({
     supabase.from('job_photos').select('*').eq('job_id', id).order('created_at', { ascending: true }),
     supabase.from('job_checklist_items').select('*').eq('job_id', id).order('sort_order'),
     supabase.from('job_payments').select('*').eq('job_id', id).order('created_at', { ascending: false }),
+    supabase.from('job_upsells').select('price').eq('job_id', id),
   ])
 
   let vehiclesList: { id: string; make: string; model: string; year: number | null; color: string | null }[] = []
@@ -129,6 +131,7 @@ export default async function JobDetailPage({
     clients: clientData ?? null,
     vehicles: vehiclesList.length ? vehiclesList : null,
     services: servicesList.length ? servicesList : null,
+    job_upsells: jobUpsells ?? [],
   }
 
   return (

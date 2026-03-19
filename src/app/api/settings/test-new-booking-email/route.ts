@@ -4,6 +4,7 @@ import { requirePermission } from '@/lib/permissions-server'
 import { PERMISSIONS } from '@/lib/permissions'
 import { sendEmail, getFromAddressForSlug } from '@/lib/notifications'
 import { buildNewBookingNotificationHtml } from '@/lib/email-templates/new-booking-notification'
+import { formatScheduledAtForCustomer } from '@/lib/format-scheduled-at-display'
 
 const CRM_BASE =
   process.env.NEXT_PUBLIC_APP_URL ||
@@ -31,7 +32,7 @@ export async function POST(req: NextRequest) {
 
   const { data: org, error: orgErr } = await supabase
     .from('organizations')
-    .select('id, name, logo_url, booking_slug, booking_service_area_label')
+    .select('id, name, logo_url, booking_slug, booking_service_area_label, timezone')
     .eq('id', orgId)
     .single()
 
@@ -47,7 +48,10 @@ export async function POST(req: NextRequest) {
     logoUrl: org.logo_url ?? null,
     customerName: 'Test Customer',
     serviceName: 'Basic Interior Detail',
-    scheduledAt: new Date(Date.now() + 86400000).toLocaleString(),
+    scheduledAt: formatScheduledAtForCustomer(
+      new Date(Date.now() + 86400000).toISOString(),
+      org.timezone as string | null | undefined
+    ),
     address: '123 Sample St, Your City, ON L0L 0L0',
     jobId: '00000000-0000-0000-0000-000000000000',
     orderId: 'TEST1234',

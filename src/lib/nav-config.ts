@@ -52,8 +52,8 @@ export type NavGroupKey = 'Main' | 'Business' | 'Admin' | 'Marketing'
 export const navGroups: { key: NavGroupKey; label: string; itemLabels: string[] }[] = [
   { key: 'Main', label: 'Main', itemLabels: ['Dashboard'] },
   { key: 'Business', label: 'Business', itemLabels: ['Customers', 'Jobs', 'Schedule', 'Services', 'Invoices'] },
-  { key: 'Admin', label: 'Admin', itemLabels: ['Team', 'Reports', 'Settings'] },
   { key: 'Marketing', label: 'Marketing', itemLabels: ['Automations', 'Drip Marketing', 'Promo codes', 'Campaigns'] },
+  { key: 'Admin', label: 'Admin', itemLabels: ['Team', 'Reports', 'Settings'] },
 ]
 
 export function getNavGroupsForRole(role: UserRole, locationId?: string | null): { label: string; items: NavItem[] }[] {

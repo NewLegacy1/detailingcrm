@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceRoleClient } from '@/lib/supabase/server'
 import { haversineDistanceKm } from '@/lib/utils'
+import { formatScheduledAtForCustomer } from '@/lib/format-scheduled-at-display'
 
 /** Public: create Stripe Checkout Session for booking deposit (Pro + booking_payment_mode = deposit). Redirect customer to pay deposit. */
 export async function POST(req: NextRequest) {
@@ -70,7 +71,7 @@ export async function POST(req: NextRequest) {
 
   const { data: org, error: orgError } = await supabase
     .from('organizations')
-    .select('id, map_lat, map_lng, service_radius_km, shop_address, stripe_account_id, booking_payment_mode, subscription_plan')
+    .select('id, map_lat, map_lng, service_radius_km, shop_address, stripe_account_id, booking_payment_mode, subscription_plan, timezone')
     .eq('booking_slug', slug)
     .single()
 
@@ -231,7 +232,7 @@ export async function POST(req: NextRequest) {
             currency: 'cad',
             product_data: {
               name: `Deposit: ${service.name}`,
-              description: `Booking deposit (${new Date(scheduledAt).toLocaleString()})`,
+              description: `Booking deposit (${formatScheduledAtForCustomer(scheduledDate.toISOString(), org.timezone as string | null | undefined, { dateStyle: 'medium', timeStyle: 'short' })})`,
             },
             unit_amount: depositCents,
           },

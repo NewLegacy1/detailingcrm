@@ -6,6 +6,7 @@ import { buildReviewRequestHtml } from '@/lib/email-templates/review-request'
 import { buildJobReminderHtml } from '@/lib/email-templates/job-reminder'
 import { buildMaintenanceUpsellHtml } from '@/lib/email-templates/maintenance-upsell'
 import { startDripRunsForTrigger } from '@/lib/drip-server'
+import { formatScheduledAtForCustomer } from '@/lib/format-scheduled-at-display'
 
 const CRON_SECRET = process.env.CRON_SECRET
 const BASE_ORIGIN =
@@ -84,7 +85,7 @@ export async function GET(req: NextRequest) {
   // ── Job reminders ──
   const { data: reminderOrgs } = await supabase
     .from('organizations')
-    .select('id, name, booking_slug, job_reminder_mins, job_reminder_client_email_on, job_reminder_sms_message, job_reminder_subject, logo_url, primary_color, accent_color, theme, booking_header_text_color, booking_contact_phone, booking_contact_email')
+    .select('id, name, booking_slug, job_reminder_mins, job_reminder_client_email_on, job_reminder_sms_message, job_reminder_subject, logo_url, primary_color, accent_color, theme, booking_header_text_color, booking_contact_phone, booking_contact_email, timezone')
     .not('job_reminder_enabled', 'eq', false)
 
   const now = new Date()
@@ -111,7 +112,9 @@ export async function GET(req: NextRequest) {
       if (!job.customer_id) continue
       const { data: client } = await supabase.from('clients').select('id, name, email').eq('id', job.customer_id).single()
       const to = client?.email?.trim()
-      const scheduledAt = job.scheduled_at ? new Date(job.scheduled_at).toLocaleString(undefined, { dateStyle: 'full', timeStyle: 'short' }) : 'your scheduled time'
+      const scheduledAt = job.scheduled_at
+        ? formatScheduledAtForCustomer(job.scheduled_at, org.timezone as string | null | undefined)
+        : 'your scheduled time'
       let customMessage = template
       for (const [key, value] of Object.entries({
         name: client?.name ?? 'there',

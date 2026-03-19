@@ -42,6 +42,9 @@ export async function POST(req: NextRequest) {
     notes?: string | null
     base_price?: number
     size_price_offset?: number
+    /** When `custom`, `base_price` overrides the sum of service list prices (size add-ons still apply). */
+    pricing_mode?: 'catalog' | 'custom'
+    discount_amount?: number
     /** Optional: assign job to this location (must belong to org). Overrides auth.locationId. */
     location_id?: string | null
   }
@@ -111,7 +114,14 @@ export async function POST(req: NextRequest) {
   const uniqueVehicleIds = [...new Set(vehicleServices.map((l) => l.vehicle_id).filter(Boolean))] as string[]
   const allVehicleIds = vehicleIds.length > 0 ? vehicleIds : uniqueVehicleIds
 
-  let base_price = typeof body.base_price === 'number' ? body.base_price : 0
+  const useCustomBase =
+    body.pricing_mode === 'custom' && typeof body.base_price === 'number' && !Number.isNaN(body.base_price)
+  const discount_amount =
+    typeof body.discount_amount === 'number' && !Number.isNaN(body.discount_amount)
+      ? Math.max(0, body.discount_amount)
+      : 0
+
+  let base_price = 0
   if (vehicleServices.length > 0) {
     const serviceIdsForPrice = [...new Set(vehicleServices.map((l) => l.service_id))]
     const { data: servicesData } = await supabase
@@ -119,7 +129,12 @@ export async function POST(req: NextRequest) {
       .select('id, base_price')
       .in('id', serviceIdsForPrice)
     const priceMap = new Map((servicesData ?? []).map((s) => [s.id, Number((s as { base_price?: number }).base_price) || 0]))
-    base_price = vehicleServices.reduce((acc, l) => acc + (priceMap.get(l.service_id) ?? 0), 0)
+    const catalogBase = vehicleServices.reduce((acc, l) => acc + (priceMap.get(l.service_id) ?? 0), 0)
+    base_price = useCustomBase ? Math.max(0, body.base_price!) : catalogBase
+  } else if (useCustomBase) {
+    base_price = Math.max(0, body.base_price!)
+  } else if (typeof body.base_price === 'number' && !Number.isNaN(body.base_price)) {
+    base_price = Math.max(0, body.base_price)
   }
 
   if (orgForTz?.subscription_plan === 'starter') {
@@ -163,6 +178,7 @@ export async function POST(req: NextRequest) {
     notes,
     base_price,
     size_price_offset,
+    discount_amount,
   }
   if (locationId) insertPayload.location_id = locationId
   const { data: newJob, error: jobError } = await supabase

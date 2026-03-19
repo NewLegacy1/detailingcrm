@@ -6,6 +6,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { sendEmail, sendSms, getFromAddressForSlug } from '@/lib/notifications'
 import { buildNewBookingNotificationHtml } from '@/lib/email-templates/new-booking-notification'
 import { buildClientConfirmationHtml } from '@/lib/email-templates/client-confirmation'
+import { formatScheduledAtForCustomer } from '@/lib/format-scheduled-at-display'
 
 const CRM_BASE =
   process.env.NEXT_PUBLIC_APP_URL ||
@@ -14,7 +15,7 @@ const CRM_BASE =
 export async function notifyNewBooking(
   supabase: SupabaseClient,
   jobId: string,
-  options?: { sendClientEmailOverride?: boolean }
+  options?: { sendClientEmailOverride?: boolean; forceBusinessEmail?: boolean }
 ): Promise<{ sent: number }> {
   const { data: job, error: jobErr } = await supabase
     .from('jobs')
@@ -30,7 +31,7 @@ export async function notifyNewBooking(
   const { data: org } = await supabase
     .from('organizations')
     .select(
-      'new_booking_email_on, new_booking_sms_on, new_booking_client_email_on, new_booking_client_sms_on, new_booking_user_email_on, new_booking_user_sms_on, booking_slug, booking_contact_email, booking_contact_phone, name, logo_url, booking_service_area_label, primary_color, accent_color, theme, booking_header_text_color'
+      'new_booking_email_on, new_booking_sms_on, new_booking_client_email_on, new_booking_client_sms_on, new_booking_user_email_on, new_booking_user_sms_on, booking_slug, booking_contact_email, booking_contact_phone, name, logo_url, booking_service_area_label, primary_color, accent_color, theme, booking_header_text_color, timezone'
     )
     .eq('id', orgId)
     .single()
@@ -47,8 +48,8 @@ export async function notifyNewBooking(
     ? options.sendClientEmailOverride
     : (org?.new_booking_client_email_on ?? org?.new_booking_email_on ?? true)
   const clientSmsOn = org?.new_booking_client_sms_on ?? org?.new_booking_sms_on ?? true
-  const userEmailOn = org?.new_booking_user_email_on ?? false
-  const userSmsOn = org?.new_booking_user_sms_on ?? false
+  const userEmailOn = options?.forceBusinessEmail ? true : (org?.new_booking_user_email_on ?? false)
+  const userSmsOn = options?.forceBusinessEmail ? false : (org?.new_booking_user_sms_on ?? false)
 
   if (!clientEmailOn && !clientSmsOn && !userEmailOn && !userSmsOn) return { sent: 0 }
 
@@ -66,7 +67,7 @@ export async function notifyNewBooking(
     if (svc?.name) serviceName = svc.name
   }
 
-  const scheduledStr = job.scheduled_at ? new Date(job.scheduled_at).toLocaleString() : ''
+  const scheduledStr = formatScheduledAtForCustomer(job.scheduled_at, org?.timezone as string | null | undefined)
   const addressStr = job.address ?? ''
 
   // Business phone: prefer profiles.phone, fall back to org booking_contact_phone

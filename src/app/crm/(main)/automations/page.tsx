@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { Star, CalendarPlus, Bell, Wrench, ShoppingCart, Loader2, Zap } from 'lucide-react'
+import { Star, CalendarPlus, Bell, Wrench, ShoppingCart, Loader2, Zap, ChevronDown } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { AutomationsForm } from '@/app/crm/(main)/settings/notifications/automations-form'
 import { PLAN_PAGE_PATH } from '@/components/settings/plan-page-actions'
@@ -78,6 +78,7 @@ export default function AutomationsPage() {
   const [savingField, setSavingField] = useState<string | null>(null)
   const [abandonedSessions, setAbandonedSessions] = useState<AbandonedSession[]>([])
   const [sessionsLoading, setSessionsLoading] = useState(false)
+  const [abandonedBookingsOpen, setAbandonedBookingsOpen] = useState(false)
 
   const refetch = () =>
     fetch('/api/settings/organization')
@@ -256,44 +257,74 @@ export default function AutomationsPage() {
       </div>
 
       {abandonedEnabled && (
-        <section className="mt-8">
-          <h2 className="section-title text-white mb-2">Recent abandoned bookings</h2>
-          <p className="text-sm text-[var(--text-2)] mb-4">
-            People who started a booking (entered address, selected service, or left contact info) but didn’t complete. Enable “Abandoned Booking” above and configure follow-up in Settings → Notifications.
-          </p>
-          {sessionsLoading ? (
-            <div className="flex items-center gap-2 text-[var(--text-3)]">
-              <Loader2 className="h-4 w-4 animate-spin" />
-              Loading…
+        <section className="mt-8 rounded-lg border border-[var(--border)] bg-[var(--surface-1)]/40 overflow-hidden">
+          <button
+            type="button"
+            onClick={() => setAbandonedBookingsOpen((o) => !o)}
+            className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left transition-colors hover:bg-white/5"
+            aria-expanded={abandonedBookingsOpen}
+          >
+            <div className="min-w-0">
+              <h2 className="section-title text-white mb-0">Recent abandoned bookings</h2>
+              {!abandonedBookingsOpen && (
+                <p className="text-xs text-[var(--text-muted)] mt-1 truncate">
+                  {sessionsLoading
+                    ? 'Loading…'
+                    : `${abandonedSessions.length} session${abandonedSessions.length === 1 ? '' : 's'} · Click to expand`}
+                </p>
+              )}
             </div>
-          ) : abandonedSessions.length === 0 ? (
-            <p className="text-sm text-[var(--text-3)]">No abandoned sessions yet. Try starting a booking on your public page and leaving before completing — make sure “Abandoned Booking” is turned on above.</p>
-          ) : (
-            <div className="rounded-lg border border-[var(--border)] overflow-hidden">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="bg-[var(--surface-1)] border-b border-[var(--border)]">
-                    <th className="text-left py-2 px-3 font-medium text-[var(--text-2)]">Name</th>
-                    <th className="text-left py-2 px-3 font-medium text-[var(--text-2)]">Email</th>
-                    <th className="text-left py-2 px-3 font-medium text-[var(--text-2)]">Phone</th>
-                    <th className="text-left py-2 px-3 font-medium text-[var(--text-2)]">Step</th>
-                    <th className="text-left py-2 px-3 font-medium text-[var(--text-2)]">Last updated</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {abandonedSessions.map((s) => (
-                    <tr key={s.id} className="border-b border-[var(--border)] last:border-0">
-                      <td className="py-2 px-3 text-[var(--text)]">{s.name || '—'}</td>
-                      <td className="py-2 px-3 text-[var(--text)]">{s.email || '—'}</td>
-                      <td className="py-2 px-3 text-[var(--text)]">{s.phone || '—'}</td>
-                      <td className="py-2 px-3 text-[var(--text-muted)]">{s.step_reached || '—'}</td>
-                      <td className="py-2 px-3 text-[var(--text-muted)]">
-                        {s.updated_at ? new Date(s.updated_at).toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' }) : '—'}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+            <ChevronDown
+              className={`h-5 w-5 shrink-0 text-[var(--text-muted)] transition-transform duration-200 ${
+                abandonedBookingsOpen ? 'rotate-180' : ''
+              }`}
+              aria-hidden
+            />
+          </button>
+          {abandonedBookingsOpen && (
+            <div className="border-t border-[var(--border)] px-4 pb-4 pt-2">
+              <p className="text-sm text-[var(--text-2)] mb-4">
+                People who started a booking (entered address, selected service, or left contact info) but didn’t complete. Configure the follow-up message in the form below.
+              </p>
+              {sessionsLoading ? (
+                <div className="flex items-center gap-2 text-[var(--text-3)]">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Loading…
+                </div>
+              ) : abandonedSessions.length === 0 ? (
+                <p className="text-sm text-[var(--text-3)]">
+                  No abandoned sessions yet. Try starting a booking on your public page and leaving before completing — make sure “Abandoned Booking” is turned on above.
+                </p>
+              ) : (
+                <div className="rounded-lg border border-[var(--border)] overflow-hidden bg-[var(--bg)]">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="bg-[var(--surface-1)] border-b border-[var(--border)]">
+                        <th className="text-left py-2 px-3 font-medium text-[var(--text-2)]">Name</th>
+                        <th className="text-left py-2 px-3 font-medium text-[var(--text-2)]">Email</th>
+                        <th className="text-left py-2 px-3 font-medium text-[var(--text-2)]">Phone</th>
+                        <th className="text-left py-2 px-3 font-medium text-[var(--text-2)]">Step</th>
+                        <th className="text-left py-2 px-3 font-medium text-[var(--text-2)]">Last updated</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {abandonedSessions.map((s) => (
+                        <tr key={s.id} className="border-b border-[var(--border)] last:border-0">
+                          <td className="py-2 px-3 text-[var(--text)]">{s.name || '—'}</td>
+                          <td className="py-2 px-3 text-[var(--text)]">{s.email || '—'}</td>
+                          <td className="py-2 px-3 text-[var(--text)]">{s.phone || '—'}</td>
+                          <td className="py-2 px-3 text-[var(--text-muted)]">{s.step_reached || '—'}</td>
+                          <td className="py-2 px-3 text-[var(--text-muted)]">
+                            {s.updated_at
+                              ? new Date(s.updated_at).toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' })
+                              : '—'}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
           )}
         </section>

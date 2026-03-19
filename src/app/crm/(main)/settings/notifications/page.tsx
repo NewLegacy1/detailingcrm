@@ -1,15 +1,7 @@
-import { AutomationsForm } from './automations-form'
+import { redirect } from 'next/navigation'
+import { crmPath } from '@/lib/crm-path'
 
-export default function AutomationsPage() {
-  return (
-    <div className="space-y-8">
-      <div>
-        <h1 className="page-title text-[var(--text)]">Automations</h1>
-        <p className="text-[var(--text-muted)] text-sm mt-1">
-          Configure review follow-up, new booking alerts, job reminders, and maintenance upsell. Email/SMS require provider setup (e.g. Resend, Twilio).
-        </p>
-      </div>
-      <AutomationsForm />
-    </div>
-  )
+/** Legacy path: automations now live under the main app nav. */
+export default function SettingsNotificationsRedirect() {
+  redirect(crmPath('/automations'))
 }

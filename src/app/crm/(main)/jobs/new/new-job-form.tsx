@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { crmPath } from '@/lib/crm-path'
 import { createClient } from '@/lib/supabase/client'
@@ -60,6 +60,9 @@ export function NewJobForm() {
     /** Location: '' = auto from address, or location id for manual assign. */
     location_id: '',
   })
+  const [useCustomBasePrice, setUseCustomBasePrice] = useState(false)
+  const [customBasePriceInput, setCustomBasePriceInput] = useState('')
+  const [discountDollarsInput, setDiscountDollarsInput] = useState('')
 
   useEffect(() => {
     const supabase = createClient()
@@ -188,10 +191,12 @@ export function NewJobForm() {
         })
       })
     }
-    const basePrice = vehicleServices.reduce((sum, l) => {
+    const catalogServiceTotal = vehicleServices.reduce((sum, l) => {
       const svc = services.find((s) => s.id === l.service_id) as { base_price?: number } | undefined
       return sum + (svc?.base_price ?? 0)
     }, 0)
+    const discount_amount = Math.max(0, parseFloat(discountDollarsInput) || 0)
+    const customBaseParsed = Math.max(0, parseFloat(customBasePriceInput) || 0)
     if (!formData.customer_id?.trim()) {
       setSubmitError('Please select a customer.')
       setLoading(false)
@@ -230,7 +235,9 @@ export function NewJobForm() {
         scheduled_at: formData.scheduled_at,
         address: effectiveAddress,
         notes: formData.notes.trim() || null,
-        base_price: basePrice,
+        pricing_mode: useCustomBasePrice ? 'custom' : 'catalog',
+        base_price: useCustomBasePrice ? customBaseParsed : catalogServiceTotal,
+        discount_amount,
         ...(locationId !== undefined && { location_id: locationId }),
       }),
     })
@@ -242,7 +249,11 @@ export function NewJobForm() {
       fetch('/api/jobs/notify-new-booking', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ jobId, sendClientEmail: formData.send_confirmation_email }),
+        body: JSON.stringify({
+          jobId,
+          sendClientEmail: formData.send_confirmation_email,
+          forceBusinessEmail: true,
+        }),
       }).catch(() => {})
       window.location.href = crmPath(`/jobs?created=${jobId}`)
       return
@@ -264,6 +275,17 @@ export function NewJobForm() {
     ? customers.filter((c) => c.name.toLowerCase().includes(customerSearchLower))
     : customers
 
+  const catalogServiceTotalDisplay = useMemo(() => {
+    let t = 0
+    formData.vehicle_ids.forEach((vid) => {
+      (formData.vehicle_services[vid] ?? []).forEach((sid) => {
+        const svc = services.find((s) => s.id === sid) as { base_price?: number } | undefined
+        t += svc?.base_price ?? 0
+      })
+    })
+    return t
+  }, [formData.vehicle_ids, formData.vehicle_services, services])
+
   /** Size options for a vehicle based on its selected services; falls back to org-wide sizeOptions if none selected */
   function getSizeOptionsForVehicle(vid: string): SizeOption[] {
     const serviceIds = formData.vehicle_services[vid] ?? []
@@ -280,6 +302,24 @@ export function NewJobForm() {
     const list = [...byKey.values()].sort((a, b) => a.price_offset - b.price_offset)
     return list.length > 0 ? list : sizeOptions
   }
+
+  function getSizeOffsetForVehicle(vid: string): number {
+    const vehicleSizeOptions = getSizeOptionsForVehicle(vid)
+    const stored = formData.vehicle_sizes[vid]
+    const valid = typeof stored === 'number' && vehicleSizeOptions.some((o) => o.price_offset === stored)
+    return valid ? stored : (vehicleSizeOptions[0]?.price_offset ?? 0)
+  }
+
+  const sizeAddonDisplay = useMemo(
+    () => formData.vehicle_ids.reduce((sum, vid) => sum + getSizeOffsetForVehicle(vid), 0),
+    [formData.vehicle_ids, formData.vehicle_services, formData.vehicle_sizes, sizePriceRows, sizeOptions]
+  )
+
+  const effectiveServiceBaseDisplay = useCustomBasePrice
+    ? Math.max(0, parseFloat(customBasePriceInput) || 0)
+    : catalogServiceTotalDisplay
+  const discountDisplay = Math.max(0, parseFloat(discountDollarsInput) || 0)
+  const estimatedTotalDisplay = Math.max(0, effectiveServiceBaseDisplay + sizeAddonDisplay - discountDisplay)
 
   return (
     <>
@@ -529,6 +569,65 @@ export function NewJobForm() {
           {formData.location_id === '' && suggestedLocation && (
             <p className="text-xs text-[var(--text-muted)] mt-1.5">Suggested: <strong className="text-[var(--text)]">{suggestedLocation.location_name}</strong></p>
           )}
+        </div>
+      )}
+      {formData.vehicle_ids.length > 0 && (catalogServiceTotalDisplay > 0 || sizeAddonDisplay > 0) && (
+        <div className="rounded-lg border border-[var(--border)] bg-[var(--bg-card)] p-4 space-y-3">
+          <p className="text-sm font-medium text-[var(--text)]">Pricing</p>
+          <dl className="text-sm space-y-1 text-[var(--text-secondary)]">
+            <div className="flex justify-between gap-2">
+              <dt>Services (catalog)</dt>
+              <dd className="text-[var(--text)]">${catalogServiceTotalDisplay.toLocaleString()}</dd>
+            </div>
+            <div className="flex justify-between gap-2">
+              <dt>Size add-on</dt>
+              <dd className="text-[var(--text)]">${sizeAddonDisplay.toLocaleString()}</dd>
+            </div>
+          </dl>
+          <label className="flex items-start gap-2 cursor-pointer text-sm text-[var(--text)]">
+            <input
+              type="checkbox"
+              checked={useCustomBasePrice}
+              onChange={(e) => {
+                const on = e.target.checked
+                setUseCustomBasePrice(on)
+                if (on)
+                  setCustomBasePriceInput((prev) => (prev.trim() !== '' ? prev : String(catalogServiceTotalDisplay)))
+              }}
+              className="mt-1 rounded border-[var(--border)] bg-[var(--bg-card)] text-[var(--accent)]"
+            />
+            <span>Use custom service price (overrides catalog service total; size add-on still applies)</span>
+          </label>
+          {useCustomBasePrice && (
+            <div>
+              <Label htmlFor="custom_base">Custom service total ($)</Label>
+              <Input
+                id="custom_base"
+                type="number"
+                min={0}
+                step={0.01}
+                value={customBasePriceInput}
+                onChange={(e) => setCustomBasePriceInput(e.target.value)}
+                className="mt-1"
+              />
+            </div>
+          )}
+          <div>
+            <Label htmlFor="job_discount">Discount ($)</Label>
+            <Input
+              id="job_discount"
+              type="number"
+              min={0}
+              step={0.01}
+              value={discountDollarsInput}
+              onChange={(e) => setDiscountDollarsInput(e.target.value)}
+              className="mt-1"
+              placeholder="0"
+            />
+          </div>
+          <p className="text-sm font-medium text-[var(--text)] pt-1 border-t border-[var(--border)]">
+            Estimated job total (before upsells): ${estimatedTotalDisplay.toLocaleString()}
+          </p>
         </div>
       )}
       <div>

@@ -1,31 +1,27 @@
+import { TeamList } from '@/components/settings/team-list'
+import { RoleEditor } from '@/components/settings/role-editor'
 import { createAuthClient } from '@/lib/supabase/server'
-import { getAuthAndPermissions } from '@/lib/permissions-server'
-import { TeamTable } from './team-table'
 import Link from 'next/link'
-import { UserCog } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { PLAN_PAGE_PATH } from '@/components/settings/plan-page-actions'
-import type { Profile } from '@/types/database'
+import { UserCog } from 'lucide-react'
 
 export default async function TeamPage() {
   const supabase = await createAuthClient()
-  const auth = await getAuthAndPermissions()
   const { data: { user } } = await supabase.auth.getUser()
-  const { data: myProfile } = user
+  const { data: profile } = user
     ? await supabase.from('profiles').select('org_id').eq('id', user.id).single()
     : { data: null }
 
-  let subscriptionPlan: string | null = null
-  if (myProfile?.org_id) {
+  let isStarter = false
+  if (profile?.org_id) {
     const { data: org } = await supabase
       .from('organizations')
       .select('subscription_plan')
-      .eq('id', myProfile.org_id)
+      .eq('id', profile.org_id)
       .single()
-    subscriptionPlan = org?.subscription_plan ?? null
+    isStarter = org?.subscription_plan === 'starter'
   }
-
-  const isStarter = subscriptionPlan === 'starter'
 
   if (isStarter) {
     return (
@@ -51,26 +47,23 @@ export default async function TeamPage() {
     )
   }
 
-  let profiles: Profile[] = []
-  if (myProfile?.org_id) {
-    const { data } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('org_id', myProfile.org_id)
-      .order('created_at', { ascending: false })
-    const raw = (data ?? []) as Profile[]
-    const viewerLocationId = auth?.locationId ?? null
-    if (viewerLocationId) {
-      profiles = raw.filter((p) => p.role === 'owner' || p.location_id === viewerLocationId)
-    } else {
-      profiles = raw
-    }
-  }
-
   return (
-    <div className="space-y-6 p-6 lg:p-8" style={{ background: 'var(--bg)' }}>
-      <h1 className="page-title hidden md:block" style={{ color: 'var(--text-1)' }}>Team</h1>
-      <TeamTable initialProfiles={profiles} />
+    <div className="space-y-8 p-6 lg:p-8" style={{ background: 'var(--bg)' }}>
+      <div>
+        <h1 className="page-title hidden md:block" style={{ color: 'var(--text-1)' }}>Team & roles</h1>
+        <p className="text-sm text-[var(--text-muted)] mt-1 max-w-2xl">
+          Manage team members and their roles. Only owners can change roles and disconnect Stripe.
+        </p>
+      </div>
+
+      <section>
+        <h2 className="section-title text-[var(--text-1)] mb-3">Team members</h2>
+        <TeamList />
+      </section>
+
+      <section>
+        <RoleEditor />
+      </section>
     </div>
   )
 }
