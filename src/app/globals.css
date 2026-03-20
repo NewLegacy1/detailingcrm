@@ -292,3 +292,19 @@ body {
   font-style: italic;
   font-weight: 400;
 }
+
+/* iOS Safari / WKWebView: focused inputs with computed font-size under 16px trigger automatic
+   zoom; recovery pinch-zoom can feel broken. Cap text fields at ≥16px on typical mobile widths.
+   `!important` overrides Tailwind `text-*` on the same node where needed. */
+@media (max-width: 1023px) {
+  /* prettier-ignore */
+  input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='color']):not([type='file']):not([type='button']):not([type='submit']):not([type='reset']):not([type='image']):not([type='hidden']),
+  select,
+  textarea {
+    font-size: max(16px, 1em) !important;
+  }
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}

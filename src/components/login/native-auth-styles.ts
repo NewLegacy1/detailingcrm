@@ -153,7 +153,8 @@ export const nativeAuthStyles: Record<string, CSSProperties> = {
     borderRadius: 9999,
     padding: '0 46px 0 18px',
     fontFamily: 'inherit',
-    fontSize: '0.88rem',
+    /* ≥16px prevents iOS Safari/WKWebView auto-zoom on focus */
+    fontSize: '16px',
     fontWeight: 400,
     color: '#eef0f2',
     outline: 'none',
@@ -169,7 +170,7 @@ export const nativeAuthStyles: Record<string, CSSProperties> = {
     borderRadius: 9999,
     padding: '0 18px',
     fontFamily: 'inherit',
-    fontSize: '0.88rem',
+    fontSize: '16px',
     fontWeight: 400,
     color: '#eef0f2',
     outline: 'none',
