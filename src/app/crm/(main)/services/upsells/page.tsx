@@ -20,9 +20,13 @@ export default async function UpsellsPage() {
     <div className="space-y-6 p-6 lg:p-8">
       <div className="flex flex-wrap items-center gap-4">
         <Button variant="ghost" size="sm" asChild>
-          <Link href={crmPath('/services')} className="flex items-center gap-1 text-[var(--text-muted)] hover:text-[var(--text)]">
-            <ChevronLeft className="h-4 w-4" />
-            Back to services
+          <Link
+            href={crmPath('/services')}
+            className="flex items-center justify-center md:justify-start gap-0 md:gap-1 min-h-[48px] min-w-[48px] md:min-h-8 md:min-w-0 px-0 md:px-3 text-[var(--text-muted)] hover:text-[var(--text)]"
+            aria-label="Back to services"
+          >
+            <ChevronLeft className="h-8 w-8 md:h-4 md:w-4 shrink-0" strokeWidth={2.25} />
+            <span className="hidden md:inline">Back to services</span>
           </Link>
         </Button>
       </div>

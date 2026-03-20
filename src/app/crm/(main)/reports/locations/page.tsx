@@ -2,6 +2,7 @@ import { createAuthClient } from '@/lib/supabase/server'
 import { getAuthAndPermissions } from '@/lib/permissions-server'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
+import { ChevronLeft } from 'lucide-react'
 import { crmPath } from '@/lib/crm-path'
 import { ReportsLocationsClient } from './reports-locations-client'
 import type { Location } from '@/types/locations'
@@ -40,7 +41,14 @@ export default async function ReportsLocationsPage() {
     return (
       <div className="p-6 space-y-4" style={{ color: 'var(--text-2)' }}>
         <p>Per-location reporting is available on the Pro plan.</p>
-        <Link href={crmPath('/reports')} className="text-[var(--accent)] underline">Back to reports</Link>
+        <Link
+          href={crmPath('/reports')}
+          className="inline-flex items-center justify-center md:justify-start gap-0 md:gap-1 mt-2 text-[var(--accent)] underline md:no-underline hover:opacity-90"
+          aria-label="Back to reports"
+        >
+          <ChevronLeft className="h-8 w-8 md:h-4 md:w-4 shrink-0 md:opacity-100" strokeWidth={2.25} />
+          <span className="hidden md:inline underline">Back to reports</span>
+        </Link>
       </div>
     )
   }
@@ -59,7 +67,14 @@ export default async function ReportsLocationsPage() {
   return (
     <div className="space-y-6 p-6 lg:p-8" style={{ background: 'var(--bg)' }}>
       <div>
-        <Link href={crmPath('/reports')} className="text-sm text-[var(--text-muted)] hover:text-[var(--text)]">Back to reports</Link>
+        <Link
+          href={crmPath('/reports')}
+          className="inline-flex items-center justify-center md:justify-start gap-0 md:gap-1 rounded-lg min-h-[48px] min-w-[48px] md:min-h-0 md:min-w-0 text-sm text-[var(--text-muted)] hover:text-[var(--text)] -ml-2 md:ml-0"
+          aria-label="Back to reports"
+        >
+          <ChevronLeft className="h-8 w-8 md:h-4 md:w-4 shrink-0" strokeWidth={2.25} />
+          <span className="hidden md:inline">Back to reports</span>
+        </Link>
         <h1 className="page-title mt-2" style={{ color: 'var(--text-1)' }}>Reports by location</h1>
         <p className="text-sm text-[var(--text-muted)] mt-1">
           Revenue and booking count per location (Pro).

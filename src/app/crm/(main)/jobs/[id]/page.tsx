@@ -1,5 +1,6 @@
 import { createAuthClient, createServiceRoleClient } from '@/lib/supabase/server'
 import Link from 'next/link'
+import { ChevronLeft } from 'lucide-react'
 import { redirect } from 'next/navigation'
 import type { ComponentProps } from 'react'
 import { crmPath } from '@/lib/crm-path'
@@ -50,7 +51,7 @@ export default async function JobDetailPage({
   if (jobError || !job) {
     return (
       <div className="space-y-6 p-6 lg:p-8">
-        <div className="flex items-center gap-2 text-sm text-[var(--text-muted)]">
+        <div className="hidden md:flex items-center gap-2 text-sm text-[var(--text-muted)]">
           <Link href={crmPath('/jobs')} className="hover:text-white">Jobs</Link>
           <span>/</span>
           <span>Job not found</span>
@@ -67,13 +68,15 @@ export default async function JobDetailPage({
           </p>
           <Link
             href={crmPath('/jobs')}
-            className="inline-flex items-center justify-center rounded-lg px-5 py-2.5 text-sm font-medium transition-colors"
+            className="inline-flex items-center justify-center gap-0 md:gap-2 rounded-lg px-4 md:px-5 py-3 md:py-2.5 text-sm font-medium transition-colors"
             style={{
               background: 'var(--accent)',
               color: '#000',
             }}
+            aria-label="Back to jobs list"
           >
-            Back to Jobs
+            <ChevronLeft className="h-7 w-7 md:h-4 md:w-4 shrink-0" strokeWidth={2.5} />
+            <span className="hidden md:inline">Back to Jobs</span>
           </Link>
         </div>
       </div>
@@ -136,7 +139,7 @@ export default async function JobDetailPage({
 
   return (
     <div className="space-y-6 p-6 lg:p-8">
-      <div className="flex items-center gap-2 text-sm text-[var(--text-muted)]">
+      <div className="hidden md:flex items-center gap-2 text-sm text-[var(--text-muted)]">
         <Link href={crmPath('/jobs')} className="hover:text-white">Jobs</Link>
         <span>/</span>
         <span className="text-white">{(jobNormalized.clients as { name?: string } | null)?.name ?? 'Job'}</span>

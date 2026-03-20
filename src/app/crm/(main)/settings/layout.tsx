@@ -24,11 +24,12 @@ export default async function SettingsLayout({
       <div className="mb-4 lg:mb-6">
         <Link
           href={crmPath('/dashboard')}
-          className="inline-flex items-center gap-1 text-sm hover:opacity-90"
+          className="inline-flex items-center justify-center md:justify-start gap-0 md:gap-1 rounded-lg min-h-[48px] min-w-[48px] md:min-h-0 md:min-w-0 text-sm hover:opacity-90"
           style={{ color: 'var(--text-2)' }}
+          aria-label="Back to app"
         >
-          <ChevronLeft className="h-4 w-4" />
-          Back to app
+          <ChevronLeft className="h-8 w-8 md:h-4 md:w-4 shrink-0" strokeWidth={2.25} />
+          <span className="hidden md:inline">Back to app</span>
         </Link>
       </div>
       <div className="flex flex-col gap-8 lg:flex-row">

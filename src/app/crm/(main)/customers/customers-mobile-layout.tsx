@@ -27,11 +27,11 @@ export function CustomersMobileLayout({ selectedId, listSidebar, detailContent }
           <div className="lg:hidden mb-4">
             <Link
               href={crmPath('/customers')}
-              className="inline-flex items-center gap-1 text-sm min-h-[44px] items-center pr-2"
-              style={{ color: 'var(--text-2)' }}
+              className="inline-flex items-center justify-center rounded-lg min-h-[52px] min-w-[52px] -ml-2"
+              style={{ color: 'var(--text-1)' }}
+              aria-label="Back to customer list"
             >
-              <ChevronLeft className="h-4 w-4" />
-              Back to list
+              <ChevronLeft className="h-8 w-8 shrink-0" strokeWidth={2.25} />
             </Link>
           </div>
         )}

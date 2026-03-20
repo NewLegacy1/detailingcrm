@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo } from 'react'
-import { MobileHeader } from './MobileHeader'
+import { MobileSafeAreaChrome } from './MobileSafeAreaChrome'
 import { BottomTabBar } from './BottomTabBar'
 import { subtextColorFromBg, secondaryTextColorFromBg } from '@/lib/utils'
 import type { UserRole } from '@/types/database'
@@ -135,7 +135,7 @@ export function MobileLayout({
         ...style,
       }}
     >
-      <MobileHeader displayName={displayName} logoUrl={logoUrl} />
+      <MobileSafeAreaChrome />
       <main
         style={{
           flex: 1,
@@ -147,7 +147,15 @@ export function MobileLayout({
       >
         {children}
       </main>
-      <BottomTabBar role={role} locationId={locationId} jobCount={jobCount} invoiceCount={invoiceCount} subscriptionPlan={subscriptionPlan} />
+      <BottomTabBar
+        role={role}
+        locationId={locationId}
+        displayName={displayName}
+        logoUrl={logoUrl}
+        jobCount={jobCount}
+        invoiceCount={invoiceCount}
+        subscriptionPlan={subscriptionPlan}
+      />
     </div>
   )
 }

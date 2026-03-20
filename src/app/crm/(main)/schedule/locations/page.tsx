@@ -54,7 +54,14 @@ export default async function ScheduleLocationsPage({
     return (
       <div className="p-6 lg:p-8" style={{ background: 'var(--bg)' }}>
         <p className="text-[var(--text-muted)]">Schedule by location is available on the Pro plan.</p>
-        <Link href={crmPath('/schedule')} className="text-[var(--accent)] underline mt-2 inline-block">Back to schedule</Link>
+        <Link
+          href={crmPath('/schedule')}
+          className="inline-flex items-center justify-center md:justify-start gap-0 md:gap-1 mt-2 text-[var(--accent)] underline md:no-underline rounded-lg min-h-[48px] min-w-[48px] md:min-h-0 md:min-w-0"
+          aria-label="Back to schedule"
+        >
+          <ChevronLeft className="h-8 w-8 md:h-4 md:w-4 shrink-0" strokeWidth={2.25} />
+          <span className="hidden md:inline underline">Back to schedule</span>
+        </Link>
       </div>
     )
   }
@@ -108,10 +115,11 @@ export default async function ScheduleLocationsPage({
       <div className="flex items-center gap-4">
         <Link
           href={crmPath('/schedule')}
-          className="inline-flex items-center gap-1 text-sm text-[var(--text-muted)] hover:text-[var(--text)]"
+          className="inline-flex items-center justify-center md:justify-start gap-0 md:gap-1 rounded-lg min-h-[48px] min-w-[48px] md:min-h-0 md:min-w-0 text-sm text-[var(--text-muted)] hover:text-[var(--text)] -ml-2 md:ml-0"
+          aria-label="Back to schedule"
         >
-          <ChevronLeft className="h-4 w-4" />
-          Schedule
+          <ChevronLeft className="h-8 w-8 md:h-4 md:w-4 shrink-0" strokeWidth={2.25} />
+          <span className="hidden md:inline">Schedule</span>
         </Link>
       </div>
       <h1 className="page-title" style={{ color: 'var(--text-1)' }}>Schedule by location</h1>

@@ -17,7 +17,10 @@ import {
   Megaphone,
   MoreHorizontal,
   Plus,
+  User,
+  LogOut,
 } from 'lucide-react'
+import { createClient } from '@/lib/supabase/client'
 import { getNavItemsForRole } from '@/lib/nav-config'
 import { crmPath } from '@/lib/crm-path'
 import type { UserRole } from '@/types/database'
@@ -25,7 +28,7 @@ import type { UserRole } from '@/types/database'
 const PRIMARY_TABS = [
   { label: 'Home', href: crmPath('/dashboard'), icon: LayoutDashboard },
   { label: 'Schedule', href: crmPath('/schedule'), icon: Calendar },
-  { label: 'Customers', href: crmPath('/customers'), icon: Users },
+  { label: 'Jobs', href: crmPath('/jobs'), icon: ClipboardList },
 ] as const
 
 const MORE_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
@@ -42,17 +45,41 @@ const MORE_ICONS: Record<string, React.ComponentType<{ className?: string }>> = 
 interface BottomTabBarProps {
   role: UserRole
   locationId?: string | null
+  displayName?: string | null
+  logoUrl?: string | null
   jobCount?: number
   invoiceCount?: number
   subscriptionPlan?: 'starter' | 'pro' | null
 }
 
-export function BottomTabBar({ role, locationId = null, jobCount = 0, invoiceCount = 0, subscriptionPlan }: BottomTabBarProps) {
+export function BottomTabBar({
+  role,
+  locationId = null,
+  displayName,
+  logoUrl,
+  jobCount = 0,
+  invoiceCount = 0,
+  subscriptionPlan,
+}: BottomTabBarProps) {
   const pathname = usePathname()
   const allItems = getNavItemsForRole(role, locationId)
+  const navLabelSet = new Set(allItems.map((i) => i.label))
+  const primaryTabs = PRIMARY_TABS.filter((t) => {
+    if (t.href === crmPath('/dashboard')) return true
+    if (t.href === crmPath('/schedule')) return navLabelSet.has('Schedule')
+    if (t.href === crmPath('/jobs')) return navLabelSet.has('Jobs')
+    return true
+  })
+  const customersItem = allItems.find((i) => i.label === 'Customers')
   const moreItems = allItems.filter(
-    (i) => !['Dashboard', 'Customers', 'Schedule'].includes(i.label)
+    (i) => !['Dashboard', 'Customers', 'Schedule', 'Jobs'].includes(i.label)
   )
+
+  async function handleSignOut() {
+    const supabase = createClient()
+    await supabase.auth.signOut()
+    window.location.href = '/login'
+  }
   const [moreOpen, setMoreOpen] = useState(false)
   const [createOpen, setCreateOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
@@ -151,18 +178,27 @@ export function BottomTabBar({ role, locationId = null, jobCount = 0, invoiceCou
           </div>
         )}
       </div>
-      {PRIMARY_TABS.map((tab) => {
+      {primaryTabs.map((tab) => {
         const Icon = tab.icon
         const active = isActive(tab.href)
+        const showJobBadge = tab.label === 'Jobs' && jobCount > 0
         return (
           <Link
             key={tab.href}
             href={tab.href}
-            className="flex flex-col items-center justify-center min-w-[64px] min-h-[44px] gap-0.5 py-2 text-xs font-medium transition-colors"
+            className="relative flex flex-col items-center justify-center min-w-[64px] min-h-[44px] gap-0.5 py-2 text-xs font-medium transition-colors"
             style={{ color: active ? 'var(--accent)' : 'var(--text-3)' }}
           >
             <Icon size={22} strokeWidth={active ? 2.5 : 2} />
             {tab.label}
+            {showJobBadge && (
+              <span
+                className="absolute top-1 right-2 min-w-[18px] h-[18px] px-1 flex items-center justify-center rounded-full text-[10px] font-bold leading-none"
+                style={{ background: 'var(--accent-dim)', color: 'var(--accent)' }}
+              >
+                {jobCount > 99 ? '99+' : jobCount}
+              </span>
+            )}
           </Link>
         )
       })}
@@ -183,17 +219,54 @@ export function BottomTabBar({ role, locationId = null, jobCount = 0, invoiceCou
           <MoreHorizontal size={22} />
           More
         </button>
-        {moreOpen && moreItems.length > 0 && (
+        {moreOpen && (
           <div
-            className="absolute bottom-full right-0 left-auto mb-2 w-48 rounded-xl border shadow-lg overflow-hidden"
+            className="absolute bottom-full right-0 left-auto mb-2 w-52 max-h-[70vh] overflow-y-auto rounded-xl border shadow-lg overflow-x-hidden"
             style={{ background: 'var(--surface-1)', borderColor: 'var(--border)' }}
           >
             <ul className="py-2">
+              <li>
+                <Link
+                  href={crmPath('/settings/profile')}
+                  onClick={() => setMoreOpen(false)}
+                  className="flex items-center gap-3 px-4 py-3 text-sm font-medium transition-colors border-b"
+                  style={{
+                    color: isActive(crmPath('/settings/profile')) ? 'var(--accent)' : 'var(--text-1)',
+                    background: isActive(crmPath('/settings/profile')) ? 'var(--accent-dim)' : 'transparent',
+                    borderColor: 'var(--border)',
+                  }}
+                  aria-label={displayName ? `Profile, ${displayName}` : 'Profile'}
+                >
+                  {logoUrl?.trim() ? (
+                    <img src={logoUrl.trim()} alt="" className="h-[18px] w-[18px] rounded-full object-cover" />
+                  ) : (
+                    <User className="h-[18px] w-[18px]" style={{ color: 'var(--text-2)' }} />
+                  )}
+                  Profile
+                </Link>
+              </li>
+              {customersItem && !customersItem.comingSoon && (
+                <li>
+                  <Link
+                    href={customersItem.href}
+                    onClick={() => setMoreOpen(false)}
+                    className="flex items-center gap-3 px-4 py-3 text-sm font-medium transition-colors border-b"
+                    style={{
+                      color: isActive(customersItem.href) ? 'var(--accent)' : 'var(--text-1)',
+                      background: isActive(customersItem.href) ? 'var(--accent-dim)' : 'transparent',
+                      borderColor: 'var(--border)',
+                    }}
+                  >
+                    <Users className="h-[18px] w-[18px]" style={{ color: 'var(--text-2)' }} />
+                    Customers
+                  </Link>
+                </li>
+              )}
               {moreItems.map((item) => {
                 const Icon = MORE_ICONS[item.label] ?? Settings
                 const active = !item.comingSoon && isActive(item.href)
-                const showCount = (item.label === 'Invoices' && invoiceCount > 0) || (item.label === 'Jobs' && jobCount > 0)
-                const count = item.label === 'Jobs' ? jobCount : item.label === 'Invoices' ? invoiceCount : 0
+                const showCount = item.label === 'Invoices' && invoiceCount > 0
+                const count = item.label === 'Invoices' ? invoiceCount : 0
                 if (item.comingSoon) {
                   return (
                     <li key={item.label}>
@@ -233,6 +306,20 @@ export function BottomTabBar({ role, locationId = null, jobCount = 0, invoiceCou
                   </li>
                 )
               })}
+              <li className="border-t" style={{ borderColor: 'var(--border)' }}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMoreOpen(false)
+                    void handleSignOut()
+                  }}
+                  className="flex items-center gap-3 w-full px-4 py-3 text-sm font-medium transition-colors text-left"
+                  style={{ color: 'var(--text-2)' }}
+                >
+                  <LogOut className="h-[18px] w-[18px]" />
+                  Sign out
+                </button>
+              </li>
             </ul>
           </div>
         )}

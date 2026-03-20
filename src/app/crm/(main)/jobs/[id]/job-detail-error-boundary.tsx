@@ -2,6 +2,7 @@
 
 import { Component, type ReactNode } from 'react'
 import Link from 'next/link'
+import { ChevronLeft } from 'lucide-react'
 import { crmPath } from '@/lib/crm-path'
 import { Button } from '@/components/ui/button'
 
@@ -37,8 +38,15 @@ export class JobDetailErrorBoundary extends Component<Props, State> {
               We couldn’t load this job. You can go back to the jobs list and try again.
             </p>
             <div className="mt-4 flex justify-center gap-2">
-              <Button asChild variant="default">
-                <Link href={crmPath('/jobs')}>Back to Jobs</Link>
+              <Button asChild variant="default" className="min-h-[48px] px-3 md:px-4">
+                <Link
+                  href={crmPath('/jobs')}
+                  className="inline-flex items-center justify-center gap-0 md:gap-2"
+                  aria-label="Back to jobs list"
+                >
+                  <ChevronLeft className="h-7 w-7 md:h-4 md:w-4 shrink-0" strokeWidth={2.5} />
+                  <span className="hidden md:inline">Back to Jobs</span>
+                </Link>
               </Button>
             </div>
           </div>
