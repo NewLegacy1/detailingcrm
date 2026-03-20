@@ -29,6 +29,20 @@ export default function SignupPage() {
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
 
+  /** Session cookies + DB trigger can lag slightly after signUp; avoid sending users to /onboarding (paywall) when orgId isn’t readable yet. */
+  async function fetchOrgIdAfterSignup(): Promise<string | null> {
+    const waits = [0, 80, 160, 320, 500, 750, 1100, 1600, 2200]
+    for (const ms of waits) {
+      if (ms > 0) await new Promise((r) => setTimeout(r, ms))
+      const meRes = await fetch('/api/onboarding/me', { credentials: 'same-origin' })
+      if (!meRes.ok) continue
+      const meData = (await meRes.json()) as { orgId?: string | null }
+      const id = typeof meData?.orgId === 'string' ? meData.orgId : null
+      if (id) return id
+    }
+    return null
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     e.stopPropagation()
@@ -62,19 +76,20 @@ export default function SignupPage() {
         return
       }
       if (data.session) {
+        await supabase.auth.getSession()
         await fetch('/api/onboarding/me', {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ phone: phone || undefined, sms_consent: smsConsent }),
         })
-        const meRes = await fetch('/api/onboarding/me')
-        const meData = await meRes.json()
-        const orgId = meData?.orgId ?? null
+        const orgId = await fetchOrgIdAfterSignup()
         if (orgId) {
-          router.push(`/signup/${orgId}`)
+          window.location.assign(`/signup/${orgId}`)
           return
         }
-        router.push('/onboarding')
+        setLoading(false)
+        router.replace(`/login?redirectTo=${encodeURIComponent('/signup')}`)
+        return
       } else {
         setError('Check your email to confirm your account, then sign in.')
       }

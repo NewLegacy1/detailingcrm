@@ -133,14 +133,19 @@ export function NativeOnboardingShell({
     animation: mounted ? 'doRiseIn 0.65s cubic-bezier(0.16,1,0.3,1) forwards 0.06s' : 'none',
   }
 
+  /* Single scroll region: inner `onboardingScroll`. Outer scene must not scroll too or iOS fights between nested overflow:auto. */
   return (
     <div
       className={figtree.className}
       style={{
         ...styles.scene,
-        minHeight: '100svh',
+        minHeight: '100dvh',
+        height: '100dvh',
+        maxHeight: '100dvh',
         display: 'flex',
         flexDirection: 'column',
+        overflowX: 'hidden',
+        overflowY: 'hidden',
       }}
     >
       <div style={{ ...styles.blobBase, ...styles.blob1 }} />

@@ -100,7 +100,6 @@ export default function OnboardingPaywallPage() {
 
   useEffect(() => {
     window.history.scrollRestoration = 'manual'
-    window.scrollTo(0, 0)
   }, [])
 
   async function handleSelect(planId: 'starter' | 'pro') {
