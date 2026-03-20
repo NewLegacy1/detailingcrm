@@ -7,9 +7,9 @@ import { Check, Expand, X } from 'lucide-react'
 import { nativeAuthStyles as na } from '@/components/login/native-auth-styles'
 import {
   NativeOnboardingShell,
+  OnboardingLoginHero,
   OnboardingPrimaryButton,
   OnboardingSecondaryButton,
-  OnboardingStepHeadline,
 } from '@/components/onboarding/NativeOnboardingShell'
 
 const STARTER_STEPS = ['Services', 'Branding', 'Preview', 'Done'] as const
@@ -30,8 +30,7 @@ function PollingView() {
           className="h-10 w-10 rounded-full border-2 border-[#00b8f5] border-t-transparent animate-spin"
           aria-hidden
         />
-        <OnboardingStepHeadline line1="Payment" line2Accent="received." />
-        <p style={na.onboardingLead}>Setting up your account…</p>
+        <OnboardingLoginHero line1="Payment" line2Accent="received." subtext="Setting up your account…" />
       </div>
     </NativeOnboardingShell>
   )
@@ -176,10 +175,11 @@ function OnboardingSetupContent() {
     >
       {stepId === 'Services' && (
         <>
-          <OnboardingStepHeadline line1="Default" line2Accent="services." />
-          <p style={na.onboardingLead}>
-            Your account includes these services. You can add or edit more in the CRM after you finish.
-          </p>
+          <OnboardingLoginHero
+            line1="Default"
+            line2Accent="services."
+            subtext="Your account includes these services. You can add or edit more in the CRM after you finish."
+          />
           <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 10 }}>
             {SERVICE_OPTIONS.map((s) => (
               <li
@@ -211,10 +211,11 @@ function OnboardingSetupContent() {
 
       {stepId === 'Branding' && plan === 'starter' && (
         <>
-          <OnboardingStepHeadline line1="Branding" line2Accent="Pro." />
-          <p style={na.onboardingLead}>
-            Logo, colours, and layout customisation are available on the Pro plan.
-          </p>
+          <OnboardingLoginHero
+            line1="Branding"
+            line2Accent="Pro."
+            subtext="Logo, colours, and layout customisation are available on the Pro plan."
+          />
           <div
             style={{
               ...na.onboardingGlassRow,
@@ -255,10 +256,11 @@ function OnboardingSetupContent() {
 
       {stepId === 'Branding' && plan === 'pro' && (
         <>
-          <OnboardingStepHeadline line1="Booking" line2Accent="colours." />
-          <p style={na.onboardingLead}>
-            Primary and accent colours for your public booking page. You can change them anytime in Settings → Branding.
-          </p>
+          <OnboardingLoginHero
+            line1="Booking"
+            line2Accent="colours."
+            subtext="Primary and accent colours for your public booking page. You can change them anytime in Settings → Branding."
+          />
           <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
             <div>
               <label style={na.fieldLabel}>Primary color</label>
@@ -351,10 +353,11 @@ function OnboardingSetupContent() {
 
       {stepId === 'Integrations' && (
         <>
-          <OnboardingStepHeadline line1="Connect" line2Accent="later." />
-          <p style={na.onboardingLead}>
-            Stripe and Google Calendar can be connected in the CRM when you&apos;re ready.
-          </p>
+          <OnboardingLoginHero
+            line1="Connect"
+            line2Accent="later."
+            subtext="Stripe and Google Calendar can be connected in the CRM when you're ready."
+          />
           <div style={{ ...na.onboardingGlassRow, flexDirection: 'column', alignItems: 'stretch' }}>
             <p style={{ color: '#5a6a80', fontSize: '0.92rem', margin: 0, lineHeight: 1.55 }}>
               Go to <strong style={{ color: '#dce6ec' }}>Settings → Payments</strong> for Stripe and{' '}
@@ -373,10 +376,11 @@ function OnboardingSetupContent() {
 
       {stepId === 'Preview' && (
         <>
-          <OnboardingStepHeadline line1="Booking" line2Accent="preview." />
-          <p style={na.onboardingLead}>
-            This is how clients see you. Share the link when you&apos;re ready.
-          </p>
+          <OnboardingLoginHero
+            line1="Booking"
+            line2Accent="preview."
+            subtext="This is how clients see you. Share the link when you're ready."
+          />
           {slug ? (
             <>
               <div
@@ -491,10 +495,11 @@ function OnboardingSetupContent() {
           >
             <Check className="h-8 w-8" style={{ color: '#22c55e' }} aria-hidden />
           </div>
-          <OnboardingStepHeadline line1="You're" line2Accent="all set." />
-          <p style={na.onboardingLead}>
-            Your booking page is live. Head to the dashboard to manage jobs, customers, and more.
-          </p>
+          <OnboardingLoginHero
+            line1="You're"
+            line2Accent="all set."
+            subtext="Your booking page is live. Head to the dashboard to manage jobs, customers, and more."
+          />
           <OnboardingPrimaryButton onClick={handleDone} disabled={saving}>
             {saving ? 'Saving…' : 'Go to Dashboard'}
             <span style={na.btnArrow}>→</span>

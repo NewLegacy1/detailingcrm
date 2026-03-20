@@ -1,7 +1,6 @@
 'use client'
 
-import { useEffect, useState, type CSSProperties, type ReactNode } from 'react'
-import Link from 'next/link'
+import { useEffect, useId, useState, type CSSProperties, type ReactNode } from 'react'
 import { Figtree, Fraunces } from 'next/font/google'
 import {
   injectNativeAuthKeyframes,
@@ -11,7 +10,7 @@ import {
 
 const figtree = Figtree({
   subsets: ['latin'],
-  weight: ['400', '500', '600', '700', '800'],
+  weight: ['300', '400', '500', '600', '700', '800', '900'],
 })
 
 const fraunces = Fraunces({
@@ -20,35 +19,95 @@ const fraunces = Fraunces({
   style: ['italic', 'normal'],
 })
 
-export function OnboardingStepHeadline({
+/** Same logo, headline scale (Figtree + Fraunces), and subtext as `DetailOpsNativeLogin`. */
+export function OnboardingLoginHero({
   line1,
   line2Accent,
+  subtext,
+  logoSrc = '/detailopslogo.png',
+  showLogo = true,
 }: {
   line1: string
   line2Accent?: string
+  subtext?: ReactNode
+  logoSrc?: string
+  showLogo?: boolean
 }) {
+  const gradientId = useId().replace(/:/g, '')
+  const [logoError, setLogoError] = useState(false)
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
   return (
-    <h1 className={figtree.className} style={{ margin: 0 }}>
-      <span style={styles.onboardingTitleFig}>{line1}</span>
-      {line2Accent ? (
-        <span className={fraunces.className} style={styles.onboardingTitleAccent}>
-          {line2Accent}
-        </span>
+    <div
+      style={{
+        ...styles.heroIntro,
+        opacity: mounted ? 1 : 0,
+        animation: mounted ? 'doRiseIn 0.75s cubic-bezier(0.16,1,0.3,1) forwards 0.08s' : 'none',
+      }}
+    >
+      <div style={styles.heroStack}>
+        {showLogo ? (
+          <div style={styles.logoWrap}>
+            {!logoError ? (
+              <img
+                src={logoSrc}
+                alt="DetailOps"
+                style={styles.logoImg}
+                onError={() => setLogoError(true)}
+              />
+            ) : (
+              <svg width="100%" height="100%" viewBox="0 0 64 64" fill="none" style={{ display: 'block' }} aria-hidden>
+                <defs>
+                  <linearGradient id={gradientId} x1="0" y1="64" x2="64" y2="0" gradientUnits="userSpaceOnUse">
+                    <stop offset="0%" stopColor="#0057b8" />
+                    <stop offset="100%" stopColor="#00d4ff" />
+                  </linearGradient>
+                </defs>
+                <path
+                  d="M8 14L8 50L22 50C30 50 37 44 37 32C37 20 30 14 22 14Z M16 22L21 22C25 22 29 26 29 32C29 38 25 42 21 42L16 42Z"
+                  fill={`url(#${gradientId})`}
+                />
+                <path d="M35 14L31 50L37 50L41 14Z" fill={`url(#${gradientId})`} />
+                <path
+                  d="M41 14L41 50L52 50C59 50 64 44 64 32C64 20 59 14 52 14Z M49 22L52 22C56 22 56 26 56 32C56 38 56 42 52 42L49 42Z"
+                  fill={`url(#${gradientId})`}
+                />
+              </svg>
+            )}
+          </div>
+        ) : null}
+        <h1 style={styles.heroH1}>
+          <span className={figtree.className} style={styles.headlineTop}>
+            {line1}
+          </span>
+          {line2Accent ? (
+            <span className={fraunces.className} style={styles.headlineAccent}>
+              {line2Accent}
+            </span>
+          ) : null}
+        </h1>
+      </div>
+      {subtext != null && subtext !== '' ? (
+        typeof subtext === 'string' ? (
+          <p style={styles.subtext}>{subtext}</p>
+        ) : (
+          <div style={{ ...styles.subtext }}>{subtext}</div>
+        )
       ) : null}
-    </h1>
+    </div>
   )
 }
 
 export type NativeOnboardingShellProps = {
   children: ReactNode
-  /** When true (default), show progress bar + stepLabel */
   showProgress?: boolean
   progressPercent?: number
   stepLabel?: string
-  logoHref?: string
-  logoSrc?: string
   contentMaxWidth?: number
-  /** Sticky foot content (e.g. sign-in line + legal links) */
   footer?: ReactNode
 }
 
@@ -57,9 +116,7 @@ export function NativeOnboardingShell({
   showProgress = true,
   progressPercent = 0,
   stepLabel,
-  logoHref = '/',
-  logoSrc = '/detailopslogo.png',
-  contentMaxWidth = 440,
+  contentMaxWidth = 420,
   footer,
 }: NativeOnboardingShellProps) {
   const [mounted, setMounted] = useState(false)
@@ -70,7 +127,7 @@ export function NativeOnboardingShell({
   }, [])
 
   const contentStyle: CSSProperties = {
-    ...styles.onboardingContent,
+    ...styles.shell,
     maxWidth: contentMaxWidth,
     opacity: mounted ? 1 : 0,
     animation: mounted ? 'doRiseIn 0.65s cubic-bezier(0.16,1,0.3,1) forwards 0.06s' : 'none',
@@ -114,26 +171,21 @@ export function NativeOnboardingShell({
           minHeight: 0,
         }}
       >
-        <header style={styles.onboardingTopBar}>
-          <div style={styles.onboardingTopBarInner}>
-            <Link href={logoHref} style={{ opacity: 0.95, lineHeight: 0, flexShrink: 0 }}>
-              <img src={logoSrc} alt="DetailOps" style={styles.onboardingLogoCompact} />
-            </Link>
-            {showProgress && stepLabel ? (
-              <>
-                <div style={styles.onboardingProgressTrack}>
-                  <div
-                    style={{
-                      ...styles.onboardingProgressFill,
-                      width: `${Math.min(100, Math.max(0, progressPercent))}%`,
-                    }}
-                  />
-                </div>
-                <span style={styles.onboardingStepBadge}>{stepLabel}</span>
-              </>
-            ) : null}
-          </div>
-        </header>
+        {showProgress && stepLabel ? (
+          <header style={styles.onboardingTopBar}>
+            <div style={{ ...styles.onboardingTopBarInner, maxWidth: contentMaxWidth }}>
+              <div style={styles.onboardingProgressTrack}>
+                <div
+                  style={{
+                    ...styles.onboardingProgressFill,
+                    width: `${Math.min(100, Math.max(0, progressPercent))}%`,
+                  }}
+                />
+              </div>
+              <span style={styles.onboardingStepBadge}>{stepLabel}</span>
+            </div>
+          </header>
+        ) : null}
 
         <div style={styles.onboardingScroll}>
           <div style={contentStyle}>{children}</div>

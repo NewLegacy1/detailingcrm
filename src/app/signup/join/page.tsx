@@ -7,8 +7,8 @@ import Link from 'next/link'
 import { nativeAuthStyles as na } from '@/components/login/native-auth-styles'
 import {
   NativeOnboardingShell,
+  OnboardingLoginHero,
   OnboardingPrimaryButton,
-  OnboardingStepHeadline,
 } from '@/components/onboarding/NativeOnboardingShell'
 
 type InviteInfo = { email: string; orgName: string; role: string }
@@ -146,8 +146,7 @@ function JoinPageContent() {
   if (inviteError || !invite) {
     return (
       <NativeOnboardingShell showProgress={false} footer={footer}>
-        <OnboardingStepHeadline line1="Link" line2Accent="unavailable." />
-        <p style={na.onboardingLead}>{inviteError}</p>
+        <OnboardingLoginHero line1="Link" line2Accent="unavailable." subtext={inviteError ?? undefined} />
         <div style={{ ...na.onboardingGlassRow, flexDirection: 'column', alignItems: 'stretch', gap: 12 }}>
           <Link href="/login" style={{ ...na.signupLink, fontSize: '0.95rem' }}>
             Sign in
@@ -162,11 +161,16 @@ function JoinPageContent() {
 
   return (
     <NativeOnboardingShell showProgress={false} footer={footer}>
-      <OnboardingStepHeadline line1="You're" line2Accent="invited." />
-      <p style={na.onboardingLead}>
-        <strong style={{ color: '#dce6ec' }}>{invite.orgName}</strong> invited you as{' '}
-        <strong style={{ color: '#dce6ec' }}>{invite.role}</strong>.
-      </p>
+      <OnboardingLoginHero
+        line1="You're"
+        line2Accent="invited."
+        subtext={
+          <>
+            <strong style={{ color: '#dce6ec' }}>{invite.orgName}</strong> invited you as{' '}
+            <strong style={{ color: '#dce6ec' }}>{invite.role}</strong>.
+          </>
+        }
+      />
 
       {sessionUser ? (
         emailMatches ? (

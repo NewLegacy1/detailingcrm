@@ -5,8 +5,8 @@ import Link from 'next/link'
 import { nativeAuthStyles as na } from '@/components/login/native-auth-styles'
 import {
   NativeOnboardingShell,
+  OnboardingLoginHero,
   OnboardingPrimaryButton,
-  OnboardingStepHeadline,
 } from '@/components/onboarding/NativeOnboardingShell'
 
 type Feature = string | { text: string; note: string }
@@ -155,10 +155,11 @@ export default function OnboardingPaywallPage() {
 
   return (
     <NativeOnboardingShell showProgress={false} contentMaxWidth={1100} footer={footer}>
-      <OnboardingStepHeadline line1="Simple," line2Accent="pricing." />
-      <p style={na.onboardingLead}>
-        Pays for itself the moment you stop a single no-show.
-      </p>
+      <OnboardingLoginHero
+        line1="Simple,"
+        line2Accent="pricing."
+        subtext="Pays for itself the moment you stop a single no-show."
+      />
 
       <div
         style={{

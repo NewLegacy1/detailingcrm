@@ -7,9 +7,9 @@ import Link from 'next/link'
 import { nativeAuthStyles as na } from '@/components/login/native-auth-styles'
 import {
   NativeOnboardingShell,
+  OnboardingLoginHero,
   OnboardingPrimaryButton,
   OnboardingSecondaryButton,
-  OnboardingStepHeadline,
 } from '@/components/onboarding/NativeOnboardingShell'
 import { OnboardingFeatureCheckRow } from '@/components/onboarding/OnboardingFeatureCheckRow'
 
@@ -365,13 +365,12 @@ export default function SignupOnboardingPage() {
     <NativeOnboardingShell
       progressPercent={progress}
       stepLabel={`Step ${stepIndex + 1} of ${STEPS.length}`}
-      contentMaxWidth={previewWide ? 720 : 440}
+      contentMaxWidth={previewWide ? 720 : 420}
       footer={footer}
     >
       {stepId === 'Team size' && (
         <>
-          <OnboardingStepHeadline line1="Team" line2Accent="size." />
-          <p style={na.onboardingLead}>How many people are on your team?</p>
+          <OnboardingLoginHero line1="Team" line2Accent="size." subtext="How many people are on your team?" />
           <div
             style={{
               display: 'grid',
@@ -415,8 +414,11 @@ export default function SignupOnboardingPage() {
 
       {stepId === 'Features' && (
         <>
-          <OnboardingStepHeadline line1="What you" line2Accent="need." />
-          <p style={na.onboardingLead}>Select the areas you care about most.</p>
+          <OnboardingLoginHero
+            line1="What you"
+            line2Accent="need."
+            subtext="Select the areas you care about most."
+          />
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             {FEATURE_OPTIONS.map((opt) => (
               <OnboardingFeatureCheckRow
@@ -440,10 +442,11 @@ export default function SignupOnboardingPage() {
 
       {stepId === 'Service area' && (
         <>
-          <OnboardingStepHeadline line1="Service" line2Accent="area." />
-          <p style={na.onboardingLead}>
-            Where do you serve? This sets the map center on your booking page.
-          </p>
+          <OnboardingLoginHero
+            line1="Service"
+            line2Accent="area."
+            subtext="Where do you serve? This sets the map center on your booking page."
+          />
           <input
             ref={serviceAreaInputRef}
             className="do-native-auth-input"
@@ -481,8 +484,7 @@ export default function SignupOnboardingPage() {
 
       {stepId === 'Website' && (
         <>
-          <OnboardingStepHeadline line1="Your" line2Accent="website." />
-          <p style={na.onboardingLead}>Your business website (optional).</p>
+          <OnboardingLoginHero line1="Your" line2Accent="website." subtext="Your business website (optional)." />
           <input
             className="do-native-auth-input"
             type="url"
@@ -508,8 +510,11 @@ export default function SignupOnboardingPage() {
 
       {stepId === 'Branding' && (
         <>
-          <OnboardingStepHeadline line1="Brand" line2Accent="colours." />
-          <p style={na.onboardingLead}>Primary and accent colours for your booking page.</p>
+          <OnboardingLoginHero
+            line1="Brand"
+            line2Accent="colours."
+            subtext="Primary and accent colours for your booking page."
+          />
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             <div>
               <label style={na.fieldLabel}>Primary colour</label>
@@ -586,8 +591,11 @@ export default function SignupOnboardingPage() {
 
       {stepId === 'Preview' && (
         <>
-          <OnboardingStepHeadline line1="Live" line2Accent="preview." />
-          <p style={na.onboardingLead}>Tweak colours and see them on your booking page before the dashboard.</p>
+          <OnboardingLoginHero
+            line1="Live"
+            line2Accent="preview."
+            subtext="Tweak colours and see them on your booking page before the dashboard."
+          />
           <div
             style={{
               display: 'flex',
