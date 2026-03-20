@@ -4,18 +4,12 @@ import { useState, useEffect, Suspense } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
-import { Plus_Jakarta_Sans } from 'next/font/google'
-
-const plusJakarta = Plus_Jakarta_Sans({
-  subsets: ['latin'],
-  weight: ['300', '400', '500', '600', '700'],
-  variable: '--font-plus-jakarta',
-})
-
-const inputClass =
-  'w-full py-3.5 px-5 rounded-full border border-[rgba(255,255,255,0.07)] bg-[#0c1018] text-[0.88rem] text-[#eef0f2] placeholder:text-[#64748b] outline-none transition-[border-color,box-shadow,background] focus:border-[rgba(0,184,245,0.4)] focus:bg-[#0d1319] focus:shadow-[0_0_0_3px_rgba(0,184,245,0.08)]'
-const submitBtnClass =
-  'w-full py-[15px] rounded-full border-0 text-white text-[0.95rem] font-medium tracking-wide cursor-pointer transition-[opacity,transform,box-shadow] hover:opacity-90 hover:shadow-[0_6px_28px_rgba(0,184,245,0.5)] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100'
+import { nativeAuthStyles as na } from '@/components/login/native-auth-styles'
+import {
+  NativeOnboardingShell,
+  OnboardingPrimaryButton,
+  OnboardingStepHeadline,
+} from '@/components/onboarding/NativeOnboardingShell'
 
 type InviteInfo = { email: string; orgName: string; role: string }
 
@@ -31,6 +25,8 @@ function JoinPageContent() {
   const [password, setPassword] = useState('')
   const [signupError, setSignupError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+  const [nameFocus, setNameFocus] = useState(false)
+  const [passFocus, setPassFocus] = useState(false)
 
   useEffect(() => {
     if (!token?.trim()) {
@@ -52,7 +48,8 @@ function JoinPageContent() {
     })
   }, [])
 
-  const emailMatches = invite && sessionUser && sessionUser.email.toLowerCase() === invite.email.toLowerCase()
+  const emailMatches =
+    invite && sessionUser && sessionUser.email.toLowerCase() === invite.email.toLowerCase()
 
   async function handleAccept() {
     if (!token || !invite) return
@@ -96,7 +93,9 @@ function JoinPageContent() {
       })
       if (error) {
         if (error.message.includes('already registered')) {
-          setSignupError('An account with this email already exists. Sign in first, then use this link again.')
+          setSignupError(
+            'An account with this email already exists. Sign in first, then use this link again.',
+          )
         } else {
           setSignupError(error.message)
         }
@@ -109,7 +108,9 @@ function JoinPageContent() {
       })
       const data = await res.json()
       if (!res.ok) {
-        setSignupError(data.error || 'Account created but could not join team. Sign in and open this link again.')
+        setSignupError(
+          data.error || 'Account created but could not join team. Sign in and open this link again.',
+        )
         return
       }
       window.location.href = '/crm/dashboard'
@@ -120,130 +121,196 @@ function JoinPageContent() {
     }
   }
 
+  const footer = (
+    <>
+      <p style={na.onboardingFooterNote}>
+        <Link href="/privacy" style={na.legalLink}>
+          Privacy
+        </Link>
+        <span style={{ color: 'rgba(90,106,128,0.5)', margin: '0 10px' }}>·</span>
+        <Link href="/terms" style={na.legalLink}>
+          Terms
+        </Link>
+      </p>
+    </>
+  )
+
   if (loadingInvite) {
     return (
-      <div className={`auth-hero-bg min-h-screen flex items-center justify-center ${plusJakarta.className}`}>
-        <p className="text-[#64748b] relative z-[1]">Loading…</p>
-      </div>
+      <NativeOnboardingShell showProgress={false} footer={footer}>
+        <p style={{ color: '#5a6a80', fontSize: '0.95rem' }}>Loading…</p>
+      </NativeOnboardingShell>
     )
   }
 
   if (inviteError || !invite) {
     return (
-      <div className={`auth-hero-bg min-h-screen flex items-center justify-center px-4 ${plusJakarta.className}`}>
-        <div className="relative w-full flex items-center justify-center">
-          <div className="auth-hero-glow" aria-hidden />
-          <div className="max-w-md w-full rounded-2xl border border-[rgba(255,255,255,0.07)] bg-[#101620] p-8 text-center relative z-[1]">
-            <h1 className="text-xl font-bold text-[#dce6f5] mb-2">Invalid or expired link</h1>
-            <p className="text-[#5a6a80] text-sm mb-6">{inviteError}</p>
-            <Link href="/login" className="text-[#00b8f5] underline font-medium">Sign in</Link>
-            {' · '}
-            <Link href="/signup" className="text-[#00b8f5] underline font-medium">Sign up</Link>
-          </div>
+      <NativeOnboardingShell showProgress={false} footer={footer}>
+        <OnboardingStepHeadline line1="Link" line2Accent="unavailable." />
+        <p style={na.onboardingLead}>{inviteError}</p>
+        <div style={{ ...na.onboardingGlassRow, flexDirection: 'column', alignItems: 'stretch', gap: 12 }}>
+          <Link href="/login" style={{ ...na.signupLink, fontSize: '0.95rem' }}>
+            Sign in
+          </Link>
+          <Link href="/signup" style={{ ...na.signupLink, fontSize: '0.95rem' }}>
+            Create account
+          </Link>
         </div>
-      </div>
+      </NativeOnboardingShell>
     )
   }
 
   return (
-    <div className={`auth-hero-bg min-h-screen flex items-center justify-center px-4 py-8 ${plusJakarta.className}`}>
-      <div className="relative w-full flex items-center justify-center">
-        <div className="auth-hero-glow" aria-hidden />
-        <div className="auth-card w-[480px] max-w-[98vw] rounded-2xl border border-[rgba(255,255,255,0.07)] bg-[#101620] p-8 relative z-[1]">
-        <h1 className="text-[1.5rem] font-bold text-[#dce6f5] mb-1">You&apos;re invited</h1>
-        <p className="text-[#5a6a80] text-sm mb-6">
-          <strong className="text-[#c8d5e8]">{invite.orgName}</strong> invited you to join as <strong className="text-[#c8d5e8]">{invite.role}</strong>.
-        </p>
+    <NativeOnboardingShell showProgress={false} footer={footer}>
+      <OnboardingStepHeadline line1="You're" line2Accent="invited." />
+      <p style={na.onboardingLead}>
+        <strong style={{ color: '#dce6ec' }}>{invite.orgName}</strong> invited you as{' '}
+        <strong style={{ color: '#dce6ec' }}>{invite.role}</strong>.
+      </p>
 
-        {sessionUser ? (
-          emailMatches ? (
-            <div className="space-y-4">
-              <p className="text-sm text-[#7e8da8]">Signed in as {sessionUser.email}</p>
-              {signupError && <div className="rounded-lg bg-red-500/20 px-4 py-2.5 text-sm text-red-200">{signupError}</div>}
-              <button
-                type="button"
-                onClick={handleAccept}
-                disabled={loading}
-                className={submitBtnClass}
-                style={{ background: 'linear-gradient(135deg, #00b8f5, #00b8f5)', boxShadow: '0 4px 20px rgba(0,184,245,0.35)' }}
-              >
-                {loading ? 'Joining…' : `Join ${invite.orgName}`}
-              </button>
-              <p className="text-xs text-[#3a4a60]">
-                Not you? <Link href="/login" className="text-[#00b8f5] underline">Sign in with a different account</Link>
-              </p>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              <p className="text-sm text-[#7e8da8]">
-                This invite was sent to <strong className="text-[#c8d5e8]">{invite.email}</strong>. You&apos;re signed in as {sessionUser.email}.
-              </p>
-              <p className="text-sm text-[#5a6a80]">
-                Sign out and sign in with {invite.email}, or create an account with that email below.
-              </p>
-              <Link
-                href="/signup"
-                className="inline-block py-3 px-5 rounded-full border border-[rgba(0,184,245,0.3)] text-[#c8d5e8] text-sm font-medium hover:bg-[#1a2332]"
-              >
-                Create account with {invite.email}
+      {sessionUser ? (
+        emailMatches ? (
+          <>
+            <p style={{ fontSize: '0.9rem', color: '#5a6a80', marginTop: 0, marginBottom: 12 }}>
+              Signed in as {sessionUser.email}
+            </p>
+            {signupError ? <div style={{ ...na.authError, marginBottom: 12 }}>{signupError}</div> : null}
+            <OnboardingPrimaryButton
+              onClick={handleAccept}
+              disabled={loading}
+              style={{ width: '100%', flex: 'none' }}
+            >
+              {loading ? 'Joining…' : `Join ${invite.orgName}`}
+              {!loading ? <span style={na.btnArrow}>→</span> : null}
+            </OnboardingPrimaryButton>
+            <p style={{ ...na.onboardingFooterNote, textAlign: 'left', marginTop: 20 }}>
+              Not you?{' '}
+              <Link href="/login" style={na.signupLink}>
+                Sign in with a different account
               </Link>
-              <p className="text-xs text-[#3a4a60]">
-                <Link href="/login" className="text-[#00b8f5] underline">Sign in</Link> if you already have an account with that email.
+            </p>
+          </>
+        ) : (
+          <>
+            <div style={{ ...na.onboardingGlassRow, flexDirection: 'column', alignItems: 'stretch', gap: 12 }}>
+              <p style={{ fontSize: '0.9rem', color: '#5a6a80', margin: 0, lineHeight: 1.5 }}>
+                This invite was sent to <strong style={{ color: '#dce6ec' }}>{invite.email}</strong>. You&apos;re
+                signed in as <strong style={{ color: '#dce6ec' }}>{sessionUser.email}</strong>.
+              </p>
+              <p style={{ fontSize: '0.88rem', color: '#5a6a80', margin: 0, lineHeight: 1.5 }}>
+                Sign out and sign in with {invite.email}, or create an account with that email.
               </p>
             </div>
-          )
-        ) : (
-          <form onSubmit={handleSignUp} className="space-y-4">
-            <p className="text-sm text-[#7e8da8]">Create your account to join. Use the email this invite was sent to.</p>
-            <input type="hidden" value={invite.email} readOnly />
+            <Link
+              href="/signup"
+              style={{
+                ...na.onboardingBtnSecondary,
+                marginTop: 16,
+                textDecoration: 'none',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                textAlign: 'center',
+                lineHeight: 1.35,
+              }}
+            >
+              Create account with {invite.email}
+            </Link>
+            <p style={{ ...na.onboardingFooterNote, textAlign: 'left', marginTop: 16 }}>
+              <Link href="/login" style={na.signupLink}>
+                Sign in
+              </Link>{' '}
+              if you already use that email.
+            </p>
+          </>
+        )
+      ) : (
+        <form onSubmit={handleSignUp} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <p style={{ fontSize: '0.9rem', color: '#5a6a80', margin: 0, lineHeight: 1.5 }}>
+            Create your account to join. Use the email this invite was sent to.
+          </p>
+          <div>
+            <label style={na.fieldLabel} htmlFor="join-name">
+              Full name
+            </label>
             <input
+              id="join-name"
+              className="do-native-auth-input"
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="Full name"
-              className={inputClass}
+              placeholder="Your name"
+              onFocus={() => setNameFocus(true)}
+              onBlur={() => setNameFocus(false)}
+              style={{
+                ...na.fieldInputNoIcon,
+                ...(nameFocus ? na.fieldInputFocus : {}),
+              }}
             />
+          </div>
+          <div>
+            <label style={na.fieldLabel} htmlFor="join-email">
+              Email
+            </label>
             <input
+              id="join-email"
+              className="do-native-auth-input"
               type="email"
               value={invite.email}
               readOnly
-              className={inputClass}
-              style={{ opacity: 0.9 }}
+              style={{
+                ...na.fieldInputNoIcon,
+                opacity: 0.92,
+              }}
             />
+          </div>
+          <div>
+            <label style={na.fieldLabel} htmlFor="join-password">
+              Password
+            </label>
             <input
+              id="join-password"
+              className="do-native-auth-input"
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder="Password (min 6 characters)"
-              className={inputClass}
+              placeholder="Min. 6 characters"
               required
               minLength={6}
+              onFocus={() => setPassFocus(true)}
+              onBlur={() => setPassFocus(false)}
+              style={{
+                ...na.fieldInputNoIcon,
+                ...(passFocus ? na.fieldInputFocus : {}),
+              }}
+              autoComplete="new-password"
             />
-            {signupError && <div className="rounded-lg bg-red-500/20 px-4 py-2.5 text-sm text-red-200">{signupError}</div>}
-            <button
-              type="submit"
-              disabled={loading}
-              className={submitBtnClass}
-              style={{ background: 'linear-gradient(135deg, #00b8f5, #00b8f5)', boxShadow: '0 4px 20px rgba(0,184,245,0.35)' }}
+          </div>
+          {signupError ? <div style={na.authError}>{signupError}</div> : null}
+          <OnboardingPrimaryButton type="submit" disabled={loading} style={{ width: '100%', flex: 'none' }}>
+            {loading ? 'Creating account…' : 'Create account & join'}
+            {!loading ? <span style={na.btnArrow}>→</span> : null}
+          </OnboardingPrimaryButton>
+          <p style={{ ...na.onboardingFooterNote, textAlign: 'center', marginTop: 8 }}>
+            Already have an account?{' '}
+            <Link
+              href={`/login?redirectTo=${encodeURIComponent(`/signup/join?token=${token}`)}`}
+              style={na.signupLink}
             >
-              {loading ? 'Creating account…' : 'Create account & join'}
-            </button>
-            <p className="text-xs text-[#3a4a60]">
-              Already have an account? <Link href={`/login?redirectTo=${encodeURIComponent(`/signup/join?token=${token}`)}`} className="text-[#00b8f5] underline">Sign in</Link>
-            </p>
-          </form>
-        )}
-      </div>
-      </div>
-    </div>
+              Sign in
+            </Link>
+          </p>
+        </form>
+      )}
+    </NativeOnboardingShell>
   )
 }
 
 function JoinPageFallback() {
   return (
-    <div className="auth-hero-bg min-h-screen flex items-center justify-center">
-      <p className="text-[#64748b] relative z-[1]">Loading…</p>
-    </div>
+    <NativeOnboardingShell showProgress={false}>
+      <p style={{ color: '#5a6a80' }}>Loading…</p>
+    </NativeOnboardingShell>
   )
 }
 
