@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useId, useState, type CSSProperties, type ReactNode } from 'react'
+import { ChevronLeft } from 'lucide-react'
 import { Figtree, Fraunces } from 'next/font/google'
 import {
   injectNativeAuthKeyframes,
@@ -179,13 +180,15 @@ export function NativeOnboardingShell({
         {showProgress && stepLabel ? (
           <header style={styles.onboardingTopBar}>
             <div style={{ ...styles.onboardingTopBarInner, maxWidth: contentMaxWidth }}>
-              <div style={styles.onboardingProgressTrack}>
-                <div
-                  style={{
-                    ...styles.onboardingProgressFill,
-                    width: `${Math.min(100, Math.max(0, progressPercent))}%`,
-                  }}
-                />
+              <div style={styles.onboardingProgressPill}>
+                <div style={styles.onboardingProgressTrack}>
+                  <div
+                    style={{
+                      ...styles.onboardingProgressFill,
+                      width: `${Math.min(100, Math.max(0, progressPercent))}%`,
+                    }}
+                  />
+                </div>
               </div>
               <span style={styles.onboardingStepBadge}>{stepLabel}</span>
             </div>
@@ -238,22 +241,29 @@ export function OnboardingSecondaryButton({
   disabled,
   type = 'button',
   onClick,
+  /** Mobile onboarding: show ← before label for clear step-back affordance */
+  showBackArrow = true,
 }: {
   children: ReactNode
   disabled?: boolean
   type?: 'button' | 'submit'
   onClick?: () => void
+  showBackArrow?: boolean
 }) {
   return (
     <button
       type={type}
       disabled={disabled}
       onClick={onClick}
+      aria-label={typeof children === 'string' ? children : 'Back'}
       style={{
         ...styles.onboardingBtnSecondary,
         ...(disabled ? { opacity: 0.45, cursor: 'not-allowed' } : {}),
       }}
     >
+      {showBackArrow ? (
+        <ChevronLeft strokeWidth={2.25} size={22} aria-hidden style={{ flexShrink: 0, marginLeft: -4 }} />
+      ) : null}
       {children}
     </button>
   )
