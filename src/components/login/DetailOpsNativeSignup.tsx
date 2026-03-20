@@ -42,44 +42,63 @@ function IconEye({ show }: { show: boolean }) {
   )
 }
 
-export type DetailOpsNativeLoginProps = {
+export type DetailOpsNativeSignupProps = {
   logoSrc?: string
-  authError?: string | null
-  onLogin: (credentials: { email: string; password: string }) => void | Promise<void>
-  onSignUp: () => void
-  onForgotPassword: () => void
+  name: string
+  onNameChange: (v: string) => void
+  businessName: string
+  onBusinessNameChange: (v: string) => void
+  phone: string
+  onPhoneChange: (v: string) => void
+  email: string
+  onEmailChange: (v: string) => void
+  password: string
+  onPasswordChange: (v: string) => void
+  smsConsent: boolean
+  onSmsConsentChange: (v: boolean) => void
+  error: string | null
+  loading: boolean
+  onSubmit: (e: React.FormEvent) => void
 }
 
-export function DetailOpsNativeLogin({
+export function DetailOpsNativeSignup({
   logoSrc = '/detailopslogo.png',
-  authError,
-  onLogin,
-  onSignUp,
-  onForgotPassword,
-}: DetailOpsNativeLoginProps) {
+  name,
+  onNameChange,
+  businessName,
+  onBusinessNameChange,
+  phone,
+  onPhoneChange,
+  email,
+  onEmailChange,
+  password,
+  onPasswordChange,
+  smsConsent,
+  onSmsConsentChange,
+  error,
+  loading,
+  onSubmit,
+}: DetailOpsNativeSignupProps) {
   const gradientId = useId().replace(/:/g, '')
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
-  const [emailFocused, setEmailFocused] = useState(false)
-  const [passFocused, setPassFocused] = useState(false)
-  const [loading, setLoading] = useState(false)
   const [logoError, setLogoError] = useState(false)
   const [mounted, setMounted] = useState(false)
+
+  const [nameFocused, setNameFocused] = useState(false)
+  const [bizFocused, setBizFocused] = useState(false)
+  const [phoneFocused, setPhoneFocused] = useState(false)
+  const [emailFocused, setEmailFocused] = useState(false)
+  const [passFocused, setPassFocused] = useState(false)
 
   useEffect(() => {
     injectNativeAuthKeyframes()
     setMounted(true)
   }, [])
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
-    if (!email || !password) return
-    setLoading(true)
-    try {
-      await onLogin({ email, password })
-    } finally {
-      setLoading(false)
+  function noIconInputStyle(focused: boolean): React.CSSProperties {
+    return {
+      ...styles.fieldInputNoIcon,
+      ...(focused ? styles.fieldInputFocus : {}),
     }
   }
 
@@ -150,38 +169,95 @@ export function DetailOpsNativeLogin({
             </div>
             <h1 style={styles.heroH1}>
               <span className={figtree.className} style={styles.headlineTop}>
-                Welcome
+                Create
               </span>
               <span className={fraunces.className} style={styles.headlineAccent}>
-                Back.
+                account.
               </span>
             </h1>
           </div>
           <p style={styles.subtext}>
-            Schedule jobs, manage crews, and track payments — sign in to your workspace.
+            We&apos;ll set up your business profile and booking page — enter your details to get started.
           </p>
         </div>
 
         <form
-          onSubmit={handleSubmit}
+          onSubmit={onSubmit}
           style={{
             opacity: mounted ? 1 : 0,
             animation: mounted ? 'doRiseIn 0.75s cubic-bezier(0.16,1,0.3,1) forwards 0.28s' : 'none',
           }}
         >
-          {authError ? <div style={styles.authError}>{authError}</div> : null}
+          {error ? <div style={styles.authError}>{error}</div> : null}
+
           <div style={styles.fieldWrap}>
-            <label style={styles.fieldLabel} htmlFor="native-login-email">
+            <label style={styles.fieldLabel} htmlFor="native-signup-name">
+              Full name
+            </label>
+            <input
+              id="native-signup-name"
+              className="do-native-auth-input"
+              type="text"
+              placeholder="Your name"
+              value={name}
+              onChange={e => onNameChange(e.target.value)}
+              onFocus={() => setNameFocused(true)}
+              onBlur={() => setNameFocused(false)}
+              style={noIconInputStyle(nameFocused)}
+              autoComplete="name"
+              required
+            />
+          </div>
+
+          <div style={styles.fieldWrap}>
+            <label style={styles.fieldLabel} htmlFor="native-signup-business">
+              Business
+            </label>
+            <input
+              id="native-signup-business"
+              className="do-native-auth-input"
+              type="text"
+              placeholder="Business or company name"
+              value={businessName}
+              onChange={e => onBusinessNameChange(e.target.value)}
+              onFocus={() => setBizFocused(true)}
+              onBlur={() => setBizFocused(false)}
+              style={noIconInputStyle(bizFocused)}
+              autoComplete="organization"
+              required
+            />
+          </div>
+
+          <div style={styles.fieldWrap}>
+            <label style={styles.fieldLabel} htmlFor="native-signup-phone">
+              Phone <span style={{ fontWeight: 400, textTransform: 'none', letterSpacing: 'normal' }}>(optional)</span>
+            </label>
+            <input
+              id="native-signup-phone"
+              className="do-native-auth-input"
+              type="tel"
+              placeholder="(555) 000-0000"
+              value={phone}
+              onChange={e => onPhoneChange(e.target.value)}
+              onFocus={() => setPhoneFocused(true)}
+              onBlur={() => setPhoneFocused(false)}
+              style={noIconInputStyle(phoneFocused)}
+              autoComplete="tel"
+            />
+          </div>
+
+          <div style={styles.fieldWrap}>
+            <label style={styles.fieldLabel} htmlFor="native-signup-email">
               Email
             </label>
             <div style={styles.fieldInner}>
               <input
-                id="native-login-email"
+                id="native-signup-email"
                 className="do-native-auth-input"
                 type="email"
                 placeholder="you@example.com"
                 value={email}
-                onChange={e => setEmail(e.target.value)}
+                onChange={e => onEmailChange(e.target.value)}
                 onFocus={() => setEmailFocused(true)}
                 onBlur={() => setEmailFocused(false)}
                 style={inputStyle(emailFocused)}
@@ -195,22 +271,23 @@ export function DetailOpsNativeLogin({
           </div>
 
           <div style={styles.fieldWrap}>
-            <label style={styles.fieldLabel} htmlFor="native-login-password">
+            <label style={styles.fieldLabel} htmlFor="native-signup-password">
               Password
             </label>
             <div style={styles.fieldInner}>
               <input
-                id="native-login-password"
+                id="native-signup-password"
                 className="do-native-auth-input"
                 type={showPassword ? 'text' : 'password'}
-                placeholder="••••••••"
+                placeholder="Min. 6 characters"
                 value={password}
-                onChange={e => setPassword(e.target.value)}
+                onChange={e => onPasswordChange(e.target.value)}
                 onFocus={() => setPassFocused(true)}
                 onBlur={() => setPassFocused(false)}
                 style={inputStyle(passFocused)}
-                autoComplete="current-password"
+                autoComplete="new-password"
                 required
+                minLength={6}
               />
               <span
                 style={{
@@ -235,22 +312,32 @@ export function DetailOpsNativeLogin({
             </div>
           </div>
 
-          <div style={styles.forgotRow}>
-            <span
-              role="button"
-              tabIndex={0}
-              style={styles.forgotLink}
-              onClick={() => onForgotPassword()}
-              onKeyDown={e => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                  e.preventDefault()
-                  onForgotPassword()
-                }
+          <label
+            style={{
+              display: 'flex',
+              alignItems: 'flex-start',
+              gap: 12,
+              cursor: 'pointer',
+              marginBottom: 16,
+              marginTop: 4,
+            }}
+          >
+            <input
+              type="checkbox"
+              checked={smsConsent}
+              onChange={e => onSmsConsentChange(e.target.checked)}
+              style={{
+                marginTop: 3,
+                width: 18,
+                height: 18,
+                accentColor: '#00b8f5',
+                flexShrink: 0,
               }}
-            >
-              Forgot password?
+            />
+            <span style={{ fontSize: '0.82rem', color: '#5a6a80', lineHeight: 1.45 }}>
+              I agree to receive SMS from DetailOps about my account and bookings.
             </span>
-          </div>
+          </label>
 
           <button
             type="submit"
@@ -262,26 +349,15 @@ export function DetailOpsNativeLogin({
           >
             <div className="do-btn-shimmer" />
             <div className="do-btn-overlay" />
-            {loading ? 'Signing in…' : 'Sign In'}
+            {loading ? 'Creating account…' : 'Continue'}
             {!loading ? <span style={styles.btnArrow}>→</span> : null}
           </button>
 
           <p style={styles.signupRow}>
-            <span style={styles.signupText}>New to DetailOps? </span>
-            <span
-              role="button"
-              tabIndex={0}
-              style={styles.signupLink}
-              onClick={() => onSignUp()}
-              onKeyDown={e => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                  e.preventDefault()
-                  onSignUp()
-                }
-              }}
-            >
-              Get started free
-            </span>
+            <span style={styles.signupText}>Already have an account? </span>
+            <Link href="/login" style={styles.signupLink}>
+              Sign in
+            </Link>
           </p>
         </form>
 
