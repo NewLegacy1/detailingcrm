@@ -4,6 +4,7 @@ import { getAuthAndPermissions } from '@/lib/permissions-server'
 import { fromZonedTime } from 'date-fns-tz'
 import { crmPath } from '@/lib/crm-path'
 import { ScheduleView } from './schedule-view'
+import { ScheduleMobileAddButton } from './schedule-mobile-add-button'
 
 const DEFAULT_SERVICE_HOURS_START = 9
 const DEFAULT_SERVICE_HOURS_END = 18
@@ -121,13 +122,18 @@ export default async function SchedulePage({
 
   return (
     <div className="space-y-6 p-6 lg:p-8" style={{ background: 'var(--bg)' }}>
-      <div className="flex items-center justify-between gap-4">
-        <h1 className="page-title hidden md:block" style={{ color: 'var(--text-1)' }}>Schedule</h1>
-        {orgSubscriptionPlan === 'pro' && (
-          <Link href={crmPath('/schedule/locations')} className="text-sm text-[var(--accent)] hover:underline">
-            By location
-          </Link>
-        )}
+      <div className="flex items-center justify-between gap-3 min-w-0">
+        <h1 className="page-title min-w-0 truncate" style={{ color: 'var(--text-1)' }}>
+          Schedule
+        </h1>
+        <div className="flex items-center gap-3 shrink-0">
+          {orgSubscriptionPlan === 'pro' && (
+            <Link href={crmPath('/schedule/locations')} className="text-sm text-[var(--accent)] hover:underline whitespace-nowrap">
+              By location
+            </Link>
+          )}
+          <ScheduleMobileAddButton />
+        </div>
       </div>
       <ScheduleView
         initialJobs={jobs ?? []}

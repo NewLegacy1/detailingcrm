@@ -7,6 +7,7 @@ import { crmPath } from '@/lib/crm-path'
 import { createClient } from '@/lib/supabase/client'
 import { Calendar, Search, Plus, GripVertical, ChevronLeft, ChevronRight } from 'lucide-react'
 import { ScheduleJobDetailModal } from './schedule-job-detail-modal'
+import { SCHEDULE_OPEN_CREATE_EVENT } from './schedule-mobile-add-button'
 import { JobDetailPopup } from '@/components/job-detail-popup'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogClose } from '@/components/ui/dialog'
@@ -219,6 +220,11 @@ export function ScheduleView({ initialJobs, initialDate, timeZone, serviceHoursS
   const [sendNotifyAfterMove, setSendNotifyAfterMove] = useState(true)
   const [selectedJobId, setSelectedJobId] = useState<string | null>(() => initialSelectedJobId ?? null)
   const [createModalOpen, setCreateModalOpen] = useState(false)
+  useEffect(() => {
+    const openCreate = () => setCreateModalOpen(true)
+    window.addEventListener(SCHEDULE_OPEN_CREATE_EVENT, openCreate)
+    return () => window.removeEventListener(SCHEDULE_OPEN_CREATE_EVENT, openCreate)
+  }, [])
   const router = useRouter()
   const [editModalOpen, setEditModalOpen] = useState(false)
   const [editJobId, setEditJobId] = useState<string | null>(null)
@@ -835,17 +841,6 @@ export function ScheduleView({ initialJobs, initialDate, timeZone, serviceHoursS
                 )
               })}
             </div>
-          </div>
-          {/* FAB: add job */}
-          <div className="flex justify-end pt-4 pr-2">
-            <button
-              type="button"
-              onClick={() => setCreateModalOpen(true)}
-              className="flex items-center justify-center w-12 h-12 rounded-full shadow-lg bg-[var(--surface-2)] text-[var(--text-2)] border border-[var(--border)] hover:bg-[var(--surface-3)]"
-              aria-label="Add job"
-            >
-              <Plus className="h-6 w-6" />
-            </button>
           </div>
         </div>
       ) : (
