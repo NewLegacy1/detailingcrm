@@ -73,6 +73,16 @@ export default async function MainLayout({
   })()
 
   if (!hasCrmAccess) {
+    /** Paywall only after product onboarding (booking-profile wizard) is done — same as pre–native-app flow. */
+    const orgId = profile?.org_id ?? null
+    const role = (profile?.role as string | undefined) ?? 'pending'
+    const ownerStillOnboarding =
+      orgId != null &&
+      profile?.onboarding_complete !== true &&
+      (role === 'owner' || role === 'pending')
+    if (ownerStillOnboarding) {
+      redirect(`/signup/${orgId}`)
+    }
     redirect('/onboarding')
   }
 

@@ -12,6 +12,7 @@ import {
   OnboardingSecondaryButton,
 } from '@/components/onboarding/NativeOnboardingShell'
 import { OnboardingFeatureCheckRow } from '@/components/onboarding/OnboardingFeatureCheckRow'
+import { Moon, Sun } from 'lucide-react'
 
 const STEPS = ['Team size', 'Features', 'Service area', 'Website', 'Branding', 'Preview'] as const
 
@@ -465,10 +466,22 @@ export default function SignupOnboardingPage() {
           ) : null}
           <p style={{ ...na.fieldLabel, marginTop: 20 }}>Map style on your booking page</p>
           <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-            <button type="button" onClick={() => setMapTheme('dark')} style={mapPill(mapTheme === 'dark')}>
+            <button
+              type="button"
+              onClick={() => setMapTheme('dark')}
+              style={{ ...mapPill(mapTheme === 'dark'), display: 'inline-flex', alignItems: 'center', gap: 8 }}
+              aria-pressed={mapTheme === 'dark'}
+            >
+              <Moon className="h-4 w-4 shrink-0" strokeWidth={2} aria-hidden />
               Dark
             </button>
-            <button type="button" onClick={() => setMapTheme('light')} style={mapPill(mapTheme === 'light')}>
+            <button
+              type="button"
+              onClick={() => setMapTheme('light')}
+              style={{ ...mapPill(mapTheme === 'light'), display: 'inline-flex', alignItems: 'center', gap: 8 }}
+              aria-pressed={mapTheme === 'light'}
+            >
+              <Sun className="h-4 w-4 shrink-0" strokeWidth={2} aria-hidden />
               Light
             </button>
           </div>
