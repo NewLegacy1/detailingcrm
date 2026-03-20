@@ -66,8 +66,13 @@ export function MobileHeader({ displayName, logoUrl }: MobileHeaderProps) {
 
   return (
     <header
-      className="md:hidden sticky top-0 z-30 flex items-center justify-between min-h-[52px] px-4 border-b shrink-0"
-      style={{ background: 'var(--surface-1)', borderColor: 'var(--border)' }}
+      className="md:hidden sticky top-0 z-30 flex items-center justify-between px-4 border-b shrink-0"
+      style={{
+        background: 'var(--surface-1)',
+        borderColor: 'var(--border)',
+        paddingTop: 'env(safe-area-inset-top, 0px)',
+        minHeight: 'calc(52px + env(safe-area-inset-top, 0px))',
+      }}
     >
       <div className="flex items-center gap-2 min-w-0 flex-1">
         {showBack && (

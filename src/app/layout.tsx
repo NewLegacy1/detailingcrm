@@ -40,7 +40,11 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className="dark" suppressHydrationWarning>
-      <head />
+      <head>
+        <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+      </head>
       <body className={`${geist.variable} ${instrumentSans.variable} ${rajdhani.variable} ${nunito.variable} font-sans antialiased bg-[var(--bg)] text-[var(--text)]`} suppressHydrationWarning>
         {/* Redirect password-reset links that land on / or /login to /auth/callback before React hydrates.
             Handles: hash (#access_token, #type=recovery, #code=), query (token_hash, code). */}
@@ -55,6 +59,13 @@ export default function RootLayout({
   var hasRecoveryQuery = q.indexOf('token_hash') !== -1 || q.indexOf('code=') !== -1;
   if ((p === '/' || p === '/login') && (hasRecoveryHash || hasRecoveryQuery)) {
     window.location.replace('/auth/callback' + q + h);
+    return;
+  }
+  // Inside the native app, the marketing landing page should never be shown.
+  // Redirect / to /login so the app always starts at the product.
+  var isNativeApp = !!(window.Capacitor);
+  if (isNativeApp && p === '/') {
+    window.location.replace('/login');
   }
 })();
             `.trim(),

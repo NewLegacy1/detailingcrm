@@ -5,3 +5,7 @@ node_modules
 .env.stripe
 .env.email
 *.log
+
+# Xcode / SwiftPM user state (local machine)
+ios/**/xcuserdata/
+ios/**/.swiftpm/xcode/xcuserdata/
