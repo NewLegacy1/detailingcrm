@@ -2,7 +2,7 @@ import type { Metadata } from 'next'
 import { headers } from 'next/headers'
 import { notFound } from 'next/navigation'
 import { Suspense } from 'react'
-import { createClient } from '@/lib/supabase/server'
+import { createClient, createServiceRoleClient } from '@/lib/supabase/server'
 import { BookingPageClient } from '@/components/booking/BookingPageClient'
 import { BookingPageClientMultiLocation } from '@/components/booking/BookingPageClientMultiLocation'
 
@@ -72,6 +72,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const normalizedSlug = slug.trim().toLowerCase()
   if (!normalizedSlug) return { title: 'Booking' }
   const supabase = await createClient()
+  const serviceSupabase = await createServiceRoleClient()
   const { data: raw } = await supabase.rpc('get_public_booking_context', { p_slug: normalizedSlug })
   let businessName = 'Booking'
   if (raw != null && typeof raw === 'object') {
@@ -79,7 +80,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
     businessName = String((r.businessName ?? r.business_name ?? 'Booking')).trim() || 'Booking'
   }
   if (businessName === 'Booking') {
-    const { data: org } = await supabase
+    const { data: org } = await serviceSupabase
       .from('organizations')
       .select('name')
       .eq('booking_slug', normalizedSlug)
@@ -99,6 +100,7 @@ export default async function BookPage({ params, searchParams }: { params: Promi
   if (!normalizedSlug) notFound()
 
   const supabase = await createClient()
+  const serviceSupabase = await createServiceRoleClient()
 
   let context: BookingContext | null = null
 
@@ -178,7 +180,7 @@ export default async function BookPage({ params, searchParams }: { params: Promi
   }
 
   if (!context) {
-    const orgRes = await supabase
+    const orgRes = await serviceSupabase
       .from('organizations')
       .select('id, name, logo_url, booking_tagline, booking_service_area_label, map_lat, map_lng, service_radius_km, booking_show_prices, primary_color, accent_color, theme, map_theme, booking_text_color, booking_header_text_color, website')
       .eq('booking_slug', normalizedSlug)
@@ -187,14 +189,14 @@ export default async function BookPage({ params, searchParams }: { params: Promi
     if (orgRes.error || !org) notFound()
 
     const [profileRes, servicesRes] = await Promise.all([
-      supabase
+      serviceSupabase
         .from('profiles')
         .select('business_name, avatar_url')
         .eq('org_id', org.id)
         .eq('role', 'owner')
         .limit(1)
         .maybeSingle(),
-      supabase
+      serviceSupabase
         .from('services')
         .select('id, name, duration_mins, base_price, description, category_id, sort_order, photo_urls, service_categories(name, sort_order)')
         .eq('org_id', org.id)
@@ -253,20 +255,20 @@ export default async function BookPage({ params, searchParams }: { params: Promi
   const jobParam = resolvedSearchParams.job
   const jobIdStr = typeof jobParam === 'string' ? jobParam.trim() : Array.isArray(jobParam) ? String(jobParam[0] ?? '').trim() : ''
   if (ref === 'maintenance' && jobIdStr && context) {
-    const { data: orgRow } = await supabase
+    const { data: orgRow } = await serviceSupabase
       .from('organizations')
       .select('id, maintenance_discount_type, maintenance_discount_value')
       .eq('booking_slug', normalizedSlug)
       .single()
     if (orgRow?.id) {
-      const { data: jobRow } = await supabase
+      const { data: jobRow } = await serviceSupabase
         .from('jobs')
         .select('id, service_id')
         .eq('id', jobIdStr)
         .eq('org_id', orgRow.id)
         .single()
       if (jobRow?.service_id) {
-        const { data: serviceRow } = await supabase.from('services').select('name').eq('id', jobRow.service_id).single()
+        const { data: serviceRow } = await serviceSupabase.from('services').select('name').eq('id', jobRow.service_id).single()
         if (serviceRow?.name) {
           const discountType = orgRow.maintenance_discount_type
           const discountValue = Number(orgRow.maintenance_discount_value) || 0
@@ -284,7 +286,7 @@ export default async function BookPage({ params, searchParams }: { params: Promi
   // Multi-location (Pro only): show location step when enabled and more than one location
   let useMultiLocation = false
   let locationsForStep: { id: string; name: string; address?: string | null; distance_km?: number | null; next_available?: string | null }[] = []
-  const { data: orgFlags } = await supabase
+  const { data: orgFlags } = await serviceSupabase
     .from('organizations')
     .select('id, subscription_plan, multi_location_enabled')
     .eq('booking_slug', normalizedSlug)
@@ -302,6 +304,7 @@ export default async function BookPage({ params, searchParams }: { params: Promi
         id: String(l.id ?? ''),
         name: String(l.name ?? ''),
         address: l.address != null ? String(l.address) : null,
+        timezone: l.timezone != null ? String(l.timezone) : null,
         distance_km: l.distance_km != null ? Number(l.distance_km) : null,
         next_available: null,
       }))

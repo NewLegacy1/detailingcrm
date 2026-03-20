@@ -20,6 +20,7 @@ export interface LocationSchedule {
   hours_start: number
   hours_end: number
   slot_interval_minutes: number
+  is_active?: boolean
   blackout_dates: string[] | null
   blackout_ranges: Array<{ start: string; end: string }> | null
 }
@@ -37,14 +38,18 @@ export async function getSlotsForLocation(
   const dateMatch = dateStr.match(/^(\d{4})-(\d{2})-(\d{2})$/)
   if (!dateMatch) return []
 
-  const { data: location } = await supabase
+  const { data: location, error: locationError } = await supabase
     .from('locations')
-    .select('timezone, hours_start, hours_end, slot_interval_minutes, blackout_dates, blackout_ranges')
+    .select('timezone, hours_start, hours_end, slot_interval_minutes, blackout_dates, blackout_ranges, is_active')
     .eq('id', locationId)
     .eq('org_id', orgId)
-    .single()
+    .maybeSingle()
 
-  if (!location) return []
+  if (locationError) {
+    throw locationError
+  }
+
+  if (!location || location.is_active === false) return []
 
   const tz = (location.timezone as string) || 'America/Toronto'
   const hoursStart = typeof location.hours_start === 'number' ? Math.max(0, Math.min(23, location.hours_start)) : 9
@@ -87,7 +92,7 @@ export async function getSlotsForLocation(
   const isTodayInOrg = dateOnlyStr === todayInOrgStr
   const minSlotStartUtc = isTodayInOrg ? new Date(now.getTime() + 60 * 1000) : null
 
-  const { data: jobs } = await supabase
+  const { data: jobs, error: jobsError } = await supabase
     .from('jobs')
     .select('id, scheduled_at, actual_started_at, actual_ended_at, service_id, services(duration_mins)')
     .eq('org_id', orgId)
@@ -95,6 +100,10 @@ export async function getSlotsForLocation(
     .gte('scheduled_at', dayStartUtc.toISOString())
     .lt('scheduled_at', dayEndUtc.toISOString())
     .in('status', ['scheduled', 'in_progress', 'en_route'])
+
+  if (jobsError) {
+    throw jobsError
+  }
 
   type JobRow = {
     scheduled_at: string

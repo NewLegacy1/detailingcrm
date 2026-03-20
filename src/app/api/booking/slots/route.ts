@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { createServiceRoleClient } from '@/lib/supabase/server'
 import { fromZonedTime, toZonedTime } from 'date-fns-tz'
 import { addMinutes } from 'date-fns'
 import { getSlotsForLocation } from '@/lib/booking-availability'
@@ -18,7 +18,7 @@ export async function GET(req: NextRequest) {
   const dateMatch = dateStr.match(/^(\d{4})-(\d{2})-(\d{2})$/)
   if (!dateMatch) return NextResponse.json({ error: 'date required (YYYY-MM-DD)' }, { status: 400 })
 
-  const supabase = await createClient()
+  const supabase = await createServiceRoleClient()
 
   const { data: org, error: orgError } = await supabase
     .from('organizations')
@@ -27,20 +27,32 @@ export async function GET(req: NextRequest) {
     .single()
 
   if (orgError || !org?.id) {
+    console.error('[Booking Slots] Org lookup failed:', { slug, error: orgError?.message ?? null })
     return NextResponse.json({ error: 'Invalid booking link' }, { status: 404 })
   }
 
   if (locationId && org.multi_location_enabled === true) {
-    const slots = await getSlotsForLocation(supabase, {
-      orgId: org.id,
-      locationId,
-      dateStr,
-      durationMins,
-      travelBufferMins: typeof org.travel_buffer_minutes === 'number' && org.travel_buffer_minutes >= 0
-        ? Math.min(120, org.travel_buffer_minutes)
-        : 20,
-    })
-    return NextResponse.json({ slots })
+    try {
+      const slots = await getSlotsForLocation(supabase, {
+        orgId: org.id,
+        locationId,
+        dateStr,
+        durationMins,
+        travelBufferMins: typeof org.travel_buffer_minutes === 'number' && org.travel_buffer_minutes >= 0
+          ? Math.min(120, org.travel_buffer_minutes)
+          : 20,
+      })
+      return NextResponse.json({ slots })
+    } catch (error) {
+      console.error('[Booking Slots] Location availability lookup failed:', {
+        slug,
+        orgId: org.id,
+        locationId,
+        dateStr,
+        error: error instanceof Error ? error.message : String(error),
+      })
+      return NextResponse.json({ error: 'Unable to load available times right now' }, { status: 500 })
+    }
   }
 
   const tz = (org.timezone as string) || 'America/Toronto'
@@ -86,13 +98,23 @@ export async function GET(req: NextRequest) {
   const isTodayInOrg = dateOnlyStr === todayInOrgStr
   const minSlotStartUtc = isTodayInOrg ? new Date(now.getTime() + 60 * 1000) : null // 1 min buffer
 
-  const { data: jobs } = await supabase
+  const { data: jobs, error: jobsError } = await supabase
     .from('jobs')
     .select('id, scheduled_at, actual_started_at, actual_ended_at, service_id, services(duration_mins)')
     .eq('org_id', org.id)
     .gte('scheduled_at', dayStartUtc.toISOString())
     .lt('scheduled_at', dayEndUtc.toISOString())
     .in('status', ['scheduled', 'in_progress', 'en_route'])
+
+  if (jobsError) {
+    console.error('[Booking Slots] Job lookup failed:', {
+      slug,
+      orgId: org.id,
+      dateStr,
+      error: jobsError.message,
+    })
+    return NextResponse.json({ error: 'Unable to load available times right now' }, { status: 500 })
+  }
 
   type JobRow = {
     scheduled_at: string

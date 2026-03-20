@@ -380,6 +380,7 @@ export function BookingPageClient({
             upsells={context.upsells ?? []}
             showPrices={context.showPrices}
             blackoutDates={context.blackoutDates ?? []}
+            timezone={context.timezone}
             bookingPaymentMode={context.bookingPaymentMode ?? 'none'}
             mapReady={mapReady}
             initialAddress={useShopAddress && shopAddress ? shopAddress : addressValue}

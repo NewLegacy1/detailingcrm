@@ -7,6 +7,7 @@ export interface LocationCardLocation {
   name: string
   address?: string | null
   distance_km?: number | null
+  timezone?: string | null
   next_available?: string | null
 }
 
@@ -22,7 +23,16 @@ export function LocationCard({ location, selected, onSelect }: LocationCardProps
   if (location.next_available) {
     try {
       const d = new Date(location.next_available)
-      if (!isNaN(d.getTime())) nextStr = `Next: ${d.toLocaleDateString(undefined, { weekday: 'short' })} ${d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}`
+      if (!isNaN(d.getTime())) {
+        nextStr = `Next: ${d.toLocaleDateString(undefined, {
+          weekday: 'short',
+          timeZone: location.timezone ?? undefined,
+        })} ${d.toLocaleTimeString(undefined, {
+          hour: 'numeric',
+          minute: '2-digit',
+          timeZone: location.timezone ?? undefined,
+        })}`
+      }
     } catch {}
   }
 

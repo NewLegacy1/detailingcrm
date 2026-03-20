@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { createServiceRoleClient } from '@/lib/supabase/server'
 import { getNextAvailableSlot } from '@/lib/booking-availability'
 
 /**
@@ -18,7 +18,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'slug required' }, { status: 400 })
   }
 
-  const supabase = await createClient()
+  const supabase = await createServiceRoleClient()
   const { data: rows, error } = await supabase.rpc('get_public_booking_locations', {
     p_slug: slug,
     p_lat: pLat != null && !Number.isNaN(pLat) ? pLat : null,
@@ -76,8 +76,13 @@ export async function GET(req: NextRequest) {
         supabase,
         { orgId, locationId, dateStr: todayStr, durationMins }
       )
-    } catch {
-      // ignore
+    } catch (error) {
+      console.error('[Booking Locations] Next available lookup failed:', {
+        slug,
+        orgId,
+        locationId,
+        error: error instanceof Error ? error.message : String(error),
+      })
     }
     withNext.push({ ...loc, next_available })
   }

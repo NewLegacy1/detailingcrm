@@ -109,6 +109,19 @@ function descriptionSummary(desc: string | null, maxLen = 80): string {
   return t.slice(0, maxLen).trim() + '…'
 }
 
+function formatDateInTimeZone(date: Date, timeZone?: string | null): string {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: timeZone ?? undefined,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(date)
+  const year = parts.find((part) => part.type === 'year')?.value ?? '0000'
+  const month = parts.find((part) => part.type === 'month')?.value ?? '01'
+  const day = parts.find((part) => part.type === 'day')?.value ?? '01'
+  return `${year}-${month}-${day}`
+}
+
 export interface BookingService {
   id: string
   name: string
@@ -146,6 +159,7 @@ interface BookingServicePanelProps {
   upsells: BookingUpsell[]
   showPrices: boolean
   blackoutDates: string[]
+  timezone?: string | null
   /** When 'deposit' or 'card_on_file', payment is required at checkout (Pro only). */
   bookingPaymentMode?: BookingPaymentMode
   mapReady: boolean
@@ -193,6 +207,7 @@ export function BookingServicePanel({
   upsells,
   showPrices,
   blackoutDates,
+  timezone = null,
   bookingPaymentMode = 'none',
   mapReady,
   initialAddress,
@@ -230,6 +245,7 @@ export function BookingServicePanel({
   const [date, setDate] = useState('')
   const [slots, setSlots] = useState<string[]>([])
   const [loadingSlots, setLoadingSlots] = useState(false)
+  const [slotError, setSlotError] = useState<string | null>(null)
   const [selectedSlot, setSelectedSlot] = useState('')
   const [address, setAddress] = useState(initialAddress)
   const [addressLat, setAddressLat] = useState<number | null>(initialAddressLat ?? null)
@@ -461,10 +477,12 @@ export function BookingServicePanel({
     if (!dateStr || !selectedService || dateStr.length !== 10) {
       setSlots([])
       setSelectedSlot('')
+      setSlotError(null)
       return
     }
     setLoadingSlots(true)
     setSelectedSlot('')
+    setSlotError(null)
     try {
       const params = new URLSearchParams({
         slug,
@@ -474,11 +492,23 @@ export function BookingServicePanel({
       if (locationId) params.set('locationId', locationId)
       const res = await fetch(`/api/booking/slots?${params}`)
       const data = await res.json().catch(() => ({}))
-      setSlots(Array.isArray(data.slots) ? data.slots : [])
+      if (!res.ok) {
+        setSlots([])
+        setSlotError(typeof data.error === 'string' && data.error.trim() ? data.error : 'Unable to load available times right now.')
+        return
+      }
+      if (!Array.isArray(data.slots)) {
+        setSlots([])
+        setSlotError(typeof data.error === 'string' && data.error.trim() ? data.error : 'Unable to load available times right now.')
+        return
+      }
+      setSlots(data.slots)
     } catch {
       setSlots([])
+      setSlotError('Unable to load available times right now.')
+    } finally {
+      setLoadingSlots(false)
     }
-    setLoadingSlots(false)
   }, [slug, locationId, selectedService])
 
   useEffect(() => {
@@ -547,9 +577,7 @@ export function BookingServicePanel({
     }
   }, [step, isShopService, mapReady])
 
-  const minDate = new Date()
-  minDate.setHours(0, 0, 0, 0)
-  const minDateStr = minDate.toISOString().slice(0, 10)
+  const minDateStr = formatDateInTimeZone(new Date(), timezone)
 
   const isDateDisabled = (dateStr: string) => {
     if (dateStr < minDateStr) return true
@@ -1088,6 +1116,8 @@ export function BookingServicePanel({
             <p className="text-sm text-[var(--text-muted)] mb-3">Select a date first.</p>
           ) : loadingSlots ? (
             <p className="text-sm text-[var(--text-muted)] mb-3">Loading times…</p>
+          ) : slotError ? (
+            <p className="text-sm text-red-400 mb-3">{slotError}</p>
           ) : slots.length === 0 ? (
             <p className="text-sm text-[var(--text-muted)] mb-3">No available times. Try another date.</p>
           ) : (
@@ -1103,7 +1133,11 @@ export function BookingServicePanel({
                       : 'border-[var(--border)] bg-[var(--booking-surface)] text-[var(--text)] hover:bg-[var(--booking-surface-hover)]'
                   }`}
                 >
-                  {new Date(slot).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}
+                  {new Date(slot).toLocaleTimeString(undefined, {
+                    hour: 'numeric',
+                    minute: '2-digit',
+                    timeZone: timezone ?? undefined,
+                  })}
                 </button>
               ))}
             </div>
@@ -1126,7 +1160,11 @@ export function BookingServicePanel({
           </button>
           <h2 className="text-sm font-semibold text-[var(--text)] uppercase tracking-wider mb-2">Your details</h2>
           <p className="text-xs text-[var(--text-muted)] mb-3">
-            {new Date(selectedSlot).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })}
+            {new Date(selectedSlot).toLocaleString(undefined, {
+              dateStyle: 'medium',
+              timeStyle: 'short',
+              timeZone: timezone ?? undefined,
+            })}
           </p>
 
           {!customerProfile && (onSignInClick != null || onSignUpClick != null) && (
