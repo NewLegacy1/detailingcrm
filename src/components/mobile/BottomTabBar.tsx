@@ -19,6 +19,8 @@ import {
   Plus,
   User,
   LogOut,
+  Droplet,
+  Tag,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { getNavItemsForRole } from '@/lib/nav-config'
@@ -40,6 +42,8 @@ const MORE_ICONS: Record<string, React.ComponentType<{ className?: string }>> = 
   Reports: BarChart3,
   Settings: Settings,
   Campaigns: Megaphone,
+  'Drip Marketing': Droplet,
+  'Promo codes': Tag,
 }
 
 interface BottomTabBarProps {
@@ -71,8 +75,9 @@ export function BottomTabBar({
     return true
   })
   const customersItem = allItems.find((i) => i.label === 'Customers')
-  const moreItems = allItems.filter(
-    (i) => !['Dashboard', 'Customers', 'Schedule', 'Jobs'].includes(i.label)
+  const settingsItem = allItems.find((i) => i.label === 'Settings')
+  const moreItemsMiddle = allItems.filter(
+    (i) => !['Dashboard', 'Customers', 'Schedule', 'Jobs', 'Settings'].includes(i.label)
   )
 
   async function handleSignOut() {
@@ -105,6 +110,19 @@ export function BottomTabBar({
 
   const isActive = (href: string) =>
     pathname === href || (href !== crmPath('/dashboard') && pathname.startsWith(href + '/'))
+
+  const profilePath = crmPath('/settings/profile')
+  const onProfileRoute = pathname === profilePath || pathname.startsWith(`${profilePath}/`)
+  const settingsNavActive =
+    !!settingsItem &&
+    !settingsItem.comingSoon &&
+    isActive(settingsItem.href) &&
+    !onProfileRoute
+  const moreMenuHasActiveDestination =
+    moreItemsMiddle.some((i) => !i.comingSoon && isActive(i.href)) ||
+    (customersItem && !customersItem.comingSoon && isActive(customersItem.href)) ||
+    settingsNavActive ||
+    onProfileRoute
 
   return (
     <nav
@@ -211,7 +229,7 @@ export function BottomTabBar({
           }}
           className="flex flex-col items-center justify-center gap-0.5 py-2 text-xs font-medium transition-colors min-h-[44px] min-w-[44px]"
           style={{
-            color: moreItems.some((i) => isActive(i.href)) ? 'var(--accent)' : 'var(--text-3)',
+            color: moreMenuHasActiveDestination ? 'var(--accent)' : 'var(--text-3)',
           }}
           aria-expanded={moreOpen}
           aria-haspopup="true"
@@ -225,26 +243,6 @@ export function BottomTabBar({
             style={{ background: 'var(--surface-1)', borderColor: 'var(--border)' }}
           >
             <ul className="py-2">
-              <li>
-                <Link
-                  href={crmPath('/settings/profile')}
-                  onClick={() => setMoreOpen(false)}
-                  className="flex items-center gap-3 px-4 py-3 text-sm font-medium transition-colors border-b"
-                  style={{
-                    color: isActive(crmPath('/settings/profile')) ? 'var(--accent)' : 'var(--text-1)',
-                    background: isActive(crmPath('/settings/profile')) ? 'var(--accent-dim)' : 'transparent',
-                    borderColor: 'var(--border)',
-                  }}
-                  aria-label={displayName ? `Profile, ${displayName}` : 'Profile'}
-                >
-                  {logoUrl?.trim() ? (
-                    <img src={logoUrl.trim()} alt="" className="h-[18px] w-[18px] rounded-full object-cover" />
-                  ) : (
-                    <User className="h-[18px] w-[18px]" style={{ color: 'var(--text-2)' }} />
-                  )}
-                  Profile
-                </Link>
-              </li>
               {customersItem && !customersItem.comingSoon && (
                 <li>
                   <Link
@@ -262,7 +260,7 @@ export function BottomTabBar({
                   </Link>
                 </li>
               )}
-              {moreItems.map((item) => {
+              {moreItemsMiddle.map((item) => {
                 const Icon = MORE_ICONS[item.label] ?? Settings
                 const active = !item.comingSoon && isActive(item.href)
                 const showCount = item.label === 'Invoices' && invoiceCount > 0
@@ -306,15 +304,51 @@ export function BottomTabBar({
                   </li>
                 )
               })}
-              <li className="border-t" style={{ borderColor: 'var(--border)' }}>
+              {settingsItem && !settingsItem.comingSoon && (
+                <li className="border-t" style={{ borderColor: 'var(--border)' }}>
+                  <Link
+                    href={settingsItem.href}
+                    onClick={() => setMoreOpen(false)}
+                    className="flex items-center gap-3 px-4 py-3 text-sm font-medium transition-colors"
+                    style={{
+                      color: settingsNavActive ? 'var(--accent)' : 'var(--text-1)',
+                      background: settingsNavActive ? 'var(--accent-dim)' : 'transparent',
+                    }}
+                  >
+                    <Settings className="h-[18px] w-[18px]" style={{ color: 'var(--text-2)' }} />
+                    {settingsItem.label}
+                  </Link>
+                </li>
+              )}
+              <li>
+                <Link
+                  href={profilePath}
+                  onClick={() => setMoreOpen(false)}
+                  className="flex items-center gap-3 px-4 py-3 text-sm font-medium transition-colors border-b"
+                  style={{
+                    color: onProfileRoute ? 'var(--accent)' : 'var(--text-1)',
+                    background: onProfileRoute ? 'var(--accent-dim)' : 'transparent',
+                    borderColor: 'var(--border)',
+                  }}
+                  aria-label={displayName ? `Profile, ${displayName}` : 'Profile'}
+                >
+                  {logoUrl?.trim() ? (
+                    <img src={logoUrl.trim()} alt="" className="h-[18px] w-[18px] rounded-full object-cover" />
+                  ) : (
+                    <User className="h-[18px] w-[18px]" style={{ color: 'var(--text-2)' }} />
+                  )}
+                  Profile
+                </Link>
+              </li>
+              <li>
                 <button
                   type="button"
                   onClick={() => {
                     setMoreOpen(false)
                     void handleSignOut()
                   }}
-                  className="flex items-center gap-3 w-full px-4 py-3 text-sm font-medium transition-colors text-left"
-                  style={{ color: 'var(--text-2)' }}
+                  className="flex items-center gap-3 w-full px-4 py-3 text-sm font-medium transition-colors text-left border-t"
+                  style={{ color: 'var(--text-2)', borderColor: 'var(--border)' }}
                 >
                   <LogOut className="h-[18px] w-[18px]" />
                   Sign out

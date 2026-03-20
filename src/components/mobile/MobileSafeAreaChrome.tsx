@@ -4,6 +4,9 @@ import { usePathname, useRouter } from 'next/navigation'
 import { ChevronLeft } from 'lucide-react'
 import { CRM_BASE } from '@/lib/crm-path'
 
+/** WKWebView / Capacitor often reports 0 for safe-area until fixed; keep a notch-friendly minimum. */
+const MIN_TOP_INSET_PX = 56
+
 /**
  * iOS-safe top inset + optional sub-page back control.
  * Avoids a full header (logo/title/profile) so system status content stays readable.
@@ -15,11 +18,13 @@ export function MobileSafeAreaChrome() {
   const relativeSegments = relativePath.split('/').filter(Boolean)
   const showBack = relativeSegments.length > 1
 
+  const topInset = `max(env(safe-area-inset-top, 0px), ${MIN_TOP_INSET_PX}px)`
+
   return (
     <div
       className="md:hidden shrink-0 z-30 w-full"
       style={{
-        paddingTop: 'max(env(safe-area-inset-top, 0px), 0px)',
+        paddingTop: topInset,
         background: 'var(--bg)',
       }}
     >

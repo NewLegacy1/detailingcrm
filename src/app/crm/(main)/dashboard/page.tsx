@@ -330,7 +330,7 @@ export default async function DashboardPage() {
         <div className="flex-1 overflow-y-auto p-4 md:p-5 md:pr-6">
           <div className="flex flex-col gap-6 md:gap-6">
             {/* Mobile hero: date, greeting, today's revenue — no card, big typography; Create new on right */}
-            <div className="md:hidden pt-2 pb-6">
+            <div className="md:hidden pt-3 pb-6">
               <p className="text-sm font-medium uppercase tracking-wider mb-1" style={{ color: 'var(--text-3)' }}>
                 {getFriendlyDate(todayStr, timeZone)}
               </p>
