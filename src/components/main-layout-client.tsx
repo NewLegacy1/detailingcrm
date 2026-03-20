@@ -6,6 +6,7 @@ import { SidebarNew } from '@/components/sidebar-new'
 import { MobileLayout } from '@/components/mobile/MobileLayout'
 import { ProductTour } from '@/components/ProductTour'
 import { useIsMobile } from '@/hooks/use-media-query'
+import { useCapacitorNative } from '@/hooks/use-capacitor-native'
 import { subtextColorFromBg, secondaryTextColorFromBg } from '@/lib/utils'
 import { getCrmStylePreset, type CrmStylePresetId } from '@/lib/crm-style-presets'
 import type { UserRole } from '@/types/database'
@@ -119,6 +120,8 @@ export function MainLayoutClient({
   const [tourDismissed, setTourDismissed] = useState(false)
   const [tourInProgressFromStorage, setTourInProgressFromStorage] = useState(false)
   const isMobile = useIsMobile()
+  const capacitorNative = useCapacitorNative()
+  const compactShell = isMobile || capacitorNative
 
   // Once the tour is shown (owner first time or ?showTour=1), persist "in progress" so it survives layout remounts on navigation
   useEffect(() => {
@@ -182,7 +185,7 @@ export function MainLayoutClient({
     }
   }, [style])
 
-  if (isMobile) {
+  if (compactShell) {
     return (
       <>
         {shouldShowTour && (

@@ -25,6 +25,7 @@ import {
 import { createClient } from '@/lib/supabase/client'
 import { getNavItemsForRole } from '@/lib/nav-config'
 import { crmPath } from '@/lib/crm-path'
+import { useCapacitorNative } from '@/hooks/use-capacitor-native'
 import type { UserRole } from '@/types/database'
 
 const PRIMARY_TABS = [
@@ -65,6 +66,7 @@ export function BottomTabBar({
   invoiceCount = 0,
   subscriptionPlan,
 }: BottomTabBarProps) {
+  const native = useCapacitorNative()
   const pathname = usePathname()
   const allItems = getNavItemsForRole(role, locationId)
   const navLabelSet = new Set(allItems.map((i) => i.label))
@@ -126,7 +128,7 @@ export function BottomTabBar({
 
   return (
     <nav
-      className="md:hidden fixed bottom-0 left-0 right-0 z-40 flex items-center justify-around min-h-[56px] border-t bg-[var(--surface-1)]"
+      className={`fixed bottom-0 left-0 right-0 z-40 flex items-center justify-around min-h-[56px] border-t bg-[var(--surface-1)] ${native ? '' : 'md:hidden'}`}
       style={{ borderColor: 'var(--border)', paddingBottom: 'env(safe-area-inset-bottom, 0)' }}
     >
       {/* Create new – plus in accent circle (first on left) */}

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Instrument_Sans, Rajdhani, Nunito, Fraunces } from "next/font/google";
 import "./globals.css";
 import { RecoveryHashRedirect } from "@/components/auth/RecoveryHashRedirect";
+import { CapacitorPublicSafeArea } from "@/components/mobile/CapacitorPublicSafeArea";
 
 const geist = Geist({
   variable: "--font-sans",
@@ -79,7 +80,7 @@ export default function RootLayout({
           }}
         />
         <RecoveryHashRedirect />
-        {children}
+        <CapacitorPublicSafeArea>{children}</CapacitorPublicSafeArea>
       </body>
     </html>
   );

@@ -3,6 +3,7 @@
 import { useEffect, useId, useState } from 'react'
 import Link from 'next/link'
 import { Figtree, Fraunces } from 'next/font/google'
+import { CAPACITOR_TOP_SAFE_PADDING } from '@/lib/capacitor-safe-area'
 
 const figtree = Figtree({
   subsets: ['latin'],
@@ -15,7 +16,6 @@ const fraunces = Fraunces({
   style: ['italic', 'normal'],
 })
 
-const SAFE_TOP = 'max(env(safe-area-inset-top, 0px), 56px)'
 const SAFE_BOTTOM = 'env(safe-area-inset-bottom, 0px)'
 
 const styles: Record<string, React.CSSProperties> = {
@@ -30,7 +30,7 @@ const styles: Record<string, React.CSSProperties> = {
     overflowX: 'hidden',
     overflowY: 'auto',
     boxSizing: 'border-box',
-    paddingTop: `calc(${SAFE_TOP} + 8px)`,
+    paddingTop: `calc(${CAPACITOR_TOP_SAFE_PADDING} + 8px)`,
     paddingBottom: `max(1.5rem, ${SAFE_BOTTOM})`,
     paddingLeft: 'max(1.25rem, env(safe-area-inset-left, 0px))',
     paddingRight: 'max(1.25rem, env(safe-area-inset-right, 0px))',
