@@ -21,6 +21,40 @@ const inputClass =
 const submitBtnClass =
   'w-full py-[15px] rounded-full border-0 text-white text-[0.95rem] font-medium tracking-wide cursor-pointer transition-[opacity,transform,box-shadow] hover:opacity-90 hover:shadow-[0_6px_28px_rgba(0,184,245,0.5)] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100'
 
+/** Mid–signup/onboarding users are still signed in; "Sign in" must sign out first or /login bounces via CRM → wizard. */
+function useLoginSessionGate() {
+  const router = useRouter()
+  const searchParams = useSearchParams()
+  const redirectTo = searchParams.get('redirectTo') ?? '/crm/dashboard'
+  const switchAccount = searchParams.get('switchAccount') === '1'
+
+  useEffect(() => {
+    let cancelled = false
+    void (async () => {
+      const supabase = createClient()
+      if (switchAccount) {
+        await supabase.auth.signOut()
+        if (cancelled) return
+        const qs = new URLSearchParams()
+        qs.set('redirectTo', redirectTo)
+        router.replace(`/login?${qs.toString()}`)
+        return
+      }
+      const {
+        data: { session },
+      } = await supabase.auth.getSession()
+      if (cancelled) return
+      if (session) {
+        router.push(redirectTo)
+        router.refresh()
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [router, redirectTo, switchAccount])
+}
+
 function DesktopLoginForm() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -30,19 +64,7 @@ function DesktopLoginForm() {
   const searchParams = useSearchParams()
   const redirectTo = searchParams.get('redirectTo') ?? '/crm/dashboard'
 
-  useEffect(() => {
-    const checkSession = async () => {
-      const supabase = createClient()
-      const {
-        data: { session },
-      } = await supabase.auth.getSession()
-      if (session) {
-        router.push(redirectTo)
-        router.refresh()
-      }
-    }
-    checkSession()
-  }, [router, redirectTo])
+  useLoginSessionGate()
 
   async function handleSignIn(e: React.FormEvent) {
     e.preventDefault()
@@ -154,19 +176,7 @@ function NativeLoginForm() {
   const searchParams = useSearchParams()
   const redirectTo = searchParams.get('redirectTo') ?? '/crm/dashboard'
 
-  useEffect(() => {
-    const checkSession = async () => {
-      const supabase = createClient()
-      const {
-        data: { session },
-      } = await supabase.auth.getSession()
-      if (session) {
-        router.push(redirectTo)
-        router.refresh()
-      }
-    }
-    checkSession()
-  }, [router, redirectTo])
+  useLoginSessionGate()
 
   return (
     <DetailOpsNativeLogin

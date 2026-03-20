@@ -328,7 +328,10 @@ export default function SignupOnboardingPage() {
     <>
       <p style={na.onboardingFooterNote}>
         <span style={na.signupText}>Already have an account? </span>
-        <Link href="/login" style={na.signupLink}>
+        <Link
+          href={`/login?switchAccount=1&redirectTo=${encodeURIComponent('/crm/dashboard')}`}
+          style={na.signupLink}
+        >
           Sign in
         </Link>
       </p>
