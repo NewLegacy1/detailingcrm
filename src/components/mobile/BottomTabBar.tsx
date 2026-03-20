@@ -248,11 +248,10 @@ export function BottomTabBar({
                   <Link
                     href={customersItem.href}
                     onClick={() => setMoreOpen(false)}
-                    className="flex items-center gap-3 px-4 py-3 text-sm font-medium transition-colors border-b"
+                    className="flex items-center gap-3 px-4 py-3 text-sm font-medium transition-colors"
                     style={{
                       color: isActive(customersItem.href) ? 'var(--accent)' : 'var(--text-1)',
                       background: isActive(customersItem.href) ? 'var(--accent-dim)' : 'transparent',
-                      borderColor: 'var(--border)',
                     }}
                   >
                     <Users className="h-[18px] w-[18px]" style={{ color: 'var(--text-2)' }} />
@@ -305,7 +304,7 @@ export function BottomTabBar({
                 )
               })}
               {settingsItem && !settingsItem.comingSoon && (
-                <li className="border-t" style={{ borderColor: 'var(--border)' }}>
+                <li>
                   <Link
                     href={settingsItem.href}
                     onClick={() => setMoreOpen(false)}
@@ -320,39 +319,41 @@ export function BottomTabBar({
                   </Link>
                 </li>
               )}
-              <li>
-                <Link
-                  href={profilePath}
-                  onClick={() => setMoreOpen(false)}
-                  className="flex items-center gap-3 px-4 py-3 text-sm font-medium transition-colors border-b"
-                  style={{
-                    color: onProfileRoute ? 'var(--accent)' : 'var(--text-1)',
-                    background: onProfileRoute ? 'var(--accent-dim)' : 'transparent',
-                    borderColor: 'var(--border)',
-                  }}
-                  aria-label={displayName ? `Profile, ${displayName}` : 'Profile'}
+              <li className="mt-1 border-t pt-2 px-2 pb-1" style={{ borderColor: 'var(--border)' }}>
+                <div
+                  className="rounded-lg border overflow-hidden"
+                  style={{ borderColor: 'var(--border)', background: 'var(--surface-2)' }}
                 >
-                  {logoUrl?.trim() ? (
-                    <img src={logoUrl.trim()} alt="" className="h-[18px] w-[18px] rounded-full object-cover" />
-                  ) : (
-                    <User className="h-[18px] w-[18px]" style={{ color: 'var(--text-2)' }} />
-                  )}
-                  Profile
-                </Link>
-              </li>
-              <li>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setMoreOpen(false)
-                    void handleSignOut()
-                  }}
-                  className="flex items-center gap-3 w-full px-4 py-3 text-sm font-medium transition-colors text-left border-t"
-                  style={{ color: 'var(--text-2)', borderColor: 'var(--border)' }}
-                >
-                  <LogOut className="h-[18px] w-[18px]" />
-                  Sign out
-                </button>
+                  <Link
+                    href={profilePath}
+                    onClick={() => setMoreOpen(false)}
+                    className="flex items-center gap-3 px-3 py-3 text-sm font-medium transition-colors"
+                    style={{
+                      color: onProfileRoute ? 'var(--accent)' : 'var(--text-1)',
+                      background: onProfileRoute ? 'var(--accent-dim)' : 'transparent',
+                    }}
+                    aria-label={displayName ? `Profile, ${displayName}` : 'Profile'}
+                  >
+                    {logoUrl?.trim() ? (
+                      <img src={logoUrl.trim()} alt="" className="h-[18px] w-[18px] rounded-full object-cover" />
+                    ) : (
+                      <User className="h-[18px] w-[18px]" style={{ color: 'var(--text-2)' }} />
+                    )}
+                    Profile
+                  </Link>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMoreOpen(false)
+                      void handleSignOut()
+                    }}
+                    className="flex items-center gap-3 w-full px-3 py-3 text-sm font-medium transition-colors text-left border-t"
+                    style={{ color: 'var(--text-2)', borderColor: 'var(--border)' }}
+                  >
+                    <LogOut className="h-[18px] w-[18px]" />
+                    Sign out
+                  </button>
+                </div>
               </li>
             </ul>
           </div>

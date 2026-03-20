@@ -249,6 +249,8 @@ export function InvoicesList({ initialInvoices, clients, initialCustomerId, init
         <div className="relative flex-1 min-w-[200px] max-w-md">
           <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--text-muted)]" />
           <Input
+            type="search"
+            enterKeyHint="search"
             placeholder="Search by customer name, service name, or date (YYYY-MM-DD)"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}

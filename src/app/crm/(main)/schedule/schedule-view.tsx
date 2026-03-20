@@ -854,7 +854,8 @@ export function ScheduleView({ initialJobs, initialDate, timeZone, serviceHoursS
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/70" />
         <Input
-          type="text"
+          type="search"
+          enterKeyHint="search"
           placeholder="Search by customer name or job title (service)..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
