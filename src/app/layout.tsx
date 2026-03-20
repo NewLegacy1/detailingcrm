@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Geist, Instrument_Sans, Rajdhani, Nunito } from "next/font/google";
+import { Geist, Instrument_Sans, Rajdhani, Nunito, Fraunces } from "next/font/google";
 import "./globals.css";
 import { RecoveryHashRedirect } from "@/components/auth/RecoveryHashRedirect";
 
@@ -27,6 +27,13 @@ const nunito = Nunito({
   weight: ["400", "500", "600", "700"],
 });
 
+const fraunces = Fraunces({
+  variable: "--font-fraunces",
+  subsets: ["latin"],
+  weight: ["300", "400", "500", "700"],
+  style: ["normal", "italic"],
+});
+
 export const metadata: Metadata = {
   title: "DetailOps",
   description: "CRM for mobile auto detailers — customers, jobs, vehicles, scheduling",
@@ -45,7 +52,7 @@ export default function RootLayout({
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
       </head>
-      <body className={`${geist.variable} ${instrumentSans.variable} ${rajdhani.variable} ${nunito.variable} font-sans antialiased bg-[var(--bg)] text-[var(--text)]`} suppressHydrationWarning>
+      <body className={`${geist.variable} ${instrumentSans.variable} ${rajdhani.variable} ${nunito.variable} ${fraunces.variable} font-sans antialiased bg-[var(--bg)] text-[var(--text)]`} suppressHydrationWarning>
         {/* Redirect password-reset links that land on / or /login to /auth/callback before React hydrates.
             Handles: hash (#access_token, #type=recovery, #code=), query (token_hash, code). */}
         <script
