@@ -6,7 +6,7 @@ import { CAPACITOR_TOP_SAFE_PADDING } from '@/lib/capacitor-safe-area'
 
 /**
  * Applies iOS safe-area padding to marketing/auth pages loaded in the Capacitor WebView.
- * Skips /crm (MobileLayout + MobileSafeAreaChrome), /login, and /signup (native full-bleed auth handles insets).
+ * Skips /crm, /login, /signup/*, and /onboarding/* (full-bleed screens apply CAPACITOR_TOP_SAFE_PADDING in-page).
  */
 export function CapacitorPublicSafeArea({ children }: { children: React.ReactNode }) {
   const pathname = usePathname() ?? ''
@@ -15,7 +15,12 @@ export function CapacitorPublicSafeArea({ children }: { children: React.ReactNod
   if (!native) return <>{children}</>
 
   /* Full-bleed native auth manages its own insets; e.g. /login/forgot-password still gets this wrapper. */
-  if (pathname.startsWith('/crm') || pathname === '/login' || pathname === '/signup') {
+  if (
+    pathname.startsWith('/crm') ||
+    pathname === '/login' ||
+    pathname.startsWith('/signup') ||
+    pathname.startsWith('/onboarding')
+  ) {
     return <>{children}</>
   }
 

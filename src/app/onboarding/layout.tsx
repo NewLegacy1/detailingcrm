@@ -13,9 +13,6 @@ export default async function OnboardingLayout({
   if (!user) {
     redirect('/login?redirectTo=/onboarding')
   }
-  return (
-    <div className="min-h-screen bg-[var(--bg)] text-[var(--text)] flex flex-col justify-start">
-      {children}
-    </div>
-  )
+  /* Full-bleed onboarding scenes provide their own background */
+  return <>{children}</>
 }
